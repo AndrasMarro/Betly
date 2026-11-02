@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de" data-theme="noir">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Betly: Roulette, Blackjack und Slots mit simuliertem Spielgeld. Kein Echtgeld." />
+    <meta name="theme-color" content="#0b0b0c" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23e5484d'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23fff' stroke-width='2' stroke-dasharray='3 3'/%3E%3C/svg%3E" />
+    <title>Betly · Spielgeld-Casino</title>
+    <script>
+      try {
+        const s = JSON.parse(localStorage.getItem('betly:settings') || '{}');
+        document.documentElement.dataset.theme = s.theme || 'noir';
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
