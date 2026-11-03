@@ -57,6 +57,18 @@
       {#each ['#4b69ff', '#d32ce6', '#e4ae39'] as c, i}<span class="crate" style="--c:{c}; --i:{i}"><i></i></span>{/each}
     </div>
     <span class="cmark"></span>
+  {:else if id === 'minesweeper'}
+    <div class="msw">
+      {#each ['1', '1', '2', '', '', '1', 'f', '2', '1', '', '1', '2', 'f', '1', '', '', '1', '1', '1', ''] as v, i}<i class="v{v}" class:closed={v === 'f' || i % 7 === 3}>{v === 'f' ? '' : v}</i>{/each}
+    </div>
+  {:else if id === 'baccarat'}
+    <div class="fan">
+      <div class="c1"><CardView card={{ r: 9, s: 1 }} /></div>
+      <div class="c2"><CardView card={{ r: 13, s: 3 }} /></div>
+    </div>
+    <span class="bp p">P</span><span class="bp b">B</span>
+  {:else if id === 'holdem'}
+    <div class="flop">{#each [{ r: 1, s: 0 }, { r: 13, s: 0 }, { r: 12, s: 0 }, { r: 11, s: 0 }, { r: 10, s: 0 }] as c, i}<div style="--i:{i}"><CardView card={c} /></div>{/each}</div>
   {:else if id === 'scratch'}
     <div class="tk">{#each ['seven', 'seven', 'seven'] as s, i}<i class:foil={i === 2}><SlotSymbol sym={s} /></i>{/each}</div>
   {/if}
@@ -80,6 +92,20 @@
   .crate i { position: absolute; left: 50%; top: 12px; width: 16px; height: 13px; margin-left: -8px; border-radius: 3px; background: #f2c046; }
   :global(.game:hover) .crate { transform: translateY(-10px); }
   .cmark { position: absolute; left: 50%; top: 10%; bottom: 10%; width: 3px; background: #f2c046; box-shadow: 0 0 12px #f2c046; opacity: .35; }
+  .art.minesweeper { background: radial-gradient(ellipse at 50% 0%, #1f2a3d, #0b111b 75%); }
+  .msw { display: grid; grid-template-columns: repeat(5, 34px); gap: 4px; }
+  .msw i { height: 34px; border-radius: 6px; background: #141b29; display: grid; place-items: center; font: 800 0.95rem 'Geist Mono Variable', monospace; font-style: normal; }
+  .msw i.closed { background: linear-gradient(180deg, #3a4a68, #2d3a54); }
+  .msw .vf { background: linear-gradient(180deg, #3a4a68, #2d3a54); position: relative; }
+  .msw .vf::after { content: ''; position: absolute; left: 11px; top: 8px; width: 13px; height: 10px; background: #e5484d; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+  .msw .v1 { color: #6aa8ff; } .msw .v2 { color: #4fe3a0; }
+  .art.baccarat { background: radial-gradient(ellipse at 50% 0%, #17406a, #0b2140 75%); }
+  .bp { position: absolute; bottom: 18px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 800 0.8rem 'Geist Mono Variable', monospace; border: 3px solid; background: #f4f2ee; }
+  .bp.p { left: 32%; border-color: #2a6fd6; color: #2a6fd6; } .bp.b { right: 32%; border-color: #c8262c; color: #c8262c; }
+  .art.holdem { background: radial-gradient(ellipse at 50% 30%, #1a6b4c, #0b3626 70%); }
+  .flop { display: flex; --cw: 56px; }
+  .flop div { margin-left: -14px; transform: rotate(calc((var(--i) - 2) * 6deg)) translateY(calc((var(--i) - 2) * (var(--i) - 2) * 2px)); transition: transform 0.5s var(--ease-snap); }
+  :global(.game:hover) .flop div { transform: rotate(calc((var(--i) - 2) * 9deg)) translateY(-6px); }
   .art.scratch { background: radial-gradient(ellipse at 50% 20%, #3a2a10, #140d05); }
   .tw { display: grid; gap: 6px; }
   .tw div { display: flex; gap: 6px; }

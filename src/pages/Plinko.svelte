@@ -14,7 +14,7 @@
   const sp = $derived(100 / (rows + 2)); // horizontal spacing in % of board width
   const rowH = $derived(88 / (rows + 1)); // vertical spacing in % of board height
 
-  type Ball = { id: number; path: boolean[]; t0: number; bet: number; x: number; y: number; done?: boolean; rows: number; table: number[]; k: number };
+  type Ball = { id: number; path: boolean[]; t0: number; bet: number; x: number; y: number; done?: boolean; gone?: boolean; rows: number; table: number[]; k: number; o: number };
   let balls = $state<Ball[]>([]);
   let hits = $state<{ i: number; id: number; m: number }[]>([]);
   let last = $state<number[]>([]);
@@ -22,36 +22,53 @@
   const STEP = 150; // ms per peg row
   const live = $derived(balls.length > 0);
 
+  let count = $state(1);
   function drop() {
-    if (bet > wallet.balance || bet <= 0) return;
-    stake(bet);
-    balls.push({ id: ++id, path: plinkoPath(rows), t0: performance.now(), bet, x: 50, y: 0, rows, table, k: -1 });
-    sfx('chip');
+    for (let n = 0; n < count; n++)
+      setTimeout(() => {
+        if (bet > wallet.balance || bet <= 0) return;
+        stake(bet);
+        balls.push({ id: ++id, path: plinkoPath(rows), t0: performance.now(), bet, x: 50, y: -3, rows, table, k: -1, o: 1 });
+        sfx('chip');
+      }, n * 120);
   }
+  /**
+   * Ball timeline in row units (s): [0,1) drop onto the first peg, then one row per unit
+   * (hop off the peg, fall onto the next one), then fall into the bucket behind its front.
+   */
   function frame(now: number) {
     for (const b of balls) {
-      const s = (now - b.t0) / STEP;
-      const k = Math.min(b.rows, Math.floor(s)), f = Math.min(1, s - k);
-      const spB = 100 / (b.rows + 2), rhB = 88 / (b.rows + 1);
-      const rights = b.path.slice(0, k).filter(Boolean).length;
-      const x0 = 50 + (rights - k / 2) * spB;
-      const dir = k < b.rows ? (b.path[k] ? 1 : -1) : 0;
-      // horizontal glide to the next gap, vertical fall with a small bounce off the peg
-      b.x = x0 + (dir * spB * f) / 2;
-      b.y = 2 + rhB * (k + f) - (k < b.rows ? Math.sin(f * Math.PI) * rhB * 0.35 : 0);
-      if (k !== b.k && k < b.rows) { b.k = k; sfx('peg'); }
-      if (s >= b.rows + 0.4 && !b.done) {
-        b.done = true;
-        const i = b.path.filter(Boolean).length, m = b.table[i];
-        const win = Math.round(b.bet * m * 100) / 100;
-        settle(win, win);
-        hits.push({ i, id: b.id, m });
-        last = [m, ...last].slice(0, 12);
-        sfx(m >= 10 ? 'big' : m >= 1 ? 'win' : 'tick');
-        setTimeout(() => (hits = hits.filter((h) => h.id !== b.id)), 500);
+      const s = Math.max(0, (now - b.t0) / STEP);
+      const sp = 100 / (b.rows + 2), rh = 88 / (b.rows + 1);
+      const rowY = (k: number) => 2 + rh * (k + 1) - 1.8; // resting on top of peg row k
+      const xAt = (k: number) => 50 + (b.path.slice(0, k).filter(Boolean).length - k / 2) * sp;
+      if (s < 1) {
+        b.x = 50;
+        b.y = -3 + (rowY(0) + 3) * s * s;
+      } else if (s < b.rows + 1) {
+        const k = Math.floor(s - 1), f = s - 1 - k, dir = b.path[k] ? 1 : -1;
+        b.x = xAt(k) + (dir * sp * f) / 2;
+        b.y = rowY(k) + (rowY(k + 1) - rowY(k)) * f * f - Math.sin(f * Math.PI) * rh * 0.45;
+        if (k !== b.k) { b.k = k; sfx('peg'); }
+      } else {
+        const f = Math.min(1, (s - b.rows - 1) / 0.7);
+        b.x = xAt(b.rows);
+        b.y = rowY(b.rows) + (107 - rowY(b.rows)) * f * f;
+        b.o = f < 0.6 ? 1 : 1 - (f - 0.6) / 0.4;
+        if (f >= 0.45 && !b.done) {
+          b.done = true;
+          const i = b.path.filter(Boolean).length, m = b.table[i];
+          const win = Math.round(b.bet * m * 100) / 100;
+          settle(win, win);
+          hits.push({ i, id: b.id, m });
+          last = [m, ...last].slice(0, 12);
+          sfx(m >= 10 ? 'big' : m >= 1 ? 'win' : 'tick');
+          setTimeout(() => (hits = hits.filter((h) => h.id !== b.id)), 450);
+        }
+        if (f >= 1) b.gone = true;
       }
     }
-    balls = balls.filter((b) => !b.done);
+    if (balls.some((b) => b.gone)) balls = balls.filter((b) => !b.gone);
     raf = requestAnimationFrame(frame);
   }
   onMount(() => (raf = requestAnimationFrame(frame)));
@@ -68,8 +85,13 @@
 
 <ArcadeLayout eyebrow="Arcade · {rows} rows" title="Plinko">
   {#snippet controls()}
-    <button class="btn primary big" disabled={bet > wallet.balance} onclick={drop}>{t('pl.drop')}</button>
+    <button class="btn primary big" disabled={bet > wallet.balance} onclick={drop}>{count > 1 ? t('pl.dropN').replace('{n}', String(count)) : t('pl.drop')}</button>
     <BetInput bind:value={bet} />
+    <div class="field">{t('pl.balls')}
+      <div class="seg four">
+        {#each [1, 5, 10, 20] as n}<button class:on={count === n} onclick={() => (count = n)}>{n}</button>{/each}
+      </div>
+    </div>
     <div class="field">{t('pl.risk')}
       <div class="seg">
         {#each ['low', 'medium', 'high'] as r}<button class:on={risk === r} disabled={live} onclick={() => (risk = r as Risk)}>{t(('risk.' + r) as Key)}</button>{/each}
@@ -90,7 +112,7 @@
         {/each}
       {/each}
       {#each balls as b (b.id)}
-        <i class="ball" style="left:{b.x}%; top:{b.y}%"></i>
+        <i class="ball" style="left:{b.x}%; top:{b.y}%; opacity:{b.o}"></i>
       {/each}
     </div>
     <div class="buckets" style="--n:{rows + 1}; --sp:{sp}%">
@@ -107,6 +129,7 @@
 <style>
   .big { min-height: 54px; width: 100%; font-size: 1rem; }
   .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .seg.four { grid-template-columns: repeat(4, 1fr); }
   .seg button { min-height: 38px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2); font-size: 0.85rem; transition: background-color 0.25s var(--ease-snap), color 0.25s var(--ease-snap), transform 0.16s var(--ease-snap); }
   .seg button.on { background: var(--text); color: var(--bg); }
   .seg button:active:not(:disabled) { transform: scale(0.97); }
@@ -117,7 +140,7 @@
   .ball { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #ff6b6f 45%, #b3202a); box-shadow: 0 0 12px rgba(255, 107, 111, 0.7); z-index: 2; }
   .buckets { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 3px; max-width: 720px; margin: 0 auto; padding: 0 calc(var(--sp) / 2); }
   .bucket {
-    display: grid; place-items: center; min-height: 30px; border-radius: 8px; font-size: clamp(0.55rem, 1vw, 0.72rem); font-weight: 700; overflow: hidden; color: #120c06;
+    position: relative; z-index: 3; display: flex; justify-content: center; align-items: center; min-height: 30px; border-radius: 8px; font-size: clamp(0.55rem, 1vw, 0.72rem); font-weight: 700; overflow: hidden; color: #120c06;
     background: var(--c); box-shadow: 0 4px 0 color-mix(in srgb, var(--c) 60%, #000); transition: transform 0.35s var(--spring-snappy);
   }
   .bucket.hit { transform: translateY(5px); }

@@ -1,9 +1,3 @@
-// Impressum data. Fill in your real details before publishing (required by § 5 DDG).
-export const OWNER = {
-  name: '[Vor- und Nachname]',
-  street: '[Straße und Hausnummer]',
-  city: '[PLZ Ort]',
-  country: 'Deutschland',
-  email: '[E-Mail-Adresse]',
-};
+// No personal details are published. Contact runs through the public GitHub repository.
+export const CONTACT = 'https://github.com/AndrasMarro/Betly/issues';
 export const UPDATED = 'November 2026';

@@ -129,3 +129,88 @@ import { CASES, caseRtp, RARITIES } from '../src/games/arcade.ts';
   for (const c of CASES) assert.ok(caseRtp(c) <= 0.97 + 1e-9 && caseRtp(c) > 0.96, `case ${c.id} ${caseRtp(c)}`);
   console.log('cases RTP', caseRtp(CASES[0]).toFixed(4));
 }
+
+import { newGame, open, flag, chord } from '../src/games/minesweeper.ts';
+{
+  for (let n = 0; n < 200; n++) {
+    const ms = newGame(9, 9, 10);
+    const first = Math.floor(Math.random() * 81);
+    open(ms, first);
+    assert.equal(ms.cells.filter((c) => c.mine).length, 10);
+    assert.ok(!ms.cells[first].mine && ms.cells[first].n === 0, 'first click is safe and empty');
+    assert.notEqual(ms.state, 'lost');
+  }
+  // play a full game by cheating: open every safe cell -> won
+  const ms = newGame(16, 16, 40);
+  open(ms, 0);
+  ms.cells.forEach((c, i) => !c.mine && open(ms, i));
+  assert.equal(ms.state, 'won');
+  // chording with correct flags opens neighbours, a wrong flag loses
+  const g = newGame(9, 9, 10);
+  open(g, 40);
+  const num = g.cells.findIndex((c) => c.open && c.n > 0);
+  const nb = [-10, -9, -8, -1, 1, 8, 9, 10].map((d) => num + d).filter((j) => j >= 0 && j < 81 && Math.abs((j % 9) - (num % 9)) <= 1);
+  nb.forEach((j) => g.cells[j].mine && flag(g, j));
+  assert.ok(chord(g, num));
+  assert.notEqual(g.state, 'lost');
+  console.log('minesweeper checks passed');
+}
+
+import { coup, payout as bacPay, bankerDraws } from '../src/games/baccarat.ts';
+import { newShoe } from '../src/lib/cards.ts';
+{
+  assert.equal(bankerDraws(3, { r: 8, s: 0 }), false);
+  assert.equal(bankerDraws(6, { r: 7, s: 0 }), true);
+  assert.equal(bankerDraws(6, null), false);
+  let shoe = newShoe(8);
+  const draw = () => (shoe.length < 20 ? (shoe = newShoe(8)) : shoe).pop()!;
+  const N = 300_000, ret: Record<string, number> = { player: 0, banker: 0, tie: 0 };
+  for (let i = 0; i < N; i++) { const c = coup(draw); for (const k of ['player', 'banker', 'tie'] as const) ret[k] += bacPay(k, 1, c); }
+  const edge = (k: string) => 1 - ret[k] / N;
+  console.log('baccarat edge', Object.keys(ret).map((k) => k + ' ' + (edge(k) * 100).toFixed(2) + '%').join(', '));
+  assert.ok(Math.abs(edge('banker') - 0.0106) < 0.006 && Math.abs(edge('player') - 0.0124) < 0.006 && Math.abs(edge('tie') - 0.144) < 0.03);
+}
+
+import { score5, bestHand, newTable as pkTable, startHand, act as pkAct, legal as pkLegal, roundDone, nextStreet, botMove, buildPots, chen, equity } from '../src/games/poker.ts';
+{
+  const C = (s: string) => s.split(' ').map((x) => ({ r: 'A23456789TJQK'.indexOf(x[0]) + 1, s: 'shdc'.indexOf(x[1]) }));
+  const order = ['Ah Kh Qh Jh Th', '9c 8c 7c 6c 5c', '5d 4d 3d 2d Ad', 'Qs Qh Qd Qc 2h', 'Ks Kh Kd 2c 2h', 'Ah 9h 7h 4h 2h', 'Ts 9h 8d 7c 6s', '5s 4h 3d 2c As', '7s 7h 7d Kc 2h', 'Js Jh 4d 4c As', 'Js Jh 4d 4c Ks', 'Ts Th Ad Kc 2h', 'As Kh Qd Jc 9h', 'As Kh Qd Jc 8h'];
+  for (let i = 1; i < order.length; i++) assert.ok(score5(C(order[i - 1])) > score5(C(order[i])), `${order[i - 1]} beats ${order[i]}`);
+  assert.equal(score5(C('As Kh Qd Jc 9h')), score5(C('Ad Kc Qh Js 9s')), 'suits do not matter');
+  assert.equal(bestHand(C('Ah Kh 2c 3d Qh Jh Th')).cat, 'royal');
+  assert.equal(bestHand(C('2h 2d 2c 9s 9d 9h Ks')).cat, 'fullHouse');
+  assert.ok(chen(C('Ah As')) > chen(C('7h 2c')));
+  const e = equity(C('Ah As'), [], 1, 600);
+  assert.ok(e > 0.78 && e < 0.9, 'AA vs random ~85%: ' + e);
+
+  // side pots: A(100) B(300) C(500) all-in, D folds after putting 50
+  const T = pkTable(5, 10);
+  [100, 300, 500, 50].forEach((total, i) => Object.assign(T.seats[i], { id: 'p' + i, name: 'p' + i, inHand: true, total, folded: i === 3 }));
+  const pots = buildPots(T);
+  assert.deepEqual(pots.map((p) => p.amount), [350, 400, 200]);
+  assert.deepEqual(pots.map((p) => p.eligible), [[0, 1, 2], [1, 2], [2]]);
+
+  // many random hands: chips are conserved, every hand terminates
+  const G = pkTable(5, 10);
+  for (let i = 0; i < 6; i++) Object.assign(G.seats[i], { id: 'b' + i, name: 'b' + i, bot: true, style: i, stack: 1000 });
+  for (let h = 0; h < 400; h++) {
+    for (const s of G.seats) if (s.stack === 0) s.stack = 1000;
+    const before = G.seats.reduce((a, s) => a + s.stack, 0);
+    assert.ok(startHand(G));
+    let guard = 0;
+    while (G.street !== 'showdown') {
+      assert.ok(guard++ < 200, 'hand terminates');
+      if (G.turn >= 0) {
+        const m = Math.random() < 0.7 ? botMove(G, G.turn) : (['fold', 'call', 'raise'] as const)[Math.floor(Math.random() * 3)];
+        const mv = typeof m === 'string' ? { type: m, to: pkLegal(G, G.turn).minTo + Math.floor(Math.random() * 200) } : m;
+        assert.ok(pkAct(G, G.turn, mv as any) || pkAct(G, G.turn, { type: 'call' }), 'move accepted');
+      } else {
+        assert.ok(roundDone(G));
+        nextStreet(G);
+      }
+    }
+    const after = G.seats.reduce((a, s) => a + s.stack, 0);
+    assert.equal(after, before, 'chips conserved in hand ' + h);
+  }
+  console.log('poker checks passed');
+}

@@ -50,6 +50,11 @@ export function stake(amt: number) {
   wallet.balance = Math.round((wallet.balance - amt) * 100) / 100;
 }
 
+/** Return chips to the balance (e.g. cashing out a poker stack). */
+export function credit(amt: number) {
+  wallet.balance = Math.round((wallet.balance + amt) * 100) / 100;
+}
+
 export const bonusReadyIn = (now: number) =>
   wallet.balance < BROKE ? 0 : Math.max(0, wallet.lastBonus + BONUS_COOLDOWN - now);
 
@@ -65,7 +70,7 @@ export function resetWallet() {
 }
 
 export const fmt = (n: number) =>
-  new Intl.NumberFormat(settings.lang === 'de' ? 'de-DE' : 'en-US', { maximumFractionDigits: 2 }).format(n);
+  new Intl.NumberFormat(settings.lang === 'de' ? 'de-CH' : 'en-US', { maximumFractionDigits: 2 }).format(n);
 
 export const ui = $state({ credits: false, settings: false, nameAsk: null as null | ((ok: boolean) => void), welcome: false });
 

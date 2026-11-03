@@ -8,6 +8,8 @@ Play-money casino: Roulette, Blackjack and Slots with simulated credits. No real
 - **Arcade**: Rocket (crash game with bots and multiplayer), Mines, Dice, Hop Street, Tower, Coin Flip, Hi-Lo, Plinko, Wheel of Luck, Scratch Card. All at about 97 % RTP, checked by `npm test`.
 - **Placeholders**: Baccarat, Craps, Poker variants, Video Poker, Sic Bo, Keno, Limbo, Balloon, Penalty, Derby.
 - **Sound**: everything synthesised with WebAudio (chips, cards, shuffle, wheel, reels, rocket engine, explosion), plus procedural lounge music in the menus.
+- **Texas Hold'em**: no-limit, 6 seats, bots with five playing styles (Monte Carlo equity), side pots, short all-in rules, win-chance helper, multiplayer with hidden hole cards.
+- **Baccarat**: Punto Banco with the drawing tableau, pair bets, Big Road. **Minesweeper**: first click safe, chording, long-press flags on touch.
 - **Multiplayer**: "Open room" and share the code/link. Serverless peer-to-peer via WebRTC (PeerJS), the host's browser runs the table. A heartbeat drops players who vanish, absent players auto-stand after 30 s.
 - **Bots** on/off, **DE/EN**, three themes (Noir, Midnight, Ivory), free credits every 15 minutes.
 
@@ -18,10 +20,6 @@ npm install
 npm run dev
 npm test   # game math checks
 ```
-
-## Before publishing
-
-Fill in your Impressum data in `src/lib/legal.ts`.
 
 ## Deploy
 
