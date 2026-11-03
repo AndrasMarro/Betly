@@ -1,27 +1,91 @@
 # Betly
 
-Play-money casino: Roulette, Blackjack and Slots with simulated credits. No real money, no payments.
+**Ein Spielgeld-Casino im Browser: Classic-Tischspiele, Arcade-Games, Mehrspieler und Bots, komplett ohne Echtgeld.**
 
-- **Roulette**: European single zero, precise inside bets (click edges/corners for splits, corners, streets, six lines), racetrack with neighbours and call bets (Voisins, Tiers, Orphelins, Jeu Zéro), La Partage option.
-- **Blackjack**: 5 seats, bots with basic strategy, strategy hints, presets (Vegas, Atlantic City, European, Single Deck, Downtown) plus custom rules: decks, H17/S17, 3:2 / 6:5 / 1:1, double restrictions, DAS, max splits, resplit aces, late surrender, insurance, peek / no hole card.
-- **Slots**: Lucky Sevens (3x3, 5 lines), Midnight Gems (5x3, 10 lines, wild, free spins), Cosmic Cash (5x3, 20 lines, free spins), Lucky Clover (5x4, 20 lines). RTP about 96 %, checked by `npm test`.
-- **Arcade**: Rocket (crash game with bots and multiplayer), Mines, Dice, Hop Street, Tower, Coin Flip, Hi-Lo, Plinko, Wheel of Luck, Scratch Card. All at about 97 % RTP, checked by `npm test`.
-- **Placeholders**: Baccarat, Craps, Poker variants, Video Poker, Sic Bo, Keno, Limbo, Balloon, Penalty, Derby.
-- **Sound**: everything synthesised with WebAudio (chips, cards, shuffle, wheel, reels, rocket engine, explosion), plus procedural lounge music in the menus.
-- **Texas Hold'em**: no-limit, 6 seats, bots with five playing styles (Monte Carlo equity), side pots, short all-in rules, win-chance helper, multiplayer with hidden hole cards.
-- **Baccarat**: Punto Banco with the drawing tableau, pair bets, Big Road. **Minesweeper**: first click safe, chording, long-press flags on touch.
-- **Multiplayer**: "Open room" and share the code/link. Serverless peer-to-peer via WebRTC (PeerJS), the host's browser runs the table. A heartbeat drops players who vanish, absent players auto-stand after 30 s.
-- **Bots** on/off, **DE/EN**, three themes (Noir, Midnight, Ivory), free credits every 15 minutes.
+[Live spielen →](https://andrasmarro.github.io/Betly/) · Deutsch & English · Kein Konto, keine Zahlung, keine Cookies
 
-## Develop
+> *English:* Betly is a free play-money casino that runs entirely in the browser. Classic table games, slots and arcade games, multiplayer rooms without a server, bots you can switch on or off, three themes and synthesised sound. Credits have no monetary value and can never be bought or cashed out.
+
+---
+
+## Was ist Betly?
+
+Betly ist ein privates Hobbyprojekt: eine Casino-Simulation, die sich wie ein echtes Casino anfühlen soll, aber **niemals um Geld spielt**. Jeder startet mit 10'000 Credits. Wer pleite ist, holt sich alle 15 Minuten neue Gratis-Credits. Alles läuft lokal im Browser; es gibt keinen Server, keine Datenbank und kein Tracking.
+
+## Spiele
+
+### Classic
+| Spiel | Highlights |
+|---|---|
+| **Roulette** | Europäisch (eine Null), präzises Setzen auf Splits/Carrés/Transversalen per Klick auf Kanten und Ecken, Racetrack mit Nachbar- und Ansagewetten (Voisins, Tiers, Orphelins, Jeu Zéro), La Partage |
+| **Blackjack** | 5 Plätze, Vollbild-Tisch, Regel-Varianten (Vegas, Atlantic City, Europäisch, Single Deck, Downtown) und frei einstellbar, Basic-Strategy-Tipps, Bots |
+| **Texas Hold'em** | No-Limit an 6 Plätzen, Side-Pots, korrekte Mindest-Erhöhungen, Bots mit fünf Spielstilen (Monte-Carlo-Gewinnchancen), Helfer für Hand, Gewinnchance und Pot Odds |
+| **Baccarat** | Punto Banco mit echter Ziehregel, Paar-Wetten, Big-Road-Anzeigetafel |
+| **Slots** | Lucky Sevens, Midnight Gems, Cosmic Cash, Lucky Clover (Wilds, Scatter, Freispiele) |
+
+### Arcade
+Rocket (Crash) · Kisten (Cases, inkl. *Classic*-Modus mit offiziellen Drop-Raten) · Minen · Minesweeper · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (3D) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
+
+Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno, Limbo, …).
+
+## Features
+
+- **Mehrspieler ohne Server**: Raum öffnen, Code oder Link teilen. Die Verbindung läuft direkt von Browser zu Browser (WebRTC über PeerJS). Der Browser des Hosts führt den Tisch; beim Poker sieht jeder nur seine eigenen Karten. Ein Heartbeat erkennt Spieler, die verschwinden, und abwesende Plätze werden automatisch weitergespielt.
+- **Bots an/aus** pro Tisch, inklusive Anzahl.
+- **Deutsch & Englisch**, Schweizer Schreibweise und Zahlenformat (10'000).
+- **Drei Designs**: Noir (Standard), Midnight (blau), Ivory (hell).
+- **Sound**: Alle Effekte und die Lounge-Musik im Menü werden live mit WebAudio erzeugt; es gibt keine Audiodateien.
+- **Bewegung**: Federnde Animationen, die `prefers-reduced-motion` respektieren.
+
+## Fairness & Mathematik
+
+Die Spielmathematik ist von der Oberfläche getrennt (`src/games/*.ts`) und wird bei jedem Deploy mit `npm test` geprüft:
+
+| Spiel | Auszahlungsquote (RTP) |
+|---|---|
+| Roulette | 97,3 % (36/37, jede Wette) |
+| Blackjack | je nach Regeln ~99,5 % bei Basic Strategy |
+| Baccarat | Bank 98,94 %, Spieler 98,76 %, Unentschieden 85,6 % |
+| Slots | 96–97 % (Simulation über 400'000 Spins) |
+| Arcade (Rocket, Minen, Würfel, Hop Street, Turm, Münzwurf, Hi-Lo, Plinko, Glücksrad, Rubbellos, Kisten) | 97 % |
+| Kisten *Classic* | ~49 % (bewusst wie das Original, mit Erklärung der geometrischen Verteilung) |
+
+Beim Poker spielen die Bots gegeneinander und gegen dich; die Engine ist mit 400 zufällig gespielten Händen getestet (Chips bleiben erhalten, jede Hand endet).
+
+## Technik
+
+- [Svelte 5](https://svelte.dev) + [Vite](https://vite.dev), TypeScript
+- Statische Seite, Hash-Routing, Spiele werden erst beim Öffnen geladen
+- [PeerJS](https://peerjs.com) für WebRTC-Mehrspieler
+- Lokal eingebundene Schriften (Geist, Geist Mono, Instrument Serif)
+- Deployment über GitHub Actions auf GitHub Pages
+
+```
+src/
+  games/       Spielmathematik und Engines (Roulette, Blackjack, Poker, Baccarat, Slots, Arcade, Minesweeper)
+  pages/       Eine Seite pro Spiel plus Startseite, Lobbys und Rechtstexte
+  components/  Karten, Würfel, Münze, Rad, Chips, Raum-Leiste, …
+  lib/         Zustand & Wallet, Übersetzungen, Sound, Mehrspieler, Animationen
+tests/         Prüfungen der Spielmathematik (npm test)
+```
+
+## Lokal starten
 
 ```bash
 npm install
-npm run dev
-npm test   # game math checks
+npm run dev     # Entwicklungsserver
+npm test        # Spielmathematik prüfen
+npm run build   # statische Seite nach dist/
 ```
 
-## Deploy
+Für lokale Mehrspieler-Tests ohne Internet lässt sich ein eigener PeerServer angeben: `http://localhost:5173/?peer=127.0.0.1:9000`.
 
-Every push to `main` builds and publishes `dist/` to the `gh-pages` branch (`.github/workflows/deploy.yml`).
-One-time setup: GitHub repo → Settings → Pages → Source "Deploy from a branch" → `gh-pages` / root.
+## Rechtliches
+
+Betly ist kein Geldspiel im Sinne des Schweizer Geldspielgesetzes (BGS): Es gibt keinen Einsatz in Geld und keinen Gewinn mit Geldwert. Credits können weder gekauft noch ausgezahlt werden. Das Angebot richtet sich an Erwachsene. Details stehen auf der Seite unter *Impressum*, *Datenschutz* und *Haftung & Distanzierung*.
+
+Hilfe bei Spielsucht: [SOS Spielsucht](https://www.sos-spielsucht.ch), 0800 040 080 (CH) · [check-dein-spiel.de](https://www.check-dein-spiel.de) (DE).
+
+## Lizenz
+
+Siehe [LICENSE](LICENSE). Fragen und Fehler gerne über die [Issues](https://github.com/AndrasMarro/Betly/issues).

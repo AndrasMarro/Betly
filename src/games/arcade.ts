@@ -167,3 +167,36 @@ export function pickItem(c: CaseDef, u = Math.random()) {
 }
 export const caseRtp = (c: CaseDef) =>
   RARITIES.reduce((a, r, i) => { const pool = c.items.filter((x) => x.rarity === i); return a + r.p * pool.reduce((s, x) => s + x.mult, 0) / pool.length; }, 0);
+
+// Scratch card, "lucky pick" mode: open exactly 3 of 9 fields; three of a kind wins, a 4th field voids the ticket.
+export const SCRATCH3 = [
+  { sym: 'seven', mult: 100, p: 0.0023 },
+  { sym: 'bar', mult: 20, p: 0.01 },
+  { sym: 'bell', mult: 8, p: 0.02 },
+  { sym: 'plum', mult: 3, p: 0.06 },
+  { sym: 'cherry', mult: 1, p: 0.2 },
+];
+export function pick3Prize(u = Math.random()) {
+  let acc = 0;
+  return SCRATCH3.find((x) => (acc += x.p) > u) ?? null;
+}
+/** Symbols for the three opened fields: all the prize symbol, or (on a loss) never three alike. */
+export function pick3Symbols(prize: { sym: string } | null) {
+  if (prize) return [prize.sym, prize.sym, prize.sym];
+  const a = SYMS[Math.floor(Math.random() * SYMS.length)], b = SYMS[Math.floor(Math.random() * SYMS.length)];
+  let c = SYMS[Math.floor(Math.random() * SYMS.length)];
+  while (a === b && c === a) c = SYMS[Math.floor(Math.random() * SYMS.length)];
+  return [a, b, c];
+}
+export const randomSym = () => SYMS[Math.floor(Math.random() * SYMS.length)];
+
+// Classic cases: official drop rates, item values like the real thing (the case is a losing bet on average).
+export const GOLD_P = RARITIES[4].p;
+const CLASSIC_MULTS = [[0.06, 0.1, 0.14, 0.18], [0.4, 0.6, 0.8], [1.8, 3], [7, 13], [60]];
+export const CLASSIC_CASE: CaseDef = (() => {
+  const names: [string, string][] = [['cherry', 'Field Kit'], ['lemon', 'Sand Dune'], ['plum', 'Night Ops'], ['horseshoe', 'Iron Rust'], ['bell', 'Brass Echo'], ['coin', 'Old Mint'], ['hat', 'Gentleman'], ['clover', 'Jade Fang'], ['bar', 'Blackout'], ['ruby', 'Crimson Web'], ['sapphire', 'Deep Tide'], ['crown', 'Golden Edge']];
+  let k = 0;
+  return { id: 'classic', name: 'Classic Case', price: 25, color: '#e4ae39', items: CLASSIC_MULTS.flatMap((ms, rarity) => ms.map((mult) => ({ rarity, mult, icon: names[k][0], name: names[k++][1] }))) };
+})();
+/** Chance of at least one gold item in n openings: 1 - (1 - p)^n. */
+export const atLeastOneGold = (n: number) => 1 - (1 - GOLD_P) ** n;

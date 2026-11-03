@@ -3,6 +3,7 @@
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
   import SlotSymbol from '../components/SlotSymbol.svelte';
+  import Coin3D from '../components/Coin3D.svelte';
   import { coinMult, flip } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
@@ -13,7 +14,10 @@
   let side = $state<'heads' | 'tails'>('heads');
   let phase = $state<'idle' | 'play' | 'over'>('idle'); // play = streak running, can flip again or cash out
   let wins = $state(0);
-  let spin = $state(0); // accumulated rotation in degrees
+  let face = $state<'heads' | 'tails'>('heads');
+  let done = () => {};
+  let coinSize = $state(180);
+  $effect(() => { coinSize = matchMedia('(max-width: 640px)').matches ? 130 : 180; });
   let flips = $state(0);
   let busy = $state(false);
   let stakeNow = $state(0);
@@ -35,11 +39,11 @@
     busy = true;
     const r = flip();
     // land on the face that came up: heads = 0deg, tails = 180deg, plus 5-6 full turns
-    const base = Math.ceil(spin / 360) * 360 + 360 * 5;
-    spin = base + (r === 'tails' ? 180 : 0);
+    face = r;
+    const landed = new Promise<void>((res) => (done = res));
     flips++;
     sfx('flip');
-    await new Promise((res) => setTimeout(res, 1300));
+    await landed;
     history = [{ s: r, id: flips }, ...history].slice(0, 18);
     if (r === side) {
       wins++;
@@ -89,14 +93,7 @@
   {/snippet}
 
   <div class="stage">
-    <div class="coinwrap" class:tossing={busy} style="animation-name:{flips ? (flips % 2 ? 'tossA' : 'tossB') : 'none'}">
-      <div class="coin" style="transform: rotateY({spin}deg)">
-        <div class="face"><SlotSymbol sym="crown" /></div>
-        <div class="face back"><SlotSymbol sym="star" /></div>
-        <i class="rim"></i>
-      </div>
-    </div>
-    <div class="shadow" style="animation-name:{flips ? (flips % 2 ? 'shadeA' : 'shadeB') : 'none'}"></div>
+    <Coin3D {face} tosses={flips} size={coinSize} ondone={() => done()} />
     <div class="info">
       <div><span class="eyebrow light">{t('cf.streak')}</span><strong class="mono">{wins}</strong></div>
       <div><span class="eyebrow light">×</span><strong class="mono">{mult.toFixed(2)}</strong></div>
@@ -117,23 +114,9 @@
   .sides button:active:not(:disabled) { transform: scale(0.97); }
   .mini { width: 22px; height: 22px; }
   .stage {
-    display: grid; justify-items: center; gap: 18px; padding: 56px 20px 24px; border-radius: 28px; color: #f4f2ee; min-height: 440px;
+    display: grid; justify-items: center; gap: 18px; padding: 20px 20px 24px; overflow: hidden; border-radius: 28px; color: #f4f2ee; min-height: 440px;
     background: radial-gradient(ellipse at 50% 30%, #2b2a46, #101020 70%); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); perspective: 1000px;
   }
-  .coinwrap { animation-duration: 1.3s; animation-timing-function: var(--ease-snap); animation-fill-mode: both; transform-style: preserve-3d; }
-  @keyframes tossA { 0% { transform: translateY(0); } 45% { transform: translateY(-110px) scale(1.1); } 85% { transform: translateY(0) scale(1); } 92% { transform: translateY(-8px); } 100% { transform: none; } }
-  @keyframes tossB { 0% { transform: translateY(0); } 45% { transform: translateY(-110px) scale(1.1); } 85% { transform: translateY(0) scale(1); } 92% { transform: translateY(-8px); } 100% { transform: none; } }
-  .coin { --s: clamp(150px, 22vw, 200px); width: var(--s); height: var(--s); position: relative; transform-style: preserve-3d; transition: transform 1.3s var(--spring-smooth); }
-  .face {
-    position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; padding: 22%;
-    background: radial-gradient(circle at 35% 30%, #fff2b8, #f2c046 40%, #b9821f 100%);
-    box-shadow: inset 0 0 0 6px #d9a536, inset 0 0 0 9px #f7d77a, inset 0 0 22px rgba(0,0,0,.25);
-  }
-  .face.back { transform: rotateY(180deg); background: radial-gradient(circle at 35% 30%, #f4f4f8, #c6c9d6 45%, #7d8296 100%); box-shadow: inset 0 0 0 6px #a3a8b8, inset 0 0 0 9px #e2e4ec, inset 0 0 22px rgba(0,0,0,.25); }
-  .rim { position: absolute; inset: 0; border-radius: 50%; transform: translateZ(-1px); background: #8a6420; }
-  .shadow { width: 150px; height: 16px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); margin-top: -6px; animation-duration: 1.3s; animation-timing-function: var(--ease-snap); animation-fill-mode: both; }
-  @keyframes shadeA { 45% { transform: scale(0.5); opacity: 0.4; } 85% { transform: scale(1); opacity: 1; } }
-  @keyframes shadeB { 45% { transform: scale(0.5); opacity: 0.4; } 85% { transform: scale(1); opacity: 1; } }
   .info { display: grid; grid-template-columns: repeat(3, minmax(90px, 1fr)); gap: 10px; width: min(100%, 460px); margin-top: 10px; }
   .info div { display: grid; gap: 4px; justify-items: center; background: rgba(0,0,0,.25); border-radius: 16px; padding: 12px; }
   .info strong { font-size: 1.2rem; }

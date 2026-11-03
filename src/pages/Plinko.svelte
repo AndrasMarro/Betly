@@ -23,14 +23,22 @@
   const live = $derived(balls.length > 0);
 
   let count = $state(1);
+  let dropping = $state(false);
+  const MAX_LIVE = 30;
+  /** Release a batch; the button stays locked until the batch is out, and the board holds at most 30 balls. */
   function drop() {
-    for (let n = 0; n < count; n++)
+    if (dropping) return;
+    const n = Math.min(count, MAX_LIVE - balls.length);
+    if (n <= 0 || bet > wallet.balance || bet <= 0) return;
+    dropping = true;
+    for (let k = 0; k < n; k++)
       setTimeout(() => {
-        if (bet > wallet.balance || bet <= 0) return;
+        if (bet > wallet.balance) return;
         stake(bet);
         balls.push({ id: ++id, path: plinkoPath(rows), t0: performance.now(), bet, x: 50, y: -3, rows, table, k: -1, o: 1 });
         sfx('chip');
-      }, n * 120);
+      }, k * 140);
+    setTimeout(() => (dropping = false), n * 140 + 320);
   }
   /**
    * Ball timeline in row units (s): [0,1) drop onto the first peg, then one row per unit
@@ -85,7 +93,7 @@
 
 <ArcadeLayout eyebrow="Arcade · {rows} rows" title="Plinko">
   {#snippet controls()}
-    <button class="btn primary big" disabled={bet > wallet.balance} onclick={drop}>{count > 1 ? t('pl.dropN').replace('{n}', String(count)) : t('pl.drop')}</button>
+    <button class="btn primary big" disabled={dropping || balls.length >= MAX_LIVE || bet > wallet.balance} onclick={drop}>{count > 1 ? t('pl.dropN').replace('{n}', String(count)) : t('pl.drop')}</button>
     <BetInput bind:value={bet} />
     <div class="field">{t('pl.balls')}
       <div class="seg four">
