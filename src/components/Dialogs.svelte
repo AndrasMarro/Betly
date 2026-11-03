@@ -4,11 +4,23 @@
   import { sfx } from '../lib/sfx';
 
   let credits: HTMLDialogElement, prefs: HTMLDialogElement, gate: HTMLDialogElement;
+  let draft = $state('');
   let now = $state(Date.now());
 
   $effect(() => { if (ui.credits) credits.showModal(); else credits.close(); });
   $effect(() => { if (ui.settings) prefs.showModal(); else prefs.close(); });
-  $effect(() => { if (!settings.accepted && !gate.open) gate.showModal(); });
+  $effect(() => {
+    if (ui.nameAsk) { draft = settings.name; if (!gate.open) gate.showModal(); }
+    else if (gate.open) gate.close();
+  });
+  function confirmName(e: SubmitEvent) {
+    e.preventDefault();
+    const n = draft.trim().slice(0, 20);
+    if (!n) return;
+    settings.name = n;
+    settings.accepted = true;
+    ui.nameAsk?.(true);
+  }
   $effect(() => {
     if (!ui.credits) return;
     const id = setInterval(() => (now = Date.now()), 1000);
@@ -65,22 +77,34 @@
     </div>
     <label class="switch"><span>{t('settings.bots')}</span><input type="checkbox" bind:checked={settings.bots} /></label>
     <label class="switch"><span>{t('settings.sound')}</span><input type="checkbox" bind:checked={settings.sound} /></label>
+    <label class="switch"><span>{t('settings.music')}</span><input type="checkbox" bind:checked={settings.music} /></label>
   </div>
 </dialog>
 
-<dialog bind:this={gate} oncancel={(e) => e.preventDefault()}>
-  <div class="dlg">
-    <p class="eyebrow">Betly</p>
-    <h2>{t('gate.title')}</h2>
-    <p class="muted">{t('gate.text')}</p>
-    <div class="seg">
-      <button class:on={settings.lang === 'de'} onclick={() => (settings.lang = 'de')}>Deutsch</button>
-      <button class:on={settings.lang === 'en'} onclick={() => (settings.lang = 'en')}>English</button>
-    </div>
-    <!-- svelte-ignore a11y_autofocus -->
-    <button class="btn primary big" autofocus onclick={() => { settings.accepted = true; gate.close(); }}>{t('gate.ok')}</button>
-    <p class="small muted links"><a href="#/haftung">{t('legal.disclaimer')}</a> · <a href="#/datenschutz">{t('legal.privacy')}</a></p>
-  </div>
+<dialog bind:this={gate} oncancel={(e) => { e.preventDefault(); if (!ui.welcome) ui.nameAsk?.(false); }}>
+  <form class="dlg" onsubmit={confirmName}>
+    {#if ui.welcome}
+      <p class="eyebrow">Betly</p>
+      <h2>{t('gate.title')}</h2>
+      <p class="muted">{t('gate.text')}</p>
+      <div class="seg">
+        <button type="button" class:on={settings.lang === 'de'} onclick={() => (settings.lang = 'de')}>Deutsch</button>
+        <button type="button" class:on={settings.lang === 'en'} onclick={() => (settings.lang = 'en')}>English</button>
+      </div>
+    {:else}
+      <h2>{t('name.title')}</h2>
+    {/if}
+    <label class="field">{t('settings.name')}
+      <!-- svelte-ignore a11y_autofocus -->
+      <input bind:value={draft} maxlength="20" autofocus autocomplete="nickname" enterkeyhint="go" />
+    </label>
+    <button class="btn primary big" disabled={!draft.trim()}>{ui.welcome ? t('gate.ok') : t('name.ok')}</button>
+    {#if ui.welcome}
+      <p class="small muted links"><a href="#/haftung">{t('legal.disclaimer')}</a> · <a href="#/datenschutz">{t('legal.privacy')}</a></p>
+    {:else}
+      <button type="button" class="btn sm ghost" onclick={() => ui.nameAsk?.(false)}>{t('name.cancel')}</button>
+    {/if}
+  </form>
 </dialog>
 
 <style>

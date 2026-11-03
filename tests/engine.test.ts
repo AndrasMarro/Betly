@@ -70,3 +70,29 @@ for (const m of MACHINES) {
   assert.ok(rtp > 0.9 && rtp < 0.99, m.name + ' RTP out of band');
 }
 console.log('all engine checks passed');
+
+// Arcade: every strategy returns ~97 %
+import { crashPoint, minesMult, diceMult, DICE_BETS, hopMult, LEVELS, TILES } from '../src/games/arcade.ts';
+{
+  const N = 400_000;
+  let ret = 0;
+  for (let i = 0; i < N; i++) ret += crashPoint() >= 2 ? 2 : 0;
+  console.log('crash cash@2x RTP', (ret / N).toFixed(3));
+  assert.ok(Math.abs(ret / N - 0.97) < 0.01);
+  // mines: exact expectation = P(survive k picks) * mult
+  for (const mines of [1, 3, 10, 24]) for (let k = 1; k <= TILES - mines; k++) {
+    let p = 1;
+    for (let i = 0; i < k; i++) p *= (TILES - mines - i) / (TILES - i);
+    assert.ok(p * minesMult(mines, k) <= 0.97 + 1e-9 && p * minesMult(mines, k) > 0.95, `mines ${mines}/${k}`);
+  }
+  for (const bet of Object.keys(DICE_BETS)) {
+    let ev = 0;
+    for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) if (DICE_BETS[bet](a, b)) ev += diceMult(bet) / 36;
+    assert.ok(ev <= 0.97 + 1e-9 && ev > 0.95, 'dice ' + bet);
+  }
+  for (const [lv, q] of Object.entries(LEVELS)) for (let k = 1; k <= 15; k++) {
+    const ev = q ** k * hopMult(lv as any, k);
+    assert.ok(ev <= 0.97 + 1e-9 && ev > 0.95, `hop ${lv} ${k}`);
+  }
+  console.log('arcade checks passed');
+}
