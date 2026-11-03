@@ -136,6 +136,11 @@ export class Room {
     return id === this.myId || (id !== null && this.#conns.has(id));
   }
 
+  /** Ids of connected guests (host only). */
+  peers() {
+    return [...this.#conns.keys()];
+  }
+
   sendTo(id: string, msg: any) {
     this.#conns.get(id)?.send(msg);
   }
