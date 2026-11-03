@@ -20,14 +20,17 @@ export const GAMES: Game[] = [
   { id: 'mines', name: ['Minen', 'Mines'], cat: 'arcade', live: true },
   { id: 'dice', name: ['Würfel', 'Dice'], cat: 'arcade', live: true },
   { id: 'hop', name: 'Hop Street', cat: 'arcade', live: true },
-  { id: 'plinko', name: 'Plinko', cat: 'arcade' },
-  { id: 'wheel', name: ['Glücksrad', 'Wheel of Luck'], cat: 'arcade' },
-  { id: 'hilo', name: 'Hi-Lo', cat: 'arcade' },
+  { id: 'plinko', live: true, name: 'Plinko', cat: 'arcade' },
+  { id: 'wheel', live: true, name: ['Glücksrad', 'Wheel of Luck'], cat: 'arcade' },
+  { id: 'hilo', live: true, name: 'Hi-Lo', cat: 'arcade' },
   { id: 'keno', name: 'Keno', cat: 'arcade' },
-  { id: 'tower', name: ['Turm', 'Tower'], cat: 'arcade' },
-  { id: 'coinflip', name: ['Münzwurf', 'Coin Flip'], cat: 'arcade' },
+  { id: 'tower', live: true, name: ['Turm', 'Tower'], cat: 'arcade' },
+  { id: 'coinflip', live: true, name: ['Münzwurf', 'Coin Flip'], cat: 'arcade' },
   { id: 'limbo', name: 'Limbo', cat: 'arcade' },
-  { id: 'scratch', name: ['Rubbellos', 'Scratch Card'], cat: 'arcade' },
+  { id: 'balloon', name: ['Ballon', 'Balloon'], cat: 'arcade' },
+  { id: 'penalty', name: ['Elfmeter', 'Penalty'], cat: 'arcade' },
+  { id: 'derby', name: 'Derby', cat: 'arcade' },
+  { id: 'scratch', live: true, name: ['Rubbellos', 'Scratch Card'], cat: 'arcade' },
 ];
 
 export const gameName = (g: Game) => (typeof g.name === 'string' ? g.name : g.name[settings.lang === 'de' ? 0 : 1]);

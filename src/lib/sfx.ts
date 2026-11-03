@@ -74,6 +74,9 @@ const recipes = {
   boom: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 1.3, 1800, 0.5, 0.6, 'lowpass', 60); tone(c, o, 90, t, 0.8, 'sine', 0.35, 30); },
   hop: (c: AudioContext, o: AudioNode, t: number) => tone(c, o, 420, t, 0.09, 'square', 0.04, 900),
   splat: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.25, 900, 0.6, 0.4, 'lowpass', 120); tone(c, o, 300, t, 0.3, 'sawtooth', 0.06, 60); },
+  flip: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.25, 1200, 0.6, 0.12, 'bandpass', 4000); tone(c, o, 2637, t + 0.02, 0.5, 'sine', 0.05); },
+  peg: (c: AudioContext, o: AudioNode, t: number) => tone(c, o, 1800 + Math.random() * 900, t, 0.04, 'sine', 0.03),
+  scratch: (c: AudioContext, o: AudioNode, t: number) => burst(c, o, t, 0.06, 3200, 0.8, 0.07, 'highpass'),
   dice: (c: AudioContext, o: AudioNode, t: number) => {
     for (let i = 0; i < 9; i++) burst(c, o, t + i * 0.055 + Math.random() * 0.03, 0.025, 1500 + Math.random() * 2500, 3, 0.25 - i * 0.02);
   },

@@ -182,8 +182,8 @@
   .page { padding-bottom: 120px; }
   .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 16px; }
   h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; font-weight: 700; }
-  .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; border: 1px solid var(--line-2); }
-  .tabs button { border: 0; background: none; min-height: 38px; padding: 0 16px; border-radius: 999px; font-size: 0.85rem; }
+  .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; border: 1px solid var(--line-2); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .tabs button { flex: none; border: 0; background: none; min-height: 38px; padding: 0 16px; border-radius: 999px; font-size: 0.85rem; transition: background-color 0.3s var(--ease-snap), color 0.3s var(--ease-snap); }
   .tabs button.on { background: var(--text); color: var(--bg); }
   .tabs button:disabled:not(.on) { opacity: 0.4; }
 
@@ -192,15 +192,19 @@
     background: linear-gradient(160deg, #26180e, #120b07); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--frame) 60%, transparent), 0 40px 80px -30px rgba(0,0,0,.6);
   }
   .cabinet.gems { --frame: #8a7dff; background: linear-gradient(160deg, #1b1340, #0a0820); }
+  .cabinet.cosmic { --frame: #6ad5ff; background: radial-gradient(ellipse at 70% 0%, #2a1f5c, #07061a 70%); }
+  .cabinet.clover { --frame: #f2c046; background: linear-gradient(160deg, #0f4a2e, #062316); }
   .marquee { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #f4f2ee; padding: 0 6px 14px; }
   .marquee .serif { font-size: clamp(1.6rem, 3.5vw, 2.4rem); color: var(--frame); }
   .free { font-size: 0.8rem; background: var(--frame); color: #120b07; padding: 6px 12px; border-radius: 999px; }
   .window {
-    position: relative; display: grid; --cell: min(140px, 14vh, calc((100vw - 96px) / var(--reels))); grid-template-columns: repeat(var(--reels), var(--cell)); gap: 6px; padding: 6px; border-radius: 22px;
+    position: relative; display: grid; --cell: min(140px, 14vh, calc(54vh / var(--rows)), calc((100vw - 96px) / var(--reels))); grid-template-columns: repeat(var(--reels), var(--cell)); gap: 6px; padding: 6px; border-radius: 22px;
     background: #0b0b0c; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--frame) 40%, transparent), inset 0 20px 40px rgba(0,0,0,.6);
   }
   .reel { overflow: hidden; height: calc(var(--cell) * var(--rows)); border-radius: 14px; background: linear-gradient(180deg, #e8e4da, #fbfaf6 20%, #fbfaf6 80%, #e8e4da); position: relative; }
   .gems .reel { background: linear-gradient(180deg, #17142c, #241f48 20%, #241f48 80%, #17142c); }
+  .cosmic .reel { background: linear-gradient(180deg, #0b0a24, #1a1846 20%, #1a1846 80%, #0b0a24); }
+  .clover .reel { background: linear-gradient(180deg, #e9f3e3, #fbfdf8 20%, #fbfdf8 80%, #e9f3e3); }
   .reel::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.35), transparent 18%, transparent 82%, rgba(0,0,0,.35)); }
   .strip { will-change: transform; }
   .cell { aspect-ratio: 1; padding: 14%; transition: opacity 0.3s, transform 0.3s; }
