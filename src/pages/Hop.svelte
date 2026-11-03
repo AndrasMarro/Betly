@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { scale } from 'svelte/transition';
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
@@ -9,6 +9,7 @@
   import { sfx } from '../lib/sfx';
   import { t, type Key } from '../lib/i18n';
 
+  const LANE_W = 120;
   let bet = $state(10);
   let level = $state<Level>('easy');
   let phase = $state<'idle' | 'play' | 'over'>('idle');
@@ -18,16 +19,29 @@
   let won = $state(0);
   let stakeNow = $state(0);
   let road: HTMLDivElement;
+  let roadH = $state(420);
 
-  const COLORS = ['#e5484d', '#6aa8ff', '#f2c046', '#4fe3a0', '#b57bff', '#f4f2ee', '#ff9f43'];
-  // decorative traffic, one car per lane with its own speed
-  const traffic = Array.from({ length: LANES }, (_, i) => ({ color: COLORS[i % COLORS.length], dur: 1.4 + Math.random() * 1.6, delay: -Math.random() * 3 }));
+  const COLORS = ['#e5484d', '#4f8dff', '#f2c046', '#2fbf71', '#9b6bff', '#f4f2ee', '#ff8a3d', '#1d1d22'];
+  type Car = { id: number; lane: number; color: string; kind: 'pass' | 'brake' | 'hit'; dur: number };
+  let cars = $state<Car[]>([]);
+  let carId = 0;
+  const spawn = (lane: number, kind: Car['kind'], dur = 1.8 + Math.random() * 1.2) =>
+    cars.push({ id: ++carId, lane, kind, dur, color: COLORS[Math.floor(Math.random() * COLORS.length)] });
+
+  // Light, irregular traffic: only on lanes ahead, never on the lane you are about to step on.
+  const traffic = setInterval(() => {
+    if (document.hidden) return;
+    for (let lane = Math.max(1, pos + 2); lane <= LANES; lane++)
+      if (Math.random() < 0.045 && !cars.some((c) => c.lane === lane)) spawn(lane, 'pass');
+  }, 500);
+  onDestroy(() => clearInterval(traffic));
 
   const mult = $derived(hopMult(level, pos));
   const next = $derived(pos < LANES ? hopMult(level, pos + 1) : mult);
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   function follow() {
-    tick().then(() => road?.scrollTo({ left: Math.max(0, pos * 112 - road.clientWidth / 2 + 56), behavior: 'smooth' }));
+    tick().then(() => road?.scrollTo({ left: Math.max(0, pos * LANE_W - road.clientWidth / 3), behavior: 'smooth' }));
   }
   function start() {
     if (bet > wallet.balance || bet <= 0) return;
@@ -36,6 +50,7 @@
     pos = 0;
     dead = false;
     won = 0;
+    cars = cars.filter((c) => c.kind === 'pass');
     phase = 'play';
     sfx('chip');
     follow();
@@ -44,17 +59,22 @@
     if (phase !== 'play' || busy) return;
     busy = true;
     const ok = survives(level);
+    cars = cars.filter((c) => c.lane !== pos + 1); // clear the lane we step into
     pos++;
     sfx('hop');
     follow();
-    await new Promise((r) => setTimeout(r, 320));
+    await sleep(380);
     if (!ok) {
+      spawn(pos, 'hit', 0.34);
+      await sleep(320);
       dead = true;
-      await new Promise((r) => setTimeout(r, 260));
       sfx('splat');
       settle(0, 0);
       phase = 'over';
-    } else if (pos === LANES) cashout();
+    } else {
+      if (Math.random() < 0.4) { spawn(pos, 'brake', 0.75); setTimeout(() => sfx('stop'), 520); }
+      if (pos === LANES) cashout();
+    }
     busy = false;
   }
   function cashout() {
@@ -76,14 +96,14 @@
 <ArcadeLayout eyebrow="Arcade · {LANES} lanes" title="Hop Street">
   {#snippet controls()}
     {#if phase === 'play'}
-      <button class="btn primary big" disabled={busy} onclick={hop}>{t('hp.hop')} <span class="mono">×{next.toFixed(2)}</span></button>
-      <button class="btn big" disabled={busy || pos === 0} onclick={cashout}>{t('a.cashout')} <span class="mono">{fmt(Math.round(stakeNow * mult * 100) / 100)}</span></button>
+      <button class="btn primary big" disabled={busy || pos === LANES} onclick={hop}>{t('hp.hop')} <span class="mono">×{next.toFixed(2)}</span></button>
+      <button class="btn big cash" disabled={busy || pos === 0} onclick={cashout}>{t('a.cashout')} <span class="mono">{fmt(Math.round(stakeNow * mult * 100) / 100)}</span></button>
     {:else}
       <button class="btn primary big" disabled={bet > wallet.balance} onclick={start}>{phase === 'over' ? t('a.next') : t('hp.go')}</button>
     {/if}
     <BetInput bind:value={bet} disabled={phase === 'play'} />
     <div class="field">{t('hp.level')}
-      <div class="lv">
+      <div class="seg4">
         {#each Object.keys(LEVELS) as l}
           <button class:on={level === l} disabled={phase === 'play'} onclick={() => (level = l as Level)}>{t(('hp.' + l) as Key)}</button>
         {/each}
@@ -91,30 +111,38 @@
     </div>
   {/snippet}
 
-  <div class="wrapr">
-  <div class="road" bind:this={road}>
-    <div class="strip" style="--lanes:{LANES}">
-      <div class="curb start"></div>
-      {#each traffic as car, i}
-        {@const lane = i + 1}
-        <div class="lane" class:passed={lane < pos || (lane === pos && !dead)} class:next={phase === 'play' && lane === pos + 1}>
-          {#if lane > pos && !(dead && lane === pos)}
-            <div class="car" style="animation-duration:{car.dur}s; animation-delay:{car.delay}s"><Sprite kind="car" color={car.color} /></div>
-          {/if}
-          {#if lane <= pos && !(dead && lane === pos)}<div class="barrier"></div>{/if}
-          <div class="mult mono">×{hopMult(level, lane).toFixed(2)}</div>
-          {#if dead && lane === pos}<div class="killer"><Sprite kind="car" color="#e5484d" /></div>{/if}
+  <div class="frame">
+    <div class="hud">
+      <div><span class="eyebrow">×</span><strong class="mono">{mult.toFixed(2)}</strong></div>
+      <div><span class="eyebrow">{t('mn.next')}</span><strong class="mono">×{next.toFixed(2)}</strong></div>
+      <div><span class="eyebrow">{t('a.profit')}</span><strong class="mono">{fmt(Math.round(stakeNow * (mult - 1) * 100) / 100)}</strong></div>
+    </div>
+    <div class="road" bind:this={road} bind:clientHeight={roadH}>
+      <div class="strip" style="--lanes:{LANES}; --lw:{LANE_W}px; --h:{roadH}px">
+        <div class="curb start"></div>
+        {#each Array(LANES) as _, i}
+          {@const lane = i + 1}
+          <div class="lane" class:passed={lane < pos || (lane === pos && !dead)} class:next={phase === 'play' && lane === pos + 1} class:hit={dead && lane === pos}>
+            <div class="hole"><span class="mono">×{hopMult(level, lane).toFixed(2)}</span></div>
+            <div class="gate"></div>
+          </div>
+        {/each}
+        <div class="curb end"><span class="flag mono">GOAL</span></div>
+
+        {#each cars as c (c.id)}
+          <div class="car {c.kind}" style="left:{c.lane * LANE_W + LANE_W / 2}px; animation-duration:{c.dur}s" onanimationend={() => c.kind === 'pass' && (cars = cars.filter((x) => x.id !== c.id))}>
+            <Sprite kind="car" color={c.color} />
+          </div>
+        {/each}
+
+        <div class="hen" class:dead style="transform: translateX({pos * LANE_W + LANE_W / 2}px)">
+          {#key pos}<div class="jump"><div class="bob"><Sprite kind="chicken" /></div></div>{/key}
         </div>
-      {/each}
-      <div class="curb end"></div>
-      <div class="hen" class:dead style="left:{pos * 112 + 20}px">
-        <Sprite kind="chicken" />
       </div>
     </div>
-  </div>
     {#if phase === 'over'}
-      <div class="banner" class:lose={dead} in:scale={{ start: 0.8, duration: 300 }}>
-        {#if dead}{t('hp.hit')}{:else}{t('hp.safe')} <span class="mono">×{mult.toFixed(2)} +{fmt(won)}</span>{/if}
+      <div class="banner" class:lose={dead} in:scale={{ start: 0.9, duration: 450 }}>
+        {#if dead}{t('hp.hit')}{:else}{t('hp.safe')} <span class="mono">×{mult.toFixed(2)} · +{fmt(won)}</span>{/if}
       </div>
     {/if}
   </div>
@@ -122,35 +150,67 @@
 
 <style>
   .big { min-height: 54px; width: 100%; font-size: 1rem; }
-  .lv { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-  .lv button { min-height: 38px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2); font-size: 0.85rem; }
-  .lv button.on { background: var(--text); color: var(--bg); }
-  .lv button:disabled:not(.on) { opacity: 0.45; }
-  .wrapr { position: relative; }
-  .road { position: relative; overflow-x: auto; border-radius: 28px; background: #2c2f36; scrollbar-width: thin; }
-  .strip { position: relative; display: flex; height: clamp(320px, 52vh, 460px); width: calc((var(--lanes) + 2) * 112px); }
-  .curb { flex: 0 0 112px; background: repeating-linear-gradient(0deg, #4a5a45 0 24px, #43523e 24px 48px); }
-  .curb.end { background: repeating-linear-gradient(45deg, #f4f2ee 0 14px, #1d1d22 14px 28px); opacity: 0.85; }
-  .lane { position: relative; flex: 0 0 112px; border-right: 3px dashed rgba(255,255,255,.28); overflow: hidden; transition: background 0.3s; }
-  .lane.passed { background: rgba(79, 227, 160, 0.07); }
-  .lane.next { background: rgba(255, 255, 255, 0.05); }
-  .mult {
-    position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center;
-    background: #3a3e47; box-shadow: inset 0 0 0 4px #4b505b; color: #f4f2ee; font-size: 0.85rem; font-weight: 700;
+  .cash:not(:disabled) { background: #2fbf71; color: #062a16; border-color: transparent; }
+  .seg4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .seg4 button { min-height: 38px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2); font-size: 0.85rem; transition: background 0.25s var(--ease-snap), color 0.25s var(--ease-snap), transform 0.16s var(--ease-snap); }
+  .seg4 button:active:not(:disabled) { transform: scale(0.97); }
+  .seg4 button.on { background: var(--text); color: var(--bg); }
+  .seg4 button:disabled:not(.on) { opacity: 0.45; }
+
+  .frame { position: relative; border-radius: 28px; overflow: hidden; background: #23262d; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
+  .hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(255,255,255,.06); }
+  .hud div { background: #1b1d23; padding: 12px 16px; display: grid; gap: 4px; color: #f4f2ee; }
+  .hud .eyebrow { color: rgba(255,255,255,.45); }
+  .hud strong { font-size: 1.1rem; }
+  .road { position: relative; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; height: clamp(340px, 52vh, 480px); }
+  .strip { position: relative; display: flex; height: 100%; width: calc((var(--lanes) + 2) * var(--lw)); }
+  .curb { flex: 0 0 var(--lw); position: relative; }
+  .curb.start { background: repeating-linear-gradient(0deg, #3b3f48 0 38px, #343841 38px 40px), #3b3f48; box-shadow: inset -6px 0 0 #8a8f99; }
+  .curb.end { background: repeating-conic-gradient(#f4f2ee 0 25%, #1d1d22 0 50%) 0 0 / 30px 30px; box-shadow: inset 6px 0 0 #8a8f99; }
+  .flag { position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: #1b1d23; color: var(--gold); padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; letter-spacing: 0.15em; }
+  .lane {
+    position: relative; flex: 0 0 var(--lw); transition: background-color 0.4s var(--ease-snap);
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.025), transparent 60%), #2a2d34;
+    border-right: 2px dashed rgba(255,255,255,.22);
   }
-  .lane.passed .mult { background: #1f5c43; box-shadow: inset 0 0 0 4px #2f8f66; }
-  .car { position: absolute; left: 50%; width: 64px; height: 104px; translate: -50% 0; top: -120px; animation: drive linear infinite; z-index: 1; }
-  @keyframes drive { to { top: 110%; } }
-  .killer { position: absolute; left: 50%; width: 64px; height: 104px; translate: -50% 0; top: -120px; z-index: 3; animation: smash 0.3s ease-in forwards; }
-  @keyframes smash { to { top: calc(50% - 52px); } }
-  .barrier { position: absolute; left: 10px; right: 10px; top: 14px; height: 12px; border-radius: 6px; background: repeating-linear-gradient(45deg, #f2c046 0 10px, #1d1d22 10px 20px); }
-  .hen { position: absolute; top: 50%; width: 72px; height: 72px; translate: 0 -50%; z-index: 2; transition: left 0.32s cubic-bezier(0.3, 1.4, 0.5, 1); filter: drop-shadow(0 8px 10px rgba(0,0,0,.5)); }
-  .hen.dead { animation: flat 0.3s 0.25s forwards; }
-  @keyframes flat { to { transform: scaleY(0.25) translateY(80px); opacity: 0.7; } }
+  .lane.next { background-color: #30343c; }
+  .lane.passed { background-color: #262f2b; }
+  .hole {
+    position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 86px; height: 86px; border-radius: 50%; display: grid; place-items: center;
+    background: radial-gradient(circle, #3a3e47 0 55%, #31353d 56%); box-shadow: inset 0 0 0 3px #4a4f5a, 0 2px 0 rgba(0,0,0,.35);
+    color: rgba(255,255,255,.75); font-size: 0.82rem; font-weight: 700; transition: box-shadow 0.4s var(--ease-snap), color 0.4s var(--ease-snap);
+  }
+  .lane.next .hole { color: #fff; box-shadow: inset 0 0 0 3px rgba(255,255,255,.55), 0 0 24px rgba(255,255,255,.12); }
+  .lane.passed .hole { color: #8ff0bf; box-shadow: inset 0 0 0 3px #2f8f66, 0 0 22px rgba(47,191,113,.25); }
+  .lane.hit .hole { color: #ff9a9d; box-shadow: inset 0 0 0 3px #e5484d; }
+  .gate {
+    position: absolute; left: 8px; right: 8px; top: calc(50% - 72px); height: 10px; border-radius: 5px;
+    background: repeating-linear-gradient(-45deg, #f2c046 0 10px, #1d1d22 10px 20px); box-shadow: 0 3px 6px rgba(0,0,0,.4);
+    transform: translateY(-40px) scaleX(0.4); opacity: 0; transition: transform 0.55s var(--spring-snappy), opacity 0.2s var(--ease-snap);
+  }
+  .lane.passed .gate { transform: none; opacity: 1; }
+
+  .car { position: absolute; top: 0; width: 64px; height: 104px; margin-left: -32px; z-index: 2; animation-fill-mode: forwards; filter: drop-shadow(0 10px 10px rgba(0,0,0,.45)); }
+  .car.pass { animation-name: drive; animation-timing-function: linear; }
+  .car.brake { animation-name: brake; animation-timing-function: var(--spring-snappy); }
+  .car.hit { animation-name: ram; animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); z-index: 4; }
+  @keyframes drive { from { transform: translateY(-120px); } to { transform: translateY(calc(var(--h) + 20px)); } }
+  @keyframes brake { from { transform: translateY(-120px); } to { transform: translateY(calc(var(--h) / 2 - 190px)); } }
+  @keyframes ram { from { transform: translateY(-120px); } to { transform: translateY(calc(var(--h) / 2 - 60px)); } }
+
+  .hen { position: absolute; top: 50%; left: 0; width: 84px; height: 84px; margin: -54px 0 0 -42px; z-index: 3; transition: transform 0.38s var(--spring-smooth); }
+  .jump { width: 100%; height: 100%; animation: jump 0.38s var(--ease-snap); }
+  .bob { width: 100%; height: 100%; animation: bob 1.6s ease-in-out infinite alternate; transform-origin: 50% 90%; }
+  @keyframes jump { 0% { transform: translateY(0) scale(1.08, 0.88); } 40% { transform: translateY(-34px) scale(0.94, 1.08); } 80% { transform: translateY(0) scale(1.1, 0.9); } 100% { transform: none; } }
+  @keyframes bob { to { transform: scale(1.02, 0.98) rotate(-2deg); } }
+  .hen.dead .bob { animation: flat 0.35s var(--ease-snap) forwards; }
+  @keyframes flat { to { transform: scale(1.4, 0.18) translateY(160px); opacity: 0.85; } }
+
   .banner {
-    position: absolute; left: 50%; bottom: 24px; translate: -50% 0; padding: 14px 24px; border-radius: 999px;
-    background: #16181d; color: #6ff0a6; font: 700 1.2rem 'Geist Mono Variable', monospace; box-shadow: 0 0 0 2px #6ff0a6, 0 20px 50px rgba(0,0,0,.6); white-space: nowrap; z-index: 5;
+    position: absolute; left: 50%; bottom: 24px; translate: -50% 0; padding: 14px 24px; border-radius: 999px; z-index: 6;
+    background: #16181d; color: #8ff0bf; font: 700 1.1rem 'Geist Mono Variable', monospace; box-shadow: 0 0 0 2px #2fbf71, 0 20px 50px rgba(0,0,0,.6); white-space: nowrap;
   }
   .banner.lose { color: #ff9a9d; box-shadow: 0 0 0 2px #e5484d, 0 20px 50px rgba(0,0,0,.6); }
-  @media (prefers-reduced-motion: reduce) { .car { display: none; } }
+  @media (max-width: 640px) { .hud strong { font-size: 0.95rem; } .hud div { padding: 10px 12px; } }
+  @media (prefers-reduced-motion: reduce) { .car.pass { display: none; } .bob { animation: none; } }
 </style>

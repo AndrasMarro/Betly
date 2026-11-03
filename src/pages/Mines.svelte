@@ -68,7 +68,7 @@
 <ArcadeLayout eyebrow="Arcade · 5×5" title={gameName(byId('mines')!)}>
   {#snippet controls()}
     {#if phase === 'play'}
-      <button class="btn primary big" disabled={!picks} onclick={cashout}>
+      <button class="btn big cash" disabled={!picks} onclick={cashout}>
         {t('a.cashout')} <span class="mono">{fmt(Math.round(stakeNow * mult * 100) / 100)}</span>
       </button>
       <button class="btn" onclick={randomPick}>{t('mn.random')}</button>
@@ -91,7 +91,7 @@
       {@const show = isOpen || (phase === 'over' && (field.has(i) || hit >= 0))}
       <button class="tile" class:open={isOpen} class:hit={hit === i} class:ghost={!isOpen && show} disabled={phase !== 'play' || isOpen} onclick={() => pick(i)} aria-label="Tile {i + 1}">
         {#if show}
-          <span class="ico" in:scale={{ start: 0.3, duration: 260 }}><Sprite kind={field.has(i) ? 'bomb' : 'gem'} /></span>
+          <span class="ico" in:scale={{ start: 0.9, duration: 350 }}><Sprite kind={field.has(i) ? 'bomb' : 'gem'} /></span>
         {/if}
       </button>
     {/each}
@@ -105,21 +105,24 @@
 
 <style>
   .big { min-height: 54px; width: 100%; font-size: 1rem; }
+  .cash:not(:disabled) { background: #2fbf71; color: #062a16; border-color: transparent; }
   .field input[type='range'] { accent-color: var(--accent); }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .stats div { background: var(--bg-2); border-radius: 14px; padding: 10px 12px; display: grid; gap: 4px; }
   .stats strong { font-size: 1.15rem; }
   .board {
     position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: clamp(6px, 1.2vw, 12px); padding: clamp(12px, 2vw, 24px);
-    border-radius: 28px; background: radial-gradient(ellipse at 50% 0%, #1c2a3a, #0b121b); max-width: 620px; margin: 0 auto;
+    border-radius: 28px; background: radial-gradient(ellipse at 50% 0%, #1c2a3a, #0b121b); max-width: 620px; margin: 0 auto; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6);
   }
   .tile {
     aspect-ratio: 1; border: 0; border-radius: 16px; background: linear-gradient(180deg, #34496a, #2a3b52); box-shadow: inset 0 -5px 0 rgba(0,0,0,.3);
-    padding: 18%; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s;
+    padding: 18%; transition: transform 0.35s var(--ease-snap), background-color 0.25s var(--ease-snap);
   }
   .tile:not(:disabled):hover { transform: translateY(-3px); background: linear-gradient(180deg, #3f5880, #31455f); }
   .tile:disabled { cursor: default; }
-  .tile.open { background: #13202e; box-shadow: inset 0 0 0 2px rgba(79, 227, 160, .35); }
+  .tile:not(:disabled):active { transform: scale(0.97); transition-duration: 0.16s; }
+  .tile.open { background: #13202e; box-shadow: inset 0 0 0 2px rgba(79, 227, 160, .35), 0 0 24px rgba(79, 227, 160, .12); animation: pop 0.5s var(--spring-snappy); }
+  @keyframes pop { from { transform: scale(0.9); } }
   .tile.hit { background: #5a1a1f; box-shadow: inset 0 0 0 2px #e5484d; animation: shake 0.4s; }
   .tile.ghost .ico { opacity: 0.4; }
   .ico { display: block; width: 100%; height: 100%; }

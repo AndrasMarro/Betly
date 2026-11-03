@@ -5,7 +5,7 @@
 </script>
 
 <section class="wrap page">
-  <header class="head">
+  <header class="head rise">
     <div>
       <p class="eyebrow">{eyebrow}</p>
       <h1>{title}</h1>
@@ -13,8 +13,8 @@
     {#if top}{@render top()}{/if}
   </header>
   <div class="layout">
-    <aside class="panel controls">{@render controls()}</aside>
-    <div class="board">{@render children()}</div>
+    <aside class="panel controls rise" style="--i:1">{@render controls()}</aside>
+    <div class="board rise" style="--i:0">{@render children()}</div>
   </div>
 </section>
 

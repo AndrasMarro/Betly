@@ -1,6 +1,17 @@
 import { settings } from './state.svelte';
 
 const de = {
+  'game.tower': 'Klettere Stockwerk für Stockwerk nach oben. Jede Etage versteckt Bomben, jede sichere Wahl zahlt mehr.',
+  'game.coinflip': 'Kopf oder Zahl. Jeder Treffer verdoppelt fast, halte die Serie oder kassiere.',
+  'game.hilo': 'Ist die nächste Karte höher oder tiefer? Baue eine Kette und steig rechtzeitig aus.',
+  'game.plinko': 'Lass Bälle durch das Nagelbrett fallen. Je weiter außen, desto größer der Multiplikator.',
+  'game.wheel': 'Ein Dreh, ein Ergebnis. Wähle das Risiko: sichere kleine Gewinne oder das große Segment.',
+  'game.scratch': 'Rubbel das Los frei. Drei gleiche Symbole gewinnen bis zum 50-fachen Einsatz.',
+  'tw.level': 'Schwierigkeit', 'tw.easy': 'Leicht', 'tw.medium': 'Mittel', 'tw.hard': 'Schwer', 'tw.expert': 'Experte', 'tw.master': 'Meister', 'tw.floor': 'Etage',
+  'cf.heads': 'Kopf', 'cf.tails': 'Zahl', 'cf.flip': 'Werfen', 'cf.again': 'Weiter werfen', 'cf.streak': 'Serie', 'cf.pick': 'Deine Seite',
+  'hl.higher': 'Höher oder gleich', 'hl.lower': 'Tiefer oder gleich', 'hl.skip': 'Überspringen', 'hl.start': 'Karte ziehen',
+  'pl.rows': 'Reihen', 'pl.risk': 'Risiko', 'pl.drop': 'Ball fallen lassen', 'risk.low': 'Niedrig', 'risk.medium': 'Mittel', 'risk.high': 'Hoch',
+  'sc.buy': 'Los kaufen', 'sc.reveal': 'Alles aufdecken', 'sc.hint': 'Rubbeln! Drei gleiche Symbole gewinnen.', 'sc.none': 'Leider kein Gewinn', 'sc.price': 'Lospreis',
   'cat.classic': 'Classic', 'cat.classic.eyebrow': 'Tischspiele & Automaten', 'cat.classic.text': 'Die großen Klassiker des Casinos, mit echten Regeln und Mehrspieler-Tischen.',
   'cat.arcade': 'Arcade', 'cat.arcade.eyebrow': 'Schnell & neu', 'cat.arcade.text': 'Kurze Runden, klare Entscheidungen: rechtzeitig aussteigen, Felder räumen, würfeln.',
   'game.rocket': 'Die Rakete steigt und der Multiplikator mit ihr. Steig aus, bevor sie explodiert. Mit Bots und Mehrspieler.',
@@ -22,7 +33,7 @@ const de = {
   'home.games': 'Die Tische', 'home.soon': 'Demnächst', 'home.soonText': 'Weitere Spiele sind in Arbeit.',
   'game.roulette': 'Europäisches Roulette mit Racetrack, Ansagewetten und präzisem Setzen auf Splits, Carrés und Transversalen.',
   'game.blackjack': 'Fünf Plätze, Bots, Basic-Strategy-Tipps und frei einstellbare Regeln von Vegas bis Single Deck.',
-  'game.slots': 'Zwei Automaten zum Start: der klassische Lucky Sevens und Midnight Gems mit Freispielen.',
+  'game.slots': 'Vier Automaten: Lucky Sevens, Midnight Gems, Cosmic Cash mit Freispielen und Lucky Clover mit 4 Reihen.',
   'feat.money': 'Kein Echtgeld', 'feat.moneyText': 'Credits sind simuliert, nicht kaufbar und nicht auszahlbar.',
   'feat.multi': 'Mehrspieler', 'feat.multiText': 'Raum öffnen, Code teilen, gemeinsam am Tisch. Direkt Browser zu Browser.',
   'feat.bots': 'Bots an oder aus', 'feat.botsText': 'Volle Tische mit Bots oder ganz allein. Ein Schalter.',
@@ -61,6 +72,17 @@ const de = {
 };
 
 const en: typeof de = {
+  'game.tower': 'Climb floor by floor. Every level hides bombs, every safe pick pays more.',
+  'game.coinflip': 'Heads or tails. Every hit nearly doubles, keep the streak or cash out.',
+  'game.hilo': 'Is the next card higher or lower? Build a chain and get out in time.',
+  'game.plinko': 'Drop balls through the pegs. The further out they land, the bigger the multiplier.',
+  'game.wheel': 'One spin, one result. Pick your risk: steady small wins or the big segment.',
+  'game.scratch': 'Scratch the ticket. Three matching symbols win up to 50 times the price.',
+  'tw.level': 'Difficulty', 'tw.easy': 'Easy', 'tw.medium': 'Medium', 'tw.hard': 'Hard', 'tw.expert': 'Expert', 'tw.master': 'Master', 'tw.floor': 'Floor',
+  'cf.heads': 'Heads', 'cf.tails': 'Tails', 'cf.flip': 'Flip', 'cf.again': 'Flip again', 'cf.streak': 'Streak', 'cf.pick': 'Your side',
+  'hl.higher': 'Higher or same', 'hl.lower': 'Lower or same', 'hl.skip': 'Skip', 'hl.start': 'Draw card',
+  'pl.rows': 'Rows', 'pl.risk': 'Risk', 'pl.drop': 'Drop ball', 'risk.low': 'Low', 'risk.medium': 'Medium', 'risk.high': 'High',
+  'sc.buy': 'Buy ticket', 'sc.reveal': 'Reveal all', 'sc.hint': 'Scratch! Three matching symbols win.', 'sc.none': 'No win this time', 'sc.price': 'Ticket price',
   'cat.classic': 'Classic', 'cat.classic.eyebrow': 'Table games & slots', 'cat.classic.text': 'The great casino classics, with real rules and multiplayer tables.',
   'cat.arcade': 'Arcade', 'cat.arcade.eyebrow': 'Fast & fresh', 'cat.arcade.text': 'Short rounds, sharp decisions: cash out in time, clear the board, roll the dice.',
   'game.rocket': 'The rocket climbs and the multiplier with it. Cash out before it explodes. With bots and multiplayer.',
@@ -82,7 +104,7 @@ const en: typeof de = {
   'home.games': 'The tables', 'home.soon': 'Coming soon', 'home.soonText': 'More games are in the works.',
   'game.roulette': 'European roulette with racetrack, call bets and precise placement on splits, corners and lines.',
   'game.blackjack': 'Five seats, bots, basic strategy hints and adjustable rules from Vegas to single deck.',
-  'game.slots': 'Two machines to start: the classic Lucky Sevens and Midnight Gems with free spins.',
+  'game.slots': 'Four machines: Lucky Sevens, Midnight Gems, Cosmic Cash with free spins and Lucky Clover with 4 rows.',
   'feat.money': 'No real money', 'feat.moneyText': 'Credits are simulated, cannot be bought and cannot be cashed out.',
   'feat.multi': 'Multiplayer', 'feat.multiText': 'Open a room, share the code, sit at one table. Browser to browser.',
   'feat.bots': 'Bots on or off', 'feat.botsText': 'Full tables with bots or all on your own. One switch.',

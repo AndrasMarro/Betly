@@ -18,8 +18,8 @@
     </header>
   {/if}
   <div class="grid">
-    {#each live as g}
-      <a class="game" href={href(g)}>
+    {#each live as g, i}
+      <a class="game rise" style="--i:{Math.min(i, 6)}" href={href(g)}>
         <div class="art"><GameArt id={g.id} /></div>
         <div class="txt">
           <h3>{gameName(g)}</h3>
@@ -44,9 +44,10 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
   .game {
     position: relative; display: grid; grid-template-rows: 220px auto; text-decoration: none; border-radius: 28px; overflow: hidden;
-    background: var(--surface); border: 1px solid var(--line); transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s;
+    background: var(--surface); border: 1px solid var(--line); transition: transform 0.4s var(--ease-snap), border-color 0.3s var(--ease-snap);
   }
-  .game:hover { transform: translateY(-6px); border-color: var(--line-2); }
+  .game:hover { transform: translateY(-4px); border-color: var(--line-2); }
+  .game:active { transform: scale(0.98); transition-duration: 0.16s; }
   .art { overflow: hidden; }
   .txt { padding: 20px 22px 24px; }
   h3 { margin: 0 0 6px; font-size: 1.4rem; letter-spacing: -0.03em; }

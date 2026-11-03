@@ -12,6 +12,7 @@
   let bet = $state(10);
   let pickd = $state('over');
   let rolling = $state(false);
+  let rolls = $state(0);
   let dice = $state([{ rx: 0, ry: 0, n: 1 }, { rx: 0, ry: 0, n: 1 }]);
   let last = $state<{ a: number; b: number; win: number } | null>(null);
   let history = $state<{ s: number; win: boolean; id: number }[]>([]);
@@ -32,8 +33,9 @@
       const n = i ? c : a, [x, y] = FRONT[n];
       return { n, rx: spinTo(d.rx, x, 2 + i), ry: spinTo(d.ry, y, 2) };
     });
+    rolls++;
     sfx('dice');
-    await new Promise((r) => setTimeout(r, 1150));
+    await new Promise((r) => setTimeout(r, 1250));
     const win = DICE_BETS[choice](a, c) ? Math.round(b * diceMult(choice) * 100) / 100 : 0;
     settle(win, win);
     sfx(win ? 'win' : 'lose');
@@ -64,9 +66,13 @@
 
   <div class="table">
     <div class="stage">
-      {#each dice as d}
-        <div class="cube" style="transform: rotateX({d.rx}deg) rotateY({d.ry}deg)">
-          {#each FACES as [n, tr]}<div class="face" style="transform: {tr} translateZ(var(--half))"><Sprite kind="die" {n} /></div>{/each}
+      {#each dice as d, i}
+        <div class="slot">
+          <div class="toss" style="--d:{i * 70}ms; animation-name:{rolls ? (rolls % 2 ? 'tossA' : 'tossB') : 'none'}"><div class="cube" style="transform: rotateX({d.rx}deg) rotateY({d.ry}deg)">
+            <i class="core x"></i><i class="core y"></i><i class="core z"></i>
+            {#each FACES as [n, tr]}<div class="face" style="transform: {tr} translateZ(var(--half))"><Sprite kind="die" {n} /></div>{/each}
+          </div></div>
+          <div class="shadow" style="--d:{i * 70}ms; animation-name:{rolls ? (rolls % 2 ? 'shadeA' : 'shadeB') : 'none'}"></div>
         </div>
       {/each}
     </div>
@@ -102,10 +108,20 @@
   .stats div { background: var(--bg-2); border-radius: 14px; padding: 10px 12px; display: grid; gap: 4px; }
   .stats strong { font-size: 1.15rem; }
   .muted { color: var(--muted); } .small { font-size: 0.82rem; margin: 0; }
-  .table { border-radius: 28px; padding: clamp(16px, 3vw, 32px); background: radial-gradient(ellipse at 50% 0%, #4a1d24, #1a080b); color: #f4f2ee; display: grid; gap: 18px; }
-  .stage { display: flex; justify-content: center; gap: clamp(24px, 6vw, 64px); padding: 30px 0 10px; perspective: 900px; }
-  .cube { --size: clamp(80px, 13vw, 120px); --half: calc(var(--size) / 2); width: var(--size); height: var(--size); position: relative; transform-style: preserve-3d; transition: transform 1.1s cubic-bezier(0.2, 0.8, 0.2, 1); }
-  .face { position: absolute; inset: 0; backface-visibility: hidden; }
+  .table { box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); border-radius: 28px; padding: clamp(16px, 3vw, 32px); background: radial-gradient(ellipse at 50% 0%, #4a1d24, #1a080b); color: #f4f2ee; display: grid; gap: 18px; }
+  .stage { display: flex; justify-content: center; gap: clamp(28px, 7vw, 72px); padding: 40px 0 6px; perspective: 1000px; }
+  .slot { --size: clamp(80px, 13vw, 116px); --half: calc(var(--size) / 2); display: grid; justify-items: center; gap: 14px; }
+  .toss { animation-duration: 1.15s; animation-timing-function: var(--ease-snap); animation-fill-mode: both; animation-delay: var(--d); transform-style: preserve-3d; }
+  @keyframes tossA { 0% { transform: translateY(0) scale(1); } 30% { transform: translateY(-70px) scale(1.06); } 62% { transform: translateY(0) scale(1); } 70% { transform: translateY(-12px); } 82% { transform: translateY(0); } 100% { transform: none; } }
+  @keyframes tossB { 0% { transform: translateY(0) scale(1); } 30% { transform: translateY(-70px) scale(1.06); } 62% { transform: translateY(0) scale(1); } 70% { transform: translateY(-12px); } 82% { transform: translateY(0); } 100% { transform: none; } }
+  .cube { width: var(--size); height: var(--size); position: relative; transform-style: preserve-3d; transition: transform 1.15s var(--spring-smooth); transition-delay: var(--d); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 18%; }
+  /* inner planes hide the see-through gaps at the rounded corners */
+  .core { position: absolute; inset: 4%; background: #e9e5db; border-radius: 10%; }
+  .core.x { transform: rotateY(90deg); } .core.y { transform: rotateX(90deg); }
+  .shadow { width: calc(var(--size) * 0.9); height: 14px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent); animation-duration: 1.15s; animation-timing-function: var(--ease-snap); animation-fill-mode: both; animation-delay: var(--d); }
+  @keyframes shadeA { 30% { transform: scale(0.55); opacity: 0.45; } 62% { transform: scale(1); opacity: 1; } }
+  @keyframes shadeB { 30% { transform: scale(0.55); opacity: 0.45; } 62% { transform: scale(1); opacity: 1; } }
   .result { min-height: 54px; display: flex; gap: 16px; align-items: center; justify-content: center; font-size: 1.3rem; }
   .sum { font-size: 2.4rem; font-weight: 700; }
   .pos { color: #6ff0a6; }
@@ -113,9 +129,10 @@
   .sums { display: grid; grid-template-columns: repeat(11, 1fr); gap: 6px; }
   .opt {
     display: grid; gap: 4px; justify-items: center; padding: 12px 6px; border-radius: 16px; border: 1px solid rgba(255,255,255,.14);
-    background: rgba(0,0,0,.25); color: #f4f2ee; font-weight: 600; transition: background 0.2s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    background: rgba(0,0,0,.25); color: #f4f2ee; font-weight: 600; transition: background-color 0.25s var(--ease-snap), color 0.25s var(--ease-snap), transform 0.35s var(--ease-snap);
   }
   .opt:hover:not(:disabled) { transform: translateY(-2px); background: rgba(255,255,255,.08); }
+  .opt:active:not(:disabled) { transform: scale(0.97); transition-duration: 0.16s; }
   .opt.on { background: #f4f2ee; color: #1a080b; border-color: transparent; }
   .opt.small { padding: 8px 2px; font-size: 0.85rem; }
   .opt .m { font-size: 0.65rem; opacity: 0.7; }

@@ -1,5 +1,6 @@
 <script lang="ts">
   let { sym }: { sym: string } = $props();
+  const uid = $props.id();
   const gem: Record<string, [string, string]> = {
     amethyst: ['#b57bff', '#5b2aa8'], emerald: ['#4fe3a0', '#0d7a4c'], sapphire: ['#6aa8ff', '#1846a8'], ruby: ['#ff6b7a', '#a3122a'],
   };
@@ -42,6 +43,43 @@
   {:else if sym === 'star'}
     <polygon points="50,8 61,38 93,38 67,57 77,89 50,70 23,89 33,57 7,38 39,38" fill="#f2c046" stroke="#a7781c" stroke-width="3" stroke-linejoin="round" />
     <polygon points="50,22 56,40 44,40" fill="#fff" opacity=".5" />
+  {:else if sym === 'comet'}
+    <defs><linearGradient id="{uid}-tail" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6ad5ff" stop-opacity="0" /><stop offset="1" stop-color="#6ad5ff" /></linearGradient></defs>
+    <path d="M10 14 L62 54 L50 66 Z" fill="url(#{uid}-tail)" /><path d="M24 10 L66 50 L58 58 Z" fill="url(#{uid}-tail)" opacity=".6" />
+    <circle cx="66" cy="64" r="18" fill="#bff0ff" /><circle cx="66" cy="64" r="12" fill="#ffffff" />
+  {:else if sym === 'moon'}
+    <path d="M62 14 A36 36 0 1 0 86 64 A28 28 0 1 1 62 14 Z" fill="#e8ebf5" />
+    <circle cx="40" cy="60" r="5" fill="#c6cbdc" /><circle cx="52" cy="76" r="3.5" fill="#c6cbdc" /><circle cx="34" cy="42" r="3" fill="#c6cbdc" />
+  {:else if sym === 'planet'}
+    <defs><radialGradient id="{uid}-pl" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffd08a" /><stop offset="1" stop-color="#d9622b" /></radialGradient></defs>
+    <ellipse cx="50" cy="52" rx="44" ry="12" fill="none" stroke="#f2c046" stroke-width="5" transform="rotate(-18 50 52)" />
+    <circle cx="50" cy="50" r="26" fill="url(#{uid}-pl)" />
+    <path d="M6 52 A44 12 0 0 0 94 52" fill="none" stroke="#f2c046" stroke-width="5" transform="rotate(-18 50 52)" />
+  {:else if sym === 'ufo'}
+    <ellipse cx="50" cy="44" rx="18" ry="16" fill="#8fe3ff" opacity=".9" />
+    <ellipse cx="50" cy="58" rx="42" ry="14" fill="#9aa3b8" /><ellipse cx="50" cy="54" rx="42" ry="10" fill="#d7dce8" />
+    {#each [22, 36, 50, 64, 78] as x}<circle cx={x} cy="60" r="3.5" fill="#f2c046" />{/each}
+    <path d="M38 72 L30 90 L70 90 L62 72 Z" fill="#8fe3ff" opacity=".25" />
+  {:else if sym === 'sun'}
+    {#each Array(12) as _, i}<path d="M50 6 L55 22 L45 22 Z" fill="#ffb02e" transform="rotate({i * 30} 50 50)" />{/each}
+    <circle cx="50" cy="50" r="26" fill="#ffd34d" stroke="#f08a1c" stroke-width="3" />
+    <circle cx="42" cy="44" r="6" fill="#fff" opacity=".45" />
+  {:else if sym === 'horseshoe'}
+    <path d="M24 20 C24 72 34 86 50 86 C66 86 76 72 76 20 L62 20 C62 62 58 72 50 72 C42 72 38 62 38 20 Z" fill="#c7ccd8" stroke="#8a90a2" stroke-width="2" />
+    {#each [[31, 34], [69, 34], [32, 54], [68, 54]] as [x, y]}<circle cx={x} cy={y} r="2.8" fill="#6a7082" />{/each}
+  {:else if sym === 'coin'}
+    <circle cx="50" cy="50" r="36" fill="#f2c046" stroke="#b9821f" stroke-width="4" />
+    <circle cx="50" cy="50" r="27" fill="none" stroke="#fff3c4" stroke-width="2" opacity=".7" />
+    <text x="50" y="52" class="t" fill="#8a5d12" font-size="34">B</text>
+  {:else if sym === 'hat'}
+    <rect x="28" y="16" width="44" height="50" rx="5" fill="#1f7a46" /><rect x="28" y="50" width="44" height="9" fill="#1d1d22" />
+    <rect x="44" y="49" width="12" height="11" rx="2" fill="#f2c046" /><ellipse cx="50" cy="70" rx="40" ry="10" fill="#1a6a3c" />
+  {:else if sym === 'pot'}
+    {#each [[34, 30], [46, 24], [58, 28], [66, 34], [40, 36], [52, 34]] as [x, y]}<circle cx={x} cy={y} r="8" fill="#f2c046" stroke="#b9821f" stroke-width="2" />{/each}
+    <path d="M18 40 H82 L76 80 C70 90 30 90 24 80 Z" fill="#26262c" /><rect x="14" y="36" width="72" height="10" rx="5" fill="#3a3a44" />
+  {:else if sym === 'clover'}
+    {#each [0, 90, 180, 270] as r}<path d="M50 50 C36 46 30 30 40 22 C46 18 50 24 50 30 C50 24 54 18 60 22 C70 30 64 46 50 50 Z" fill="#2fbf71" stroke="#1a7a46" stroke-width="2" transform="rotate({r} 50 50)" />{/each}
+    <path d="M50 50 Q58 72 52 92" stroke="#1a7a46" stroke-width="5" fill="none" stroke-linecap="round" />
   {/if}
 </svg>
 

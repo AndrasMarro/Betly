@@ -49,3 +49,91 @@ export const LEVELS = { easy: 0.9, medium: 0.8, hard: 0.65, extreme: 0.5 } as co
 export type Level = keyof typeof LEVELS;
 export const hopMult = (level: Level, lanes: number) => (lanes === 0 ? 1 : r2(EDGE / LEVELS[level] ** lanes));
 export const survives = (level: Level) => Math.random() < LEVELS[level];
+
+// ---------- Tower (climb floors, each floor hides bombs) ----------
+export const FLOORS = 8;
+export const TOWER = { easy: [4, 1], medium: [3, 1], hard: [2, 1], expert: [3, 2], master: [4, 3] } as const; // [tiles, bombs]
+export type TowerLevel = keyof typeof TOWER;
+export const towerSafe = (lv: TowerLevel) => (TOWER[lv][0] - TOWER[lv][1]) / TOWER[lv][0];
+export const towerMult = (lv: TowerLevel, floors: number) => (floors === 0 ? 1 : r2(EDGE / towerSafe(lv) ** floors));
+export function towerBombs(lv: TowerLevel) {
+  const [tiles, bombs] = TOWER[lv];
+  return Array.from({ length: FLOORS }, () => {
+    const idx = Array.from({ length: tiles }, (_, i) => i).sort(() => Math.random() - 0.5);
+    return new Set(idx.slice(0, bombs));
+  });
+}
+
+// ---------- Coin flip (keep the streak going or cash out) ----------
+export const coinMult = (wins: number) => (wins === 0 ? 1 : r2(EDGE * 2 ** wins));
+export const flip = (): 'heads' | 'tails' => (Math.random() < 0.5 ? 'heads' : 'tails');
+
+// ---------- Hi-Lo (rank 1 = Ace low ... 13 = King) ----------
+export const pHigher = (r: number) => (14 - r) / 13; // higher or same
+export const pLower = (r: number) => r / 13; // lower or same
+/** Multiplier after a chain of correct guesses with the given probabilities (one edge for the whole chain). */
+export const hiloMult = (probs: number[]) => (probs.length ? r2(EDGE / probs.reduce((a, p) => a * p, 1)) : 1);
+export const drawRank = () => 1 + Math.floor(Math.random() * 13);
+
+// ---------- Plinko ----------
+export const PLINKO_ROWS = [8, 12, 16] as const;
+export const RISKS = { low: { 8: 12, 12: 25, 16: 35 }, medium: { 8: 35, 12: 120, 16: 400 }, high: { 8: 150, 12: 900, 16: 5000 } } as const; // edge/center ratio
+export type Risk = keyof typeof RISKS;
+const binom = (n: number, k: number) => { let c = 1; for (let i = 1; i <= k; i++) c = (c * (n - k + i)) / i; return c; };
+export const plinkoProb = (rows: number, i: number) => binom(rows, i) / 2 ** rows;
+const roundMult = (x: number) => (x >= 100 ? Math.round(x) : x >= 10 ? Math.round(x * 10) / 10 : Math.round(x * 100) / 100);
+/** Bucket multipliers: exponential towards the edges, symmetric, scaled so the expected return is 97 %. */
+export function plinkoTable(rows: number, risk: Risk) {
+  const ratio = (RISKS[risk] as Record<number, number>)[rows];
+  const shape = Array.from({ length: rows + 1 }, (_, i) => ratio ** ((Math.abs(i - rows / 2) / (rows / 2)) ** 1.35));
+  const ev = shape.reduce((a, m, i) => a + m * plinkoProb(rows, i), 0);
+  return shape.map((m) => roundMult((m * EDGE) / ev));
+}
+/** Left/right decisions for one ball; the bucket index is the number of rights. */
+export const plinkoPath = (rows: number) => Array.from({ length: rows }, () => Math.random() < 0.5);
+
+// ---------- Wheel of luck ----------
+const rep = (x: number, n: number) => Array(n).fill(x);
+export const WHEELS = {
+  low: [1.3, ...rep(1.2, 7), 0, 0],
+  medium: [1.5, 1.5, 1.5, 1.5, 2, 2, 2, 3, 4.4, ...rep(0, 11)],
+  high: [29.1, ...rep(0, 29)],
+};
+export type WheelRisk = keyof typeof WHEELS;
+/** Interleave segments so wins and zeros alternate around the wheel. */
+export function wheelLayout(risk: WheelRisk) {
+  const segs = [...WHEELS[risk]].sort((a, b) => b - a);
+  const zeros = segs.filter((x) => x === 0), wins = segs.filter((x) => x > 0), out: number[] = [];
+  while (wins.length || zeros.length) {
+    if (wins.length) out.push(wins.shift()!);
+    if (zeros.length) out.push(zeros.shift()!);
+    if (wins.length > zeros.length && wins.length) out.push(wins.pop()!);
+  }
+  return out;
+}
+
+// ---------- Scratch card ----------
+export const SCRATCH = [
+  { sym: 'seven', mult: 50, p: 0.004 },
+  { sym: 'bar', mult: 10, p: 0.015 },
+  { sym: 'bell', mult: 5, p: 0.03 },
+  { sym: 'plum', mult: 2, p: 0.1 },
+  { sym: 'cherry', mult: 1, p: 0.27 },
+];
+const SYMS = ['seven', 'bar', 'bell', 'plum', 'cherry', 'lemon'];
+/** Draw a prize, then build a 3x3 card showing exactly that prize three times (or no triple on a loss). */
+export function scratchCard(u = Math.random()) {
+  let acc = 0;
+  const prize = SCRATCH.find((x) => (acc += x.p) > u) ?? null;
+  const cells: string[] = prize ? [prize.sym, prize.sym, prize.sym] : [];
+  const count = (s: string) => cells.filter((c) => c === s).length;
+  while (cells.length < 9) {
+    const s = SYMS[Math.floor(Math.random() * SYMS.length)];
+    if (s !== prize?.sym && count(s) < 2) cells.push(s);
+  }
+  for (let i = cells.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+  return { cells, prize };
+}

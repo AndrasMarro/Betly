@@ -179,10 +179,18 @@
     const id = room.myId;
     untrack(() => { for (const p of share.players) if (p.id === prevId) p.id = id; prevId = id; });
   });
-  const stars = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.4 + 0.3 }));
+  const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() }));
+  type Puff = { x: number; y: number; vx: number; vy: number; life: number; max: number; r: number; spark?: boolean };
+  let puffs: Puff[] = [];
+  let ring = 0; // explosion shockwave progress
+  let lastPhase = '';
+  let lastT = performance.now();
+  const mix = (a: number[], b: number[], k: number) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
 
   function draw() {
     const now = performance.now();
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
     left = Math.max(0, betEnd - now);
     const sec = share.phase === 'fly' ? (now - flyStart) / 1000 : share.phase === 'boom' ? secAt(share.crash) : 0;
     live = share.phase === 'boom' ? share.crash : share.phase === 'fly' ? multAt(sec) : 1;
@@ -190,48 +198,104 @@
     const ctx = canvas?.getContext('2d');
     if (ctx) {
       const dpr = devicePixelRatio || 1, W = box.w, H = box.h;
-      if (canvas.width !== W * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; }
+      if (canvas.width !== Math.round(W * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, W, H);
-      // stars drift faster as the rocket speeds up
-      const speed = share.phase === 'fly' ? 0.02 + Math.log(live) * 0.05 : 0.004;
-      ctx.fillStyle = 'rgba(255,255,255,.55)';
-      for (const s of stars) {
-        s.y = (s.y + speed * s.r * 0.05) % 1;
-        ctx.beginPath(); ctx.arc(s.x * W, s.y * H, s.r, 0, 7); ctx.fill();
+      // sky darkens with altitude
+      const alt = Math.min(1, Math.log(live) / Math.log(20));
+      const top = mix([46, 34, 96], [6, 6, 16], alt), bottom = mix([92, 46, 88], [14, 12, 34], alt);
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, `rgb(${top})`);
+      sky.addColorStop(1, `rgb(${bottom})`);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+      // parallax stars streak away from the rocket's direction
+      const speed = share.phase === 'fly' ? 0.04 + Math.log(live) * 0.12 : 0.006;
+      for (const st of stars) {
+        st.x = (st.x - speed * dt * (0.3 + st.z) + 1) % 1;
+        st.y = (st.y + speed * dt * 0.6 * (0.3 + st.z)) % 1;
+        ctx.globalAlpha = 0.25 + st.z * 0.6;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(st.x * W, st.y * H, 0.6 + st.z * 1.6, 0.6 + st.z * 1.6);
       }
-      const pad = 36, xmax = Math.max(10, sec * 1.15), ymax = Math.max(2, live * 1.18);
+      ctx.globalAlpha = 1;
+
+      const pad = 40, xmax = Math.max(10, sec * 1.18), ymax = Math.max(2, live * 1.22);
       const X = (s: number) => pad + (s / xmax) * (W - pad * 2);
       const Y = (m: number) => H - pad - ((m - 1) / (ymax - 1)) * (H - pad * 2);
-      // grid
-      ctx.strokeStyle = 'rgba(255,255,255,.07)';
-      ctx.fillStyle = 'rgba(255,255,255,.4)';
+      ctx.strokeStyle = 'rgba(255,255,255,.06)';
+      ctx.fillStyle = 'rgba(255,255,255,.45)';
       ctx.font = '11px "Geist Mono Variable", monospace';
-      const stepM = ymax > 20 ? 10 : ymax > 6 ? 2 : ymax > 3 ? 1 : 0.5;
+      const stepM = ymax > 50 ? 20 : ymax > 20 ? 10 : ymax > 6 ? 2 : ymax > 3 ? 1 : 0.5;
       for (let m = 1; m <= ymax; m += stepM) {
-        ctx.beginPath(); ctx.moveTo(pad, Y(m)); ctx.lineTo(W - pad, Y(m)); ctx.stroke();
-        ctx.fillText(m.toFixed(m % 1 ? 1 : 0) + '×', 4, Y(m) + 4);
+        ctx.beginPath(); ctx.moveTo(pad, Y(m)); ctx.lineTo(W - 12, Y(m)); ctx.stroke();
+        ctx.fillText(m.toFixed(m % 1 ? 1 : 0) + '×', 8, Y(m) - 4);
       }
+
       if (share.phase !== 'bet') {
+        const pts: [number, number][] = [];
+        for (let i = 0; i <= 90; i++) { const s = (sec * i) / 90; pts.push([X(s), Y(multAt(s))]); }
         ctx.beginPath();
-        ctx.moveTo(X(0), Y(1));
-        const n = 80;
-        for (let i = 1; i <= n; i++) { const s = (sec * i) / n; ctx.lineTo(X(s), Y(multAt(s))); }
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = share.phase === 'boom' ? 'rgba(255,255,255,.35)' : accent;
-        ctx.shadowColor = accent;
-        ctx.shadowBlur = share.phase === 'boom' ? 0 : 16;
+        pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        const line = ctx.createLinearGradient(X(0), 0, X(sec), 0);
+        line.addColorStop(0, share.phase === 'boom' ? 'rgba(255,255,255,.2)' : accent + '66');
+        line.addColorStop(1, share.phase === 'boom' ? 'rgba(255,255,255,.45)' : '#ffd27a');
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = line;
         ctx.stroke();
-        ctx.shadowBlur = 0;
         ctx.lineTo(X(sec), H - pad); ctx.lineTo(X(0), H - pad); ctx.closePath();
-        const g = ctx.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, share.phase === 'boom' ? 'rgba(255,255,255,.05)' : accent + '55');
-        g.addColorStop(1, 'transparent');
-        ctx.fillStyle = g;
+        const fill = ctx.createLinearGradient(0, Y(live), 0, H - pad);
+        fill.addColorStop(0, share.phase === 'boom' ? 'rgba(255,255,255,.06)' : accent + '40');
+        fill.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fill;
         ctx.fill();
-        const dx = X(sec) - X(sec * 0.97), dy = Y(multAt(sec)) - Y(multAt(sec * 0.97));
-        rocket = { x: X(sec), y: Y(live), rot: 90 + (Math.atan2(dy, dx) * 180) / Math.PI };
-      } else rocket = { x: X(0), y: Y(1), rot: 45 };
+        // cash-out markers
+        ctx.font = '600 11px "Geist Variable", sans-serif';
+        for (const p of share.players) if (p.cash && p.cash <= live) {
+          const x = X(secAt(p.cash)), y = Y(p.cash);
+          ctx.fillStyle = p.id === room.myId ? '#2fbf71' : 'rgba(255,255,255,.85)';
+          ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill();
+          ctx.fillText(p.name, x + 7, y - 6);
+        }
+        const [x0, y0] = pts[86], [x1, y1] = pts[90];
+        const ang = Math.atan2(y1 - y0, x1 - x0);
+        rocket = { x: x1, y: y1, rot: 90 + (ang * 180) / Math.PI };
+        // exhaust: flame sparks + smoke puffs behind the nozzle
+        if (share.phase === 'fly') {
+          const tx = x1 - Math.cos(ang) * 26, ty = y1 - Math.sin(ang) * 26;
+          for (let i = 0; i < 2; i++)
+            puffs.push({ x: tx, y: ty, vx: -Math.cos(ang) * (40 + Math.random() * 40) + (Math.random() - 0.5) * 30, vy: -Math.sin(ang) * (40 + Math.random() * 40) + (Math.random() - 0.5) * 30, life: 0, max: 0.6 + Math.random() * 0.6, r: 3 + Math.random() * 4 });
+        }
+      } else rocket = { x: X(0) + 6, y: Y(1) - 10 + Math.sin(now / 400) * 2, rot: 45 };
+
+      if (share.phase === 'boom' && lastPhase !== 'boom') {
+        ring = 0.001;
+        for (let i = 0; i < 70; i++) {
+          const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 260;
+          puffs.push({ x: rocket.x, y: rocket.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: 0.5 + Math.random() * 0.9, r: 1.5 + Math.random() * 2.5, spark: true });
+        }
+        for (let i = 0; i < 18; i++) {
+          const a = Math.random() * Math.PI * 2, v = 20 + Math.random() * 60;
+          puffs.push({ x: rocket.x, y: rocket.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: 1.2 + Math.random() * 0.8, r: 10 + Math.random() * 14 });
+        }
+      }
+      lastPhase = share.phase;
+      if (ring > 0 && ring < 1) {
+        ring = Math.min(1, ring + dt * 1.8);
+        ctx.strokeStyle = `rgba(255,190,90,${1 - ring})`;
+        ctx.lineWidth = 3 * (1 - ring) + 0.5;
+        ctx.beginPath(); ctx.arc(rocket.x, rocket.y, 10 + ring * 140, 0, 7); ctx.stroke();
+      }
+      puffs = puffs.filter((p) => (p.life += dt) < p.max).slice(-260);
+      for (const p of puffs) {
+        const k = p.life / p.max;
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.vx *= 0.97; p.vy = p.vy * 0.97 + (p.spark ? 120 : -10) * dt;
+        ctx.globalAlpha = (1 - k) * (p.spark ? 1 : 0.35);
+        ctx.fillStyle = p.spark ? (k < 0.4 ? '#fff3c4' : '#ff8a3d') : k < 0.15 ? '#ffb02e' : '#c9c3d6';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.spark ? p.r : p.r * (0.6 + k * 1.6), 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
     raf = requestAnimationFrame(draw);
   }
@@ -303,18 +367,15 @@
   <div class="sky">
     <canvas bind:this={canvas}></canvas>
     <div class="ship" class:gone={share.phase === 'boom'} style="left:{rocket.x}px; top:{rocket.y}px; rotate:{rocket.rot}deg">
-      <Sprite kind="rocket" />
+      <Sprite kind="rocket" flame={share.phase === 'fly'} />
     </div>
-    {#if share.phase === 'boom'}
-      <div class="boom" style="left:{rocket.x}px; top:{rocket.y}px" in:scale={{ start: 0.2, duration: 350 }}><Sprite kind="boom" /></div>
-    {/if}
-    <div class="center">
+    <div class="center" class:flying={share.phase !== 'bet'}>
       {#if share.phase === 'bet'}
         <span class="eyebrow light">{t('rk.starts')}</span>
         <strong class="mono count">{(left / 1000).toFixed(1)}s</strong>
         <div class="bar"><i style="transform: scaleX({left / BET_MS})"></i></div>
       {:else if share.phase === 'fly'}
-        <strong class="mono big-m">{live.toFixed(2)}×</strong>
+        <strong class="mono big-m" class:hot={live >= 2}>{live.toFixed(2)}×</strong>
       {:else}
         <span class="eyebrow light">{t('rk.crashed')}</span>
         <strong class="mono big-m bad">{share.crash.toFixed(2)}×</strong>
@@ -333,15 +394,18 @@
   .hist { display: flex; gap: 6px; overflow: hidden; margin-bottom: 10px; min-height: 30px; }
   .hist span { flex: none; padding: 5px 10px; border-radius: 999px; font-size: 0.78rem; background: var(--surface); border: 1px solid var(--line); }
   .good { color: #2fbf71; } .bad { color: var(--accent); } .gold { color: var(--gold); }
-  .sky { position: relative; height: clamp(260px, 50vh, 460px); border-radius: 28px; overflow: hidden; background: radial-gradient(ellipse at 70% 0%, #24204a, #0a0918 70%); }
+  .sky { position: relative; height: clamp(280px, 52vh, 480px); border-radius: 28px; overflow: hidden; background: #160f2e; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .ship { position: absolute; width: 56px; height: 56px; translate: -50% -50%; pointer-events: none; filter: drop-shadow(0 0 12px rgba(255,180,80,.5)); }
-  .ship.gone { opacity: 0; transition: opacity 0.2s; }
-  .boom { position: absolute; width: 110px; height: 110px; translate: -50% -50%; pointer-events: none; }
+  .ship { position: absolute; width: 64px; height: 64px; translate: -50% -50%; pointer-events: none; filter: drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
+  .ship.gone { opacity: 0; transform: scale(1.4); transition: opacity 0.15s var(--ease-snap), transform 0.15s var(--ease-snap); }
   .center { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; pointer-events: none; color: #fff; text-align: center; }
+  .center.flying { place-content: start; justify-items: start; padding: clamp(18px, 4vw, 40px) 0 0 clamp(52px, 7vw, 72px); text-align: left; }
   .eyebrow.light { color: rgba(255,255,255,.6); }
   .count { font-size: clamp(2rem, 5vw, 3.4rem); }
-  .big-m { font-size: clamp(3rem, 9vw, 6.5rem); letter-spacing: -0.04em; text-shadow: 0 6px 30px rgba(0,0,0,.6); }
+  .big-m { font-size: clamp(3rem, 9vw, 6.5rem); letter-spacing: -0.04em; text-shadow: 0 6px 30px rgba(0,0,0,.6); font-variant-numeric: tabular-nums; transition: color 0.4s var(--ease-snap); }
+  .big-m.hot { color: #ffd27a; }
+  .big-m.bad { animation: shake 0.45s var(--ease-snap); }
+  @keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
   .bar { width: 200px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.15); overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; }
   .players { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }

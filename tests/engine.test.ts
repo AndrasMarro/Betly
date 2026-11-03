@@ -96,3 +96,29 @@ import { crashPoint, minesMult, diceMult, DICE_BETS, hopMult, LEVELS, TILES } fr
   }
   console.log('arcade checks passed');
 }
+
+// New arcade games
+import { towerMult, towerSafe, TOWER, coinMult, hiloMult, pHigher, pLower, plinkoTable, plinkoProb, PLINKO_ROWS, RISKS, WHEELS, wheelLayout, SCRATCH, scratchCard } from '../src/games/arcade.ts';
+{
+  const near = (ev: number, what: string, lo = 0.95) => assert.ok(ev <= 0.97 + 1e-9 && ev > lo, `${what}: ${ev}`);
+  for (const lv of Object.keys(TOWER) as (keyof typeof TOWER)[]) for (let k = 1; k <= 8; k++) near(towerSafe(lv) ** k * towerMult(lv, k), `tower ${lv} ${k}`);
+  for (let k = 1; k <= 10; k++) near(0.5 ** k * coinMult(k), `coin ${k}`);
+  for (let r = 1; r <= 13; r++) { near(pHigher(r) * hiloMult([pHigher(r)]), `hilo hi ${r}`, 0.9); near(pLower(r) * hiloMult([pLower(r)]), `hilo lo ${r}`, 0.9); }
+  for (const rows of PLINKO_ROWS) for (const risk of Object.keys(RISKS) as (keyof typeof RISKS)[]) {
+    const t = plinkoTable(rows, risk);
+    const ev = t.reduce((a, m, i) => a + m * plinkoProb(rows, i), 0);
+    assert.ok(Math.abs(ev - 0.97) < 0.015, `plinko ${rows} ${risk}: ${ev}`);
+    console.log(`plinko ${rows} ${risk}`, t.join(' '), '→', ev.toFixed(4));
+  }
+  for (const [risk, segs] of Object.entries(WHEELS)) {
+    assert.ok(Math.abs(segs.reduce((a, b) => a + b, 0) / segs.length - 0.97) < 1e-9, 'wheel ' + risk);
+    assert.equal(wheelLayout(risk as any).length, segs.length);
+  }
+  assert.ok(Math.abs(SCRATCH.reduce((a, x) => a + x.mult * x.p, 0) - 0.97) < 1e-9);
+  for (let i = 0; i < 2000; i++) {
+    const { cells, prize } = scratchCard();
+    const triples = [...new Set(cells)].filter((s) => cells.filter((c) => c === s).length >= 3);
+    assert.deepEqual(triples, prize ? [prize.sym] : [], 'scratch layout');
+  }
+  console.log('new arcade checks passed');
+}
