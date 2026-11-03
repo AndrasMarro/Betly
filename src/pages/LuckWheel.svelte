@@ -12,6 +12,7 @@
   let risk = $state<WheelRisk>('medium');
   const segs = $derived(wheelLayout(risk));
   let rot = $state(0);
+  let flick = $state(0);
   let busy = $state(false);
   let result = $state<{ m: number; win: number } | null>(null);
   let history = $state<{ m: number; id: number }[]>([]);
@@ -36,9 +37,24 @@
     const i = Math.floor(Math.random() * segs.length), step = 360 / segs.length;
     const jitter = (Math.random() - 0.5) * step * 0.7;
     // pointer is at the top: bring segment i to 0deg
-    rot = Math.ceil(rot / 360) * 360 + 360 * 5 + (360 - i * step) + jitter;
+    const r0 = rot, r1 = Math.ceil(rot / 360) * 360 + 360 * 5 + (360 - i * step) + jitter;
+    const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 4600;
     sfx('spin');
-    await new Promise((r) => setTimeout(r, 4300));
+    await new Promise<void>((done) => {
+      const t0 = performance.now();
+      let lastSeg = Math.floor((r0 + step / 2) / step), kick = 0;
+      const frame = (now: number) => {
+        const k = Math.min(1, (now - t0) / dur);
+        rot = r0 + (r1 - r0) * (1 - Math.pow(1 - k, 4));
+        // every segment edge that passes the pointer ticks and flicks it
+        const seg = Math.floor((rot + step / 2) / step);
+        if (seg !== lastSeg) { lastSeg = seg; kick = now; sfx('tick'); }
+        flick = -24 * Math.max(0, 1 - (now - kick) / 140);
+        if (k < 1) requestAnimationFrame(frame);
+        else { flick = 0; done(); }
+      };
+      requestAnimationFrame(frame);
+    });
     const m = segs[i], win = Math.round(b * m * 100) / 100;
     settle(win, win);
     result = { m, win };
@@ -70,7 +86,7 @@
 
   <div class="stage">
     <div class="wheelbox">
-      <svg class="pointer" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 38 L6 8 Q20 0 34 8 Z" /></svg>
+      <svg class="pointer" viewBox="0 0 40 40" aria-hidden="true" style="rotate:{flick}deg"><path d="M20 38 L6 8 Q20 0 34 8 Z" /></svg>
       <svg viewBox="-100 -100 200 200" class="wheel" style="transform: rotate({rot}deg)" aria-hidden="true">
         <circle r="99" fill="#141828" />
         {#each segs as m, i}
@@ -111,9 +127,9 @@
   .legend em { font-style: normal; color: var(--muted); margin-left: auto; }
   .stage { display: grid; justify-items: center; gap: 14px; padding: clamp(20px, 3vw, 36px); border-radius: 28px; background: radial-gradient(ellipse at 50% 20%, #232a4a, #0d1122 72%); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); color: #fff; }
   .wheelbox { position: relative; width: min(100%, 440px); aspect-ratio: 1; }
-  .wheel { width: 100%; height: 100%; transition: transform 4.2s var(--ease-snap); filter: drop-shadow(0 20px 40px rgba(0,0,0,.5)); }
+  .wheel { width: 100%; height: 100%; will-change: transform; filter: drop-shadow(0 20px 40px rgba(0,0,0,.5)); }
   .lbl { font: 700 7px 'Geist Mono Variable', monospace; fill: rgba(0,0,0,.72); text-anchor: middle; dominant-baseline: middle; }
-  .pointer { position: absolute; left: 50%; top: -6px; width: 34px; height: 34px; translate: -50% 0; z-index: 2; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+  .pointer { position: absolute; left: 50%; top: -6px; width: 34px; height: 34px; translate: -50% 0; z-index: 2; transform-origin: 50% 20%; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
   .pointer path { fill: #f4f2ee; }
   .hub { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
   .hub strong { font-size: clamp(1.4rem, 3.4vw, 2rem); }

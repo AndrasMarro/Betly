@@ -15,9 +15,20 @@
   import { settings, wallet, settle, fmt } from '../lib/state.svelte';
   import { chipOf, short } from '../lib/chips';
   import { sfx } from '../lib/sfx';
+  import { drop, pop } from '../lib/motion';
   import { t, type Key } from '../lib/i18n';
 
   let st = $state<BJ>(newTable(PRESETS.vegas));
+  /** Cards slide out of the shoe (top right), spinning flat as they travel. */
+  function dealFx(node: Element, { x = 300, y = -300, delay = 0 }: { x?: number; y?: number; delay?: number }) {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return {
+      delay,
+      duration: reduce ? 150 : 460,
+      easing: cubicOut,
+      css: (t: number, u: number) => (reduce ? `opacity:${t}` : `transform: translate(${u * x}px, ${u * y}px) rotate(${u * -28}deg) scale(${0.85 + 0.15 * t}); opacity:${Math.min(1, t * 3)}`),
+    };
+  }
   let chip = $state(25);
   let botCount = $state(2);
   let hints = $state(true);
@@ -272,7 +283,7 @@
 
 <svelte:window onkeydown={key} />
 
-<section class="wrap page">
+<section class="bj">
   <header class="head">
     <div>
       <p class="eyebrow">{presetName === 'custom' ? t('bj.custom') : t(('preset.' + presetName) as Key)} · {st.rules.decks} {t('bj.decks')}</p>
@@ -332,12 +343,14 @@
   {/if}
 
   <div class="felt">
+    <div class="shoe" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="tray" aria-hidden="true"></div>
 
     <div class="dealer">
       <span class="eyebrow light">{t('bj.dealer')}</span>
       <div class="cards">
         {#each dealerCards as c, i (i)}
-          <div class="slot" in:fly={{ y: -120, x: 80, duration: 380, easing: cubicOut }}><CardView card={c} /></div>
+          <div class="slot" in:dealFx={{ x: 360, y: -60 }}><CardView card={c} /></div>
         {/each}
       </div>
       {#if st.dealer.length}<span class="total" class:bust={total(dealerCards).t > 21}>{label(dealerCards)}</span>{/if}
@@ -369,18 +382,18 @@
     <div class="seats">
       {#each st.seats as s, i}
         {@const own = s.owner === room.myId}
-        <div class="seat" class:own class:active={st.turn?.[0] === i} style="--y:{[0, 22, 34, 22, 0][i]}px">
+        <div class="seat" class:own class:active={st.turn?.[0] === i} style="--k:{[0, 0.62, 1, 0.62, 0][i]}">
           <div class="hands">
             {#each s.hands as h, j}
               <div class="hand" class:on={st.turn?.[0] === i && st.turn?.[1] === j}>
                 <div class="cards fan">
                   {#each h.cards as c, k (k)}
-                    <div class="slot" in:fly={{ y: -260, x: (2 - i) * 60, duration: 420, easing: cubicOut }}><CardView card={c} small={s.hands.length > 1} /></div>
+                    <div class="slot" in:dealFx={{ x: 200 + (4 - i) * 170, y: -360 }}><CardView card={c} small={s.hands.length > 1} /></div>
                   {/each}
                 </div>
                 <div class="meta">
-                  <span class="total" class:bust={total(h.cards).t > 21}>{label(h.cards)}</span>
-                  {#if h.result}<span class="res {h.result}" in:scale>{t(('bj.res.' + h.result) as Key)}</span>{/if}
+                  {#if h.cards.length}<span class="total" class:bust={total(h.cards).t > 21} in:pop>{label(h.cards)}</span>{/if}
+                  {#if h.result}<span class="res {h.result}" in:pop>{t(('bj.res.' + h.result) as Key)}</span>{/if}
                   {#if s.hands.length > 1 || h.doubled}<span class="mono hb">{short(h.bet)}</span>{/if}
                 </div>
               </div>
@@ -389,7 +402,7 @@
           {#if s.owner}
             <button class="spot" class:has={s.bet > 0} disabled={!own || !betting} onclick={() => addBet(i)} aria-label="Bet seat {i + 1}">
               {#if s.bet > 0}
-                {#key s.bet}<span class="chip" data-v={chipOf(s.bet)} in:scale={{ start: 1.4, duration: 220 }}>{short(s.bet)}</span>{/key}
+                {#key s.bet}<span class="chip" data-v={chipOf(s.bet)} in:drop>{short(s.bet)}</span>{/key}
               {/if}
               {#if s.ins}<span class="ins mono">+{short(s.ins)}</span>{/if}
             </button>
@@ -436,7 +449,11 @@
 </section>
 
 <style>
-  .page { padding-bottom: 120px; }
+  .bj { width: min(1280px, 100% - 32px); margin-inline: auto; padding-bottom: 120px; position: relative; }
+  .shoe { position: absolute; right: 4%; top: 22px; width: 74px; height: 56px; border-radius: 10px 10px 14px 14px; background: linear-gradient(180deg, #2a2a30, #121216); box-shadow: 0 10px 20px rgba(0,0,0,.45), inset 0 0 0 2px rgba(255,255,255,.08); transform: perspective(300px) rotateX(18deg) rotate(-8deg); }
+  .shoe i { position: absolute; left: 8px; right: 8px; top: 8px; height: 30px; border-radius: 4px; background: #8e1b22; box-shadow: 0 2px 0 #fbfaf7; }
+  .shoe i:nth-child(2) { top: 12px; } .shoe i:nth-child(3) { top: 16px; }
+  .tray { position: absolute; left: 4%; top: 26px; width: 64px; height: 44px; border-radius: 10px; border: 2px dashed var(--felt-line); transform: rotate(8deg); }
   .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 8px; }
   h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; font-weight: 700; }
   .switch.mini { min-height: 36px; font-size: 0.8rem; color: var(--muted); gap: 8px; }
@@ -470,7 +487,7 @@
   .prompt { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; color: #fff; background: rgba(0,0,0,.4); padding: 8px 12px; border-radius: 999px; }
 
   .seats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; align-items: start; position: relative; z-index: 1; }
-  .seat { display: grid; justify-items: center; gap: 10px; transform: translateY(var(--y)); min-width: 0; }
+  .seat { display: grid; justify-items: center; gap: 10px; transform: translateY(calc(var(--arc, 34px) * var(--k))); min-width: 0; }
   .hands { display: flex; gap: 6px; min-height: 120px; align-items: end; }
   .hand { display: grid; justify-items: center; gap: 6px; padding: 6px; border-radius: 14px; transition: background 0.3s; }
   .hand.on { background: rgba(255,255,255,.12); box-shadow: 0 0 0 1px rgba(255,255,255,.3); }
@@ -509,7 +526,22 @@
   .deal { min-width: 140px; min-height: 52px; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
   .waiting { cursor: default; color: var(--muted); }
 
+  @media (min-width: 900px) {
+    /* the table owns the whole viewport on desktop */
+    .bj { width: 100%; height: calc(100dvh - var(--nav-h)); min-height: 640px; padding: 0 20px 16px; display: grid; grid-template-rows: auto 1fr; gap: 6px; }
+    .head { padding: 10px 6px 4px; }
+    .head h1 { font-size: 1.7rem; }
+    .head .eyebrow { display: none; }
+    .rules { position: absolute; z-index: 40; top: 70px; right: 20px; width: min(720px, calc(100% - 40px)); box-shadow: 0 30px 80px -20px rgba(0,0,0,.6); }
+    .felt { --cw: clamp(76px, 6vw, 112px); --arc: 6vh; margin: 0; min-height: 0; display: flex; flex-direction: column; padding: 28px 3vw 150px; border-radius: 48px 48px 50% 50% / 48px 48px 34% 34%; }
+    .seats { margin-top: auto; }
+    .hands { min-height: calc(var(--cw) * 1.5); }
+    .spot { width: 78px; height: 78px; }
+    .spot .chip { --size: 54px; }
+    .dock { position: absolute; bottom: 30px; left: 50%; translate: -50% 0; margin: 0; width: min(900px, calc(100% - 80px)); }
+  }
   @media (max-width: 820px) {
+    .shoe, .tray { display: none; }
     .felt { border-radius: 28px; padding-bottom: 24px; }
     .arc { display: none; }
     .seats { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }

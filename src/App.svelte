@@ -24,6 +24,7 @@
     plinko: () => import('./pages/Plinko.svelte'),
     wheel: () => import('./pages/LuckWheel.svelte'),
     scratch: () => import('./pages/Scratch.svelte'),
+    cases: () => import('./pages/Cases.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),
     soon: () => import('./pages/Soon.svelte'),
@@ -133,7 +134,9 @@
     position: sticky; top: 0; z-index: 50; height: var(--nav-h); display: flex; align-items: center;
     background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line);
   }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+  .row .logo { justify-self: start; }
+  .row .tools { justify-self: end; }
   .logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; font-size: 1.2rem; letter-spacing: -0.04em; }
   .mark { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); box-shadow: inset 0 0 0 5px var(--accent), inset 0 0 0 7px var(--bg); }
   .links { display: flex; gap: 4px; padding: 4px; border-radius: 999px; border: 1px solid var(--line); }
@@ -162,8 +165,8 @@
 
   @media (max-width: 760px) {
     :global(:root) { --nav-h: 112px; }
-    .row { flex-wrap: wrap; gap: 8px; }
-    .links { order: 3; width: 100%; justify-content: space-between; }
+    .row { grid-template-columns: 1fr auto; gap: 8px; }
+    .links { order: 3; grid-column: 1 / -1; justify-content: space-between; }
     .links a { flex: 1; text-align: center; padding: 7px 6px; }
     .nav { height: auto; min-height: var(--nav-h); padding: 10px 0; }
   }

@@ -52,6 +52,11 @@
       <circle r="15" fill="#141828" />
     </svg>
     <span class="tip"></span>
+  {:else if id === 'cases'}
+    <div class="crates">
+      {#each ['#4b69ff', '#d32ce6', '#e4ae39'] as c, i}<span class="crate" style="--c:{c}; --i:{i}"><i></i></span>{/each}
+    </div>
+    <span class="cmark"></span>
   {:else if id === 'scratch'}
     <div class="tk">{#each ['seven', 'seven', 'seven'] as s, i}<i class:foil={i === 2}><SlotSymbol sym={s} /></i>{/each}</div>
   {/if}
@@ -68,6 +73,13 @@
   .art.coinflip { background: radial-gradient(ellipse at 50% 30%, #2b2a46, #101020 70%); }
   .art.plinko { background: radial-gradient(ellipse at 50% 0%, #22305a, #0d1326 75%); }
   .art.wheel { background: radial-gradient(ellipse at 50% 20%, #232a4a, #0d1122 72%); }
+  .art.cases { background: radial-gradient(ellipse at 50% 0%, #22243a, #0e0f18 75%); }
+  .crates { display: flex; gap: 12px; align-items: end; }
+  .crate { position: relative; width: 74px; height: calc(52px + var(--i) * 10px); border-radius: 10px; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 80%, #fff), var(--c) 50%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: inset 0 -5px 0 rgba(0,0,0,.25), 0 14px 24px rgba(0,0,0,.45); transition: transform 0.45s var(--spring-snappy); transition-delay: calc(var(--i) * 60ms); }
+  .crate::before { content: ''; position: absolute; left: 0; right: 0; top: 16px; height: 4px; background: rgba(0,0,0,.35); }
+  .crate i { position: absolute; left: 50%; top: 12px; width: 16px; height: 13px; margin-left: -8px; border-radius: 3px; background: #f2c046; }
+  :global(.game:hover) .crate { transform: translateY(-10px); }
+  .cmark { position: absolute; left: 50%; top: 10%; bottom: 10%; width: 3px; background: #f2c046; box-shadow: 0 0 12px #f2c046; opacity: .35; }
   .art.scratch { background: radial-gradient(ellipse at 50% 20%, #3a2a10, #140d05); }
   .tw { display: grid; gap: 6px; }
   .tw div { display: flex; gap: 6px; }

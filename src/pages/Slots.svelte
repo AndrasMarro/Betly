@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
+  import { Tween } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
   import { fly, scale } from 'svelte/transition';
   import SlotSymbol from '../components/SlotSymbol.svelte';
   import { MACHINES, strips, spinGrid, evaluate, type Win } from '../games/slots';
@@ -14,12 +16,14 @@
   const lineBet = $derived(m.bets[Math.min(betIdx, m.bets.length - 1)]);
   const cost = $derived(lineBet * m.lines.length);
 
-  type Reel = { items: string[]; k: number; dur: number };
+  type Reel = { items: string[]; k: number; dur: number; moving?: boolean };
   let reels = $state<Reel[]>([]);
   let stripEls: HTMLDivElement[] = $state([]);
   let spinning = $state(false);
   let wins = $state<Win[]>([]);
   let win = $state(0);
+  const shownWin = new Tween(0, { duration: 900, easing: cubicOut });
+  $effect(() => { shownWin.set(win, { duration: win ? 900 : 0 }); });
   let freeLeft = $state(0);
   let autoLeft = $state(0);
   let turbo = $state(false);
@@ -53,7 +57,13 @@
     });
     await tick();
     stripEls.forEach((el) => el?.offsetHeight); // flush start position
-    reels.forEach((r, i) => { r.dur = durs[i]; r.k = 0; setTimeout(() => sfx('stop'), durs[i]); });
+    reels.forEach((r, i) => {
+      r.dur = durs[i];
+      r.k = 0;
+      r.moving = true;
+      setTimeout(() => { r.moving = false; }, durs[i] * 0.72);
+      setTimeout(() => sfx('stop'), durs[i]);
+    });
     await new Promise((r) => setTimeout(r, Math.max(...durs) + 80));
     if (!alive) return;
     reels = grid.map((items) => ({ items, k: 0, dur: 0 }));
@@ -108,7 +118,7 @@
     <div class="window" style="--rows:{m.rows}; --reels:{reels.length}">
       {#each reels as r, i}
         <div class="reel">
-          <div class="strip" bind:this={stripEls[i]} style="transform: translateY({(-r.k / r.items.length) * 100}%); transition: transform {r.dur}ms cubic-bezier(.25,.9,.35,1.04)">
+          <div class="strip" class:moving={r.moving} bind:this={stripEls[i]} style="transform: translateY({(-r.k / r.items.length) * 100}%); transition: transform {r.dur}ms cubic-bezier(.25,.9,.35,1.04)">
             {#each r.items as sym, j}
               <div class="cell" class:lit={!spinning && j < m.rows && lit.has(i + '-' + j)} class:dim={!spinning && wins.length > 0 && j < m.rows && !lit.has(i + '-' + j)}>
                 <SlotSymbol {sym} />
@@ -119,15 +129,15 @@
       {/each}
       {#if !spinning && wins.length}
         <svg class="lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          {#each wins as w}
-            <polyline points={pts(m.lines[w.line])} stroke={LINE_COLORS[w.line % LINE_COLORS.length]} />
+          {#each wins as w, i}
+            <polyline pathLength="1" style="animation-delay:{i * 120}ms" points={pts(m.lines[w.line])} stroke={LINE_COLORS[w.line % LINE_COLORS.length]} />
           {/each}
         </svg>
       {/if}
     </div>
     <div class="readout">
       <div><span class="eyebrow">{t('bet.win')}</span>
-        {#key win}<strong class="mono big" class:pos={win > 0} in:fly={{ y: 8, duration: 300 }}>{fmt(win)}</strong>{/key}
+        <strong class="mono big" class:pos={win > 0}>{fmt(Math.round(shownWin.current * 100) / 100)}</strong>
       </div>
       <div><span class="eyebrow">{t('s.lineBet')}</span>
         <div class="stepper">
@@ -206,13 +216,15 @@
   .cosmic .reel { background: linear-gradient(180deg, #0b0a24, #1a1846 20%, #1a1846 80%, #0b0a24); }
   .clover .reel { background: linear-gradient(180deg, #e9f3e3, #fbfdf8 20%, #fbfdf8 80%, #e9f3e3); }
   .reel::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.35), transparent 18%, transparent 82%, rgba(0,0,0,.35)); }
-  .strip { will-change: transform; }
+  .strip { will-change: transform; transition: filter 0.2s var(--ease-snap); }
+  .strip.moving { filter: blur(1.8px) brightness(1.05); }
   .cell { aspect-ratio: 1; padding: 14%; transition: opacity 0.3s, transform 0.3s; }
   .cell.lit { animation: pulse 0.9s ease-in-out infinite alternate; }
   .cell.dim { opacity: 0.35; }
   @keyframes pulse { to { transform: scale(1.1); } }
   .lines { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); pointer-events: none; }
-  .lines polyline { fill: none; stroke-width: 1.2; vector-effect: non-scaling-stroke; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; filter: drop-shadow(0 0 4px rgba(0,0,0,.6)); }
+  .lines polyline { fill: none; vector-effect: non-scaling-stroke; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; filter: drop-shadow(0 0 4px rgba(0,0,0,.6)); stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.6s var(--ease-snap) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
   .readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: min(100%, 440px); gap: 12px; padding: 18px 6px 2px; color: #f4f2ee; }
   .readout > div { display: grid; gap: 6px; justify-items: center; }
   .readout .eyebrow { color: rgba(244,242,238,.5); }

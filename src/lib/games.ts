@@ -17,6 +17,7 @@ export const GAMES: Game[] = [
   { id: 'sicbo', name: 'Sic Bo', cat: 'classic' },
 
   { id: 'rocket', name: 'Rocket', cat: 'arcade', live: true },
+  { id: 'cases', name: ['Kisten', 'Cases'], cat: 'arcade', live: true },
   { id: 'mines', name: ['Minen', 'Mines'], cat: 'arcade', live: true },
   { id: 'dice', name: ['Würfel', 'Dice'], cat: 'arcade', live: true },
   { id: 'hop', name: 'Hop Street', cat: 'arcade', live: true },

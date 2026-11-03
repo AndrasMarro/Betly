@@ -122,3 +122,10 @@ import { towerMult, towerSafe, TOWER, coinMult, hiloMult, pHigher, pLower, plink
   }
   console.log('new arcade checks passed');
 }
+
+import { CASES, caseRtp, RARITIES } from '../src/games/arcade.ts';
+{
+  assert.ok(Math.abs(RARITIES.reduce((a, r) => a + r.p, 0) - 1) < 1e-9);
+  for (const c of CASES) assert.ok(caseRtp(c) <= 0.97 + 1e-9 && caseRtp(c) > 0.96, `case ${c.id} ${caseRtp(c)}`);
+  console.log('cases RTP', caseRtp(CASES[0]).toFixed(4));
+}

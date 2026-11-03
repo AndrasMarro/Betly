@@ -6,6 +6,7 @@
   import { TILES, minesMult, placeMines } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
+  import { pop } from '../lib/motion';
   import { t } from '../lib/i18n';
   import { byId, gameName } from '../lib/games';
 
@@ -85,18 +86,18 @@
     </div>
   {/snippet}
 
-  <div class="board" class:over={phase === 'over'}>
+  <div class="board" class:over={phase === 'over'} class:boom={hit >= 0}>
     {#each Array(TILES) as _, i}
       {@const isOpen = open.includes(i)}
       {@const show = isOpen || (phase === 'over' && (field.has(i) || hit >= 0))}
       <button class="tile" class:open={isOpen} class:hit={hit === i} class:ghost={!isOpen && show} disabled={phase !== 'play' || isOpen} onclick={() => pick(i)} aria-label="Tile {i + 1}">
         {#if show}
-          <span class="ico" in:scale={{ start: 0.9, duration: 350 }}><Sprite kind={field.has(i) ? 'bomb' : 'gem'} /></span>
+          <span class="ico" in:pop><Sprite kind={field.has(i) ? 'bomb' : 'gem'} /></span>
         {/if}
       </button>
     {/each}
     {#if phase === 'over'}
-      <div class="banner" class:lose={hit >= 0} in:scale={{ start: 0.8, duration: 300 }}>
+      <div class="banner" class:lose={hit >= 0} in:pop>
         {#if hit >= 0}{t('mn.boom')}{:else}<span class="mono">×{mult.toFixed(2)}</span> +{fmt(won)}{/if}
       </div>
     {/if}
@@ -121,8 +122,9 @@
   .tile:not(:disabled):hover { transform: translateY(-3px); background: linear-gradient(180deg, #3f5880, #31455f); }
   .tile:disabled { cursor: default; }
   .tile:not(:disabled):active { transform: scale(0.97); transition-duration: 0.16s; }
-  .tile.open { background: #13202e; box-shadow: inset 0 0 0 2px rgba(79, 227, 160, .35), 0 0 24px rgba(79, 227, 160, .12); animation: pop 0.5s var(--spring-snappy); }
-  @keyframes pop { from { transform: scale(0.9); } }
+  .tile.open { background: #13202e; box-shadow: inset 0 0 0 2px rgba(79, 227, 160, .35), 0 0 24px rgba(79, 227, 160, .12); animation: flipIn 0.55s var(--spring-snappy); }
+  @keyframes flipIn { from { transform: perspective(500px) rotateY(90deg); } }
+  .board.boom { animation: shake 0.45s var(--ease-snap); }
   .tile.hit { background: #5a1a1f; box-shadow: inset 0 0 0 2px #e5484d; animation: shake 0.4s; }
   .tile.ghost .ico { opacity: 0.4; }
   .ico { display: block; width: 100%; height: 100%; }
