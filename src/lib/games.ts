@@ -1,3 +1,35 @@
-export const SOON: Record<string, string> = {
-  baccarat: 'Baccarat', craps: 'Craps', holdem: "Texas Hold'em", caribbean: 'Caribbean Stud', paigow: 'Pai Gow', threecard: 'Three Card Poker',
-};
+import { settings } from './state.svelte';
+
+export type Cat = 'classic' | 'arcade';
+export type Game = { id: string; name: string | [de: string, en: string]; cat: Cat; live?: boolean };
+
+export const GAMES: Game[] = [
+  { id: 'roulette', name: 'Roulette', cat: 'classic', live: true },
+  { id: 'blackjack', name: 'Blackjack', cat: 'classic', live: true },
+  { id: 'slots', name: 'Slots', cat: 'classic', live: true },
+  { id: 'baccarat', name: 'Baccarat', cat: 'classic' },
+  { id: 'craps', name: 'Craps', cat: 'classic' },
+  { id: 'holdem', name: "Texas Hold'em", cat: 'classic' },
+  { id: 'caribbean', name: 'Caribbean Stud', cat: 'classic' },
+  { id: 'paigow', name: 'Pai Gow', cat: 'classic' },
+  { id: 'threecard', name: 'Three Card Poker', cat: 'classic' },
+  { id: 'videopoker', name: 'Video Poker', cat: 'classic' },
+  { id: 'sicbo', name: 'Sic Bo', cat: 'classic' },
+
+  { id: 'rocket', name: 'Rocket', cat: 'arcade', live: true },
+  { id: 'mines', name: ['Minen', 'Mines'], cat: 'arcade', live: true },
+  { id: 'dice', name: ['Würfel', 'Dice'], cat: 'arcade', live: true },
+  { id: 'hop', name: 'Hop Street', cat: 'arcade', live: true },
+  { id: 'plinko', name: 'Plinko', cat: 'arcade' },
+  { id: 'wheel', name: ['Glücksrad', 'Wheel of Luck'], cat: 'arcade' },
+  { id: 'hilo', name: 'Hi-Lo', cat: 'arcade' },
+  { id: 'keno', name: 'Keno', cat: 'arcade' },
+  { id: 'tower', name: ['Turm', 'Tower'], cat: 'arcade' },
+  { id: 'coinflip', name: ['Münzwurf', 'Coin Flip'], cat: 'arcade' },
+  { id: 'limbo', name: 'Limbo', cat: 'arcade' },
+  { id: 'scratch', name: ['Rubbellos', 'Scratch Card'], cat: 'arcade' },
+];
+
+export const gameName = (g: Game) => (typeof g.name === 'string' ? g.name : g.name[settings.lang === 'de' ? 0 : 1]);
+export const byId = (id: string) => GAMES.find((g) => g.id === id);
+export const href = (g: Game) => (g.live ? `#/${g.id}` : `#/soon/${g.id}`);

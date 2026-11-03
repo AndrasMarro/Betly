@@ -35,6 +35,12 @@
     push();
   });
   const isHost = $derived(room.role !== 'guest');
+  // after leaving someone else's room, don't keep their (possibly mid-spin) table state
+  let wasGuest = false;
+  $effect(() => {
+    if (room.role === 'guest') wasGuest = true;
+    else if (wasGuest) untrack(() => { wasGuest = false; Object.assign(share, { phase: 'bet', players: [] }); });
+  });
   const me = $derived<Player>({ id: room.myId, name: settings.name, stake, net: myNet });
   const players = $derived(isHost ? [me, ...guests, ...bots] : share.players);
 
@@ -191,6 +197,7 @@
       spinning = true;
       resting = -1;
       const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      sfx('spin');
       const dur = reduce ? 600 : 5600;
       const idx = WHEEL.indexOf(result);
       const w0 = rot, w1 = w0 + 360 * 1.2 + Math.random() * 90;
@@ -251,7 +258,7 @@
       settle(back - stake, back);
       lastBets = mine;
       lastWin = back;
-      sfx(back > 0 ? 'win' : 'lose');
+      sfx(back >= stake * 10 && back > 0 ? 'big' : back > 0 ? 'win' : 'lose');
     }
     bets = [];
     undoStack = [];

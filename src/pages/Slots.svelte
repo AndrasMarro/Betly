@@ -42,6 +42,7 @@
     spinning = true;
     wins = []; win = 0;
     if (free) freeLeft--;
+    sfx('spin');
     const grid = spinGrid(m, reelStrips);
     const durs = grid.map((_, i) => (turbo ? 380 + i * 120 : 900 + i * 260));
     reels = reels.map((r, i) => {
@@ -63,7 +64,7 @@
     wins = res.wins;
     settle(win - (free ? 0 : cost), win);
     if (res.free) freeLeft += res.free;
-    if (win > 0) sfx('win');
+    if (win > 0) sfx(win >= cost * 10 ? 'big' : 'win');
     spinning = false;
 
     if (freeLeft > 0) setTimeout(() => alive && spin(), turbo ? 700 : 1300);

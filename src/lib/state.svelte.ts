@@ -16,6 +16,7 @@ export const settings = $state(
     lang: (navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en') as Lang,
     bots: true,
     sound: true,
+    music: true,
     name: 'Player-' + Math.floor(1000 + Math.random() * 9000),
     accepted: false,
   }),
@@ -44,6 +45,11 @@ export function settle(net: number, won = 0) {
   if (won > wallet.biggestWin) wallet.biggestWin = won;
 }
 
+/** Take a stake off the balance up front (arcade games pay back via settle(win, win)). */
+export function stake(amt: number) {
+  wallet.balance = Math.round((wallet.balance - amt) * 100) / 100;
+}
+
 export const bonusReadyIn = (now: number) =>
   wallet.balance < BROKE ? 0 : Math.max(0, wallet.lastBonus + BONUS_COOLDOWN - now);
 
@@ -61,4 +67,18 @@ export function resetWallet() {
 export const fmt = (n: number) =>
   new Intl.NumberFormat(settings.lang === 'de' ? 'de-DE' : 'en-US', { maximumFractionDigits: 2 }).format(n);
 
-export const ui = $state({ credits: false, settings: false });
+export const ui = $state({ credits: false, settings: false, nameAsk: null as null | ((ok: boolean) => void), welcome: false });
+
+let pending: Promise<boolean> | null = null;
+/** Show the name dialog. welcome = first screen of a session (cannot be cancelled). Concurrent calls share one dialog. */
+export function askName(welcome = false) {
+  if (welcome) ui.welcome = true;
+  return (pending ??= new Promise<boolean>((resolve) => {
+    ui.nameAsk = (ok) => {
+      pending = null;
+      ui.nameAsk = null;
+      ui.welcome = false;
+      resolve(ok);
+    };
+  }));
+}

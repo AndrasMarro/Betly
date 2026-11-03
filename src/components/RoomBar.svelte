@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Room } from '../lib/net.svelte';
+  import { askName } from '../lib/state.svelte';
   import { t } from '../lib/i18n';
   let { room, extra }: { room: Room; extra?: import('svelte').Snippet } = $props();
   let code = $state('');
@@ -8,7 +9,7 @@
 
   onMount(() => {
     const c = new URLSearchParams(location.hash.split('?')[1]).get('room');
-    if (c) room.join(c);
+    if (c) askName().then((ok) => ok && room.join(c));
   });
 
   function copy() {
@@ -37,8 +38,8 @@
       <button class="btn sm ghost" onclick={() => room.leave()}>{t('room.leave')}</button>
     {:else}
       <span class="dot"></span><span class="muted">{t('room.solo')}</span>
-      <button class="btn sm" onclick={() => room.create()}>{t('room.create')}</button>
-      <form onsubmit={(e) => { e.preventDefault(); if (code.trim().length >= 4) room.join(code); }}>
+      <button class="btn sm" onclick={async () => (await askName()) && room.create()}>{t('room.create')}</button>
+      <form onsubmit={async (e) => { e.preventDefault(); if (code.trim().length >= 4 && (await askName())) room.join(code); }}>
         <input class="mono" bind:value={code} placeholder={t('room.code')} maxlength="5" aria-label={t('room.code')} />
         <button class="btn sm ghost" disabled={code.trim().length < 4}>{t('room.join')}</button>
       </form>

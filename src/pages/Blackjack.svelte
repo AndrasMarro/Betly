@@ -25,13 +25,12 @@
   let busy = false;
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, matchMedia('(prefers-reduced-motion: reduce)').matches ? 60 : ms));
 
-  const room = new Room('blackjack', onMsg, (id) => {
-    for (const s of st.seats) if (s.owner === id && !s.hands.length) Object.assign(s, emptySeat());
-    for (const s of st.seats) if (s.owner === id) s.owner = 'gone'; // mid-round: hand plays on as "stand"
-    autoStandGone();
+  const room = new Room('blackjack', onMsg, () => {
     push();
+    pump();
   });
   const isHost = $derived(room.role !== 'guest');
+  if (import.meta.env.DEV) (window as any).__bj = () => ({ st: $state.snapshot(st), busy, myId: room.myId });
   const betting = $derived(st.phase === 'bet' || st.phase === 'done');
 
   // ---------- networking ----------
@@ -65,13 +64,21 @@
 
   // ---------- seats ----------
   let prevId = 'me';
+  let wasGuest = false;
   $effect(() => {
-    const id = room.myId;
+    const id = room.myId, role = room.role;
     untrack(() => {
-      if (room.role === 'guest') return void (prevId = id);
+      if (role === 'guest') return void ((prevId = id), (wasGuest = true));
+      if (wasGuest) {
+        // the table we saw belonged to the old host: start fresh
+        wasGuest = false;
+        st = newTable(st.rules);
+        Object.assign(st.seats[2], { owner: id, name: settings.name });
+      }
       for (const s of st.seats) if (s.owner === prevId) s.owner = id;
       prevId = id;
       push();
+      pump();
     });
   });
   $effect(() => {
@@ -124,26 +131,56 @@
   // ---------- round flow (host) ----------
   async function deal() {
     if (!isHost || !betting || busy) return;
-    for (const s of st.seats) if (s.bot) s.bet = [10, 25, 25, 50, 100][Math.floor(Math.random() * 5)];
+    for (const s of st.seats) {
+      if (s.bot) s.bet = [10, 25, 25, 50, 100][Math.floor(Math.random() * 5)];
+      if (gone(s)) Object.assign(s, emptySeat());
+    }
+    const fresh = st.round === 0 || st.shoe.length < st.rules.decks * 52 * 0.25;
     if (!start(st)) return;
     busy = true;
-    push();
-    for (const op of dealOrder(st)) {
-      op();
+    try {
       push();
-      sfx('card');
-      await sleep(280);
+      if (fresh) { sfx('shuffle'); await sleep(900); }
+      for (const op of dealOrder(st)) {
+        op();
+        push();
+        sfx('card');
+        await sleep(280);
+      }
+      afterDeal(st);
+      push();
+    } finally {
+      busy = false;
     }
-    afterDeal(st);
-    push();
-    busy = false;
     pump();
   }
 
+  // A human seat whose player is no longer connected (left the room, or a stale seat from an old room).
+  const gone = (s: { owner: string | null; bot: boolean }) => !!s.owner && !s.bot && !room.has(s.owner);
+
+  /** Decide for absent players so the table never waits on someone who isn't there. */
   function autoStandGone() {
-    while (st.phase === 'play' && st.turn && st.seats[st.turn[0]].owner === 'gone') act(st, 'stand');
-    if (st.phase === 'insurance') st.seats.forEach((s, i) => s.owner === 'gone' && s.ins === null && insure(st, i, false));
+    while (st.phase === 'play' && st.turn && gone(st.seats[st.turn[0]])) act(st, 'stand');
+    if (st.phase === 'insurance') st.seats.forEach((s, i) => gone(s) && s.ins === null && insure(st, i, false));
   }
+
+  // Remote players get 30 s per decision, then they stand / decline insurance.
+  $effect(() => {
+    if (room.role !== 'host') return;
+    const key = st.phase + JSON.stringify(st.turn) + st.seats.map((s) => s.ins).join();
+    const waiting =
+      (st.phase === 'play' && st.turn && st.seats[st.turn[0]].owner !== room.myId && !st.seats[st.turn[0]].bot) ||
+      (st.phase === 'insurance' && st.seats.some((s) => s.ins === null && s.owner !== room.myId));
+    if (!waiting) return;
+    const id = setTimeout(() => {
+      if (st.phase + JSON.stringify(st.turn) + st.seats.map((s) => s.ins).join() !== key) return;
+      if (st.phase === 'play') act(st, 'stand');
+      else st.seats.forEach((s, i) => s.ins === null && s.owner !== room.myId && insure(st, i, false));
+      push();
+      pump();
+    }, 30_000);
+    return () => clearTimeout(id);
+  });
 
   async function pump() {
     if (!isHost || busy) return;
@@ -172,7 +209,7 @@
       busy = false;
     }
     if (st.phase === 'done') {
-      for (const s of st.seats) if (s.owner === 'gone') Object.assign(s, emptySeat());
+      for (const s of st.seats) if (gone(s)) Object.assign(s, emptySeat());
       push();
     }
   }
@@ -188,7 +225,7 @@
       const net = seats.reduce((a, s) => a + s.net, 0);
       const back = seats.reduce((a, s) => a + s.hands.reduce((x, h) => x + (h.payout ?? 0), 0), 0);
       settle(net, back);
-      sfx(net > 0 ? 'win' : net < 0 ? 'lose' : 'stop');
+      sfx(seats.some((s) => s.hands.some((h) => h.result === 'bj')) ? 'big' : net > 0 ? 'win' : net < 0 ? 'lose' : 'stop');
     });
   });
 
@@ -220,7 +257,7 @@
     if (!isHost || !betting) return;
     const decks = st.rules.decks;
     Object.assign(st.rules, r);
-    if (st.rules.decks !== decks) st.shoe = newShoe(st.rules.decks);
+    if (st.rules.decks !== decks) { st.shoe = newShoe(st.rules.decks); sfx('shuffle'); }
     push();
   }
   const ratio = (x: number) => (x === 1.5 ? '3:2' : x === 1.2 ? '6:5' : '1:1');

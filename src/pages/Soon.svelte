@@ -1,19 +1,19 @@
 <script lang="ts">
-  import { SOON } from '../lib/games';
-  import { t } from '../lib/i18n';
+  import { GAMES, byId, gameName, href } from '../lib/games';
+  import { t, type Key } from '../lib/i18n';
   let { id }: { id: string } = $props();
+  const g = $derived(byId(id));
+  const others = $derived(GAMES.filter((x) => x.live && x.cat === g?.cat));
 </script>
 
 <section class="wrap soon">
-  <p class="eyebrow">{t('soon.title')}</p>
-  <h1>{SOON[id] ?? '?'}</h1>
+  <p class="eyebrow">{g ? t(('cat.' + g.cat) as Key) : ''} · {t('soon.title')}</p>
+  <h1>{g ? gameName(g) : '?'}</h1>
   <p class="sub">{t('soon.text')}</p>
   <div class="links">
-    <a class="btn primary" href="#/roulette">Roulette</a>
-    <a class="btn" href="#/blackjack">Blackjack</a>
-    <a class="btn" href="#/slots">Slots</a>
+    {#each others as o, i}<a class="btn" class:primary={i === 0} href={href(o)}>{gameName(o)}</a>{/each}
   </div>
-  <a class="back" href="#/">{t('soon.back')}</a>
+  <a class="back" href="#/{g?.cat ?? ''}">{t('soon.back')}</a>
 </section>
 
 <style>
