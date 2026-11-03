@@ -6,6 +6,7 @@
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
   import { sfx } from '../lib/sfx';
+  import { pop } from '../lib/motion';
   import { t, type Key } from '../lib/i18n';
 
   let bet = $state(10);
@@ -13,12 +14,14 @@
   const segs = $derived(wheelLayout(risk));
   let rot = $state(0);
   let flick = $state(0);
+  let lastIndex = $state(-1);
+  let confetti = $state<{ id: number; x: number; y: number; r: number; c: string; d: number }[] | null>(null);
   let busy = $state(false);
   let result = $state<{ m: number; win: number } | null>(null);
   let history = $state<{ m: number; id: number }[]>([]);
   let n = 0;
 
-  const COLORS: Record<string, string> = { '0': '#2a2f45', '1.2': '#2fa3a0', '1.3': '#36c2b4', '1.5': '#2fbf71', '2': '#4f8dff', '3': '#9b6bff', '4.4': '#f2c046', '29.1': '#ff4d5e' };
+  const COLORS: Record<string, string> = { '0': '#30355a', '1.2': '#18b5a8', '1.3': '#00d1c1', '1.5': '#2fd17a', '2': '#3d8bff', '3': '#9b5cff', '4.4': '#ffbe2e', '29.1': '#ff3d6e' };
   const col = (m: number) => COLORS[String(m)] ?? '#888';
   const legend = $derived([...new Set(WHEELS[risk])].sort((a, b) => a - b).map((m) => ({ m, n: WHEELS[risk].filter((x) => x === m).length })));
 
@@ -55,7 +58,16 @@
       };
       requestAnimationFrame(frame);
     });
+    lastIndex = i;
     const m = segs[i], win = Math.round(b * m * 100) / 100;
+    if (m > 1) {
+      const palette = ['#f2c046', '#ff5d63', '#4fe3a0', '#6aa8ff', '#b57bff', '#ffffff'];
+      confetti = Array.from({ length: m >= 4 ? 60 : 30 }, (_, k) => {
+        const a = Math.random() * Math.PI * 2, d = 120 + Math.random() * 180;
+        return { id: n * 100 + k, x: Math.cos(a) * d, y: Math.sin(a) * d - 60, r: Math.random() * 720 - 360, c: palette[k % palette.length], d: Math.random() * 120 };
+      });
+      setTimeout(() => (confetti = null), 1600);
+    }
     settle(win, win);
     result = { m, win };
     history = [{ m, id: ++n }, ...history].slice(0, 14);
@@ -84,28 +96,45 @@
     </div>
   {/snippet}
 
-  <div class="stage">
+  <div class="stage" class:spinning={busy}>
+    <div class="rays" aria-hidden="true"></div>
     <div class="wheelbox">
-      <svg class="pointer" viewBox="0 0 40 40" aria-hidden="true" style="rotate:{flick}deg"><path d="M20 38 L6 8 Q20 0 34 8 Z" /></svg>
-      <svg viewBox="-100 -100 200 200" class="wheel" style="transform: rotate({rot}deg)" aria-hidden="true">
-        <circle r="99" fill="#141828" />
-        {#each segs as m, i}
-          <path d={wedge(i, segs.length)} fill={col(m)} stroke="#141828" stroke-width="0.8" />
-        {/each}
-        {#if segs.length <= 20}
-          {#each segs as m, i}
-            <text transform="rotate({(i * 360) / segs.length}) translate(0 -78)" class="lbl">{m ? m + '×' : ''}</text>
-          {/each}
-        {/if}
-        <circle r="34" fill="#141828" />
-        <circle r="30" fill="url(#hub)" />
-        <defs><radialGradient id="hub" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#3a4266" /><stop offset="1" stop-color="#1a1f33" /></radialGradient></defs>
+      <svg class="pointer" viewBox="0 0 40 52" aria-hidden="true" style="rotate:{flick}deg">
+        <defs><linearGradient id="pin" x1="0" x2="1"><stop offset="0" stop-color="#ff7a7f" /><stop offset="1" stop-color="#b3202a" /></linearGradient></defs>
+        <path d="M20 50 L5 14 A16 16 0 1 1 35 14 Z" fill="url(#pin)" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" />
+        <circle cx="20" cy="15" r="5.5" fill="#fff" />
       </svg>
-      <div class="hub">
-        {#if result}
-          <strong class="mono" style="color:{result.m ? col(result.m) : '#ff9a9d'}" in:scale={{ start: 0.9, duration: 450 }}>{result.m}×</strong>
-        {/if}
+      <div class="rim" aria-hidden="true">
+        {#each Array(24) as _, i}<i style="--i:{i}; transform: rotate({i * 15}deg) translateY(calc(var(--r) * -1))"></i>{/each}
       </div>
+      <svg viewBox="-100 -100 200 200" class="wheel" style="transform: rotate({rot}deg)" aria-hidden="true">
+        <defs>
+          {#each Object.entries(COLORS) as [m, c]}
+            <radialGradient id="g{m.replace('.', '_')}" cx="0" cy="0" r="96" gradientUnits="userSpaceOnUse">
+              <stop offset="0.35" stop-color={c} stop-opacity=".75" /><stop offset="1" stop-color={c} />
+            </radialGradient>
+          {/each}
+        </defs>
+        {#each segs as m, i}
+          <path d={wedge(i, segs.length)} fill="url(#g{String(m).replace('.', '_')})" stroke="rgba(255,255,255,.85)" stroke-width="0.9" class:hit={result && !busy && i === lastIndex} />
+        {/each}
+        {#each segs as m, i}
+          {#if segs.length <= 20 || m}
+            <text transform="rotate({(i * 360) / segs.length}) translate(0 -74)" class="lbl" class:z={!m}>{m ? m + '×' : '0'}</text>
+          {/if}
+        {/each}
+        <circle r="98" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1" />
+      </svg>
+      <button class="hubbtn" disabled={busy || bet > wallet.balance} onclick={spin} aria-label={t('r.spin')}>
+        {#if result && !busy}
+          {#key result}<strong class="mono" style="color:{result.m ? col(result.m) : '#ff9a9d'}" in:pop>{result.m}×</strong>{/key}
+        {:else}<span>{t('r.spin')}</span>{/if}
+      </button>
+      {#if confetti}
+        <div class="confetti" aria-hidden="true">
+          {#each confetti as c (c.id)}<i style="--x:{c.x}px; --y:{c.y}px; --r:{c.r}deg; --c:{c.c}; --d:{c.d}ms"></i>{/each}
+        </div>
+      {/if}
     </div>
     <p class="win mono" class:pos={(result?.win ?? 0) > 0}>{result ? (result.win > 0 ? '+' + fmt(result.win) : '0') : ''}</p>
     <div class="hist">
@@ -125,14 +154,36 @@
   .legend span { display: flex; align-items: center; gap: 8px; }
   .legend i { width: 12px; height: 12px; border-radius: 4px; background: var(--c); }
   .legend em { font-style: normal; color: var(--muted); margin-left: auto; }
-  .stage { display: grid; justify-items: center; gap: 14px; padding: clamp(20px, 3vw, 36px); border-radius: 28px; background: radial-gradient(ellipse at 50% 20%, #232a4a, #0d1122 72%); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); color: #fff; }
-  .wheelbox { position: relative; width: min(100%, 440px); aspect-ratio: 1; }
-  .wheel { width: 100%; height: 100%; will-change: transform; filter: drop-shadow(0 20px 40px rgba(0,0,0,.5)); }
-  .lbl { font: 700 7px 'Geist Mono Variable', monospace; fill: rgba(0,0,0,.72); text-anchor: middle; dominant-baseline: middle; }
-  .pointer { position: absolute; left: 50%; top: -6px; width: 34px; height: 34px; translate: -50% 0; z-index: 2; transform-origin: 50% 20%; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
-  .pointer path { fill: #f4f2ee; }
-  .hub { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
-  .hub strong { font-size: clamp(1.4rem, 3.4vw, 2rem); }
+  .stage { position: relative; overflow: hidden; display: grid; justify-items: center; gap: 14px; padding: clamp(24px, 3vw, 40px); border-radius: 28px; background: radial-gradient(ellipse at 50% 40%, #3a1d6e, #140a2e 70%); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); color: #fff; }
+  .rays { position: absolute; left: 50%; top: 44%; width: 160%; aspect-ratio: 1; translate: -50% -50%; background: repeating-conic-gradient(rgba(255,255,255,.06) 0 6deg, transparent 6deg 18deg); animation: rays 40s linear infinite; pointer-events: none; mask-image: radial-gradient(closest-side, #000 30%, transparent); }
+  .stage.spinning .rays { animation-duration: 8s; }
+  @keyframes rays { to { rotate: 360deg; } }
+  .wheelbox { --r: 46.6cqw; position: relative; width: min(100%, 440px); aspect-ratio: 1; container-type: inline-size; }
+  .wheel { position: absolute; inset: 5%; width: 90%; height: 90%; will-change: transform; filter: drop-shadow(0 16px 30px rgba(0,0,0,.5)); }
+  .wheel path { transition: filter 0.3s var(--ease-snap); }
+  .wheel path.hit { filter: brightness(1.35) drop-shadow(0 0 6px #fff); animation: segpulse 0.8s var(--ease-snap) 3; }
+  @keyframes segpulse { 50% { filter: brightness(1.7) drop-shadow(0 0 10px #fff); } }
+  .lbl { font: 800 7.5px 'Geist Variable', sans-serif; fill: #fff; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: rgba(0,0,0,.45); stroke-width: 1.6px; }
+  .lbl.z { fill: rgba(255,255,255,.4); font-size: 6px; stroke-width: 0; }
+  .rim { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(closest-side, transparent 88%, #d39a2c 89%, #f7d77a 93%, #a8741a 97%, transparent 98%); }
+  .rim i { position: absolute; left: 50%; top: 50%; width: 3.2%; height: 3.2%; margin: -1.6% 0 0 -1.6%; border-radius: 50%; background: #fff4c2; box-shadow: 0 0 8px #ffd34d; animation: bulb 1.2s steps(1) infinite; animation-delay: calc(var(--i) * -0.1s); }
+  .rim i { transform-origin: center; }
+  .stage.spinning .rim i { animation-duration: 0.36s; }
+  @keyframes bulb { 50% { background: #7a5a1a; box-shadow: none; } }
+  .pointer { position: absolute; left: 50%; top: -2%; width: 11%; translate: -50% 0; z-index: 3; transform-origin: 50% 28%; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+  .hubbtn {
+    position: absolute; left: 50%; top: 50%; width: 27%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 0; z-index: 2; display: grid; place-items: center;
+    background: radial-gradient(circle at 38% 30%, #ffffff, #e9e3ff 25%, #8f7bd9 70%, #4b3a8f); box-shadow: 0 0 0 5px #f2c046, 0 0 0 8px #8a5d12, 0 12px 30px rgba(0,0,0,.55), inset 0 -6px 12px rgba(0,0,0,.25);
+    color: #2a1a5e; font: 800 clamp(0.8rem, 2.6cqw, 1.1rem) 'Geist Variable', sans-serif; letter-spacing: 0.08em; text-transform: uppercase; transition: transform 0.35s var(--ease-snap);
+  }
+  .hubbtn:not(:disabled) { animation: breathe 1.8s var(--ease-snap) infinite alternate; }
+  .hubbtn:hover:not(:disabled) { transform: scale(1.05); }
+  .hubbtn:active:not(:disabled) { transform: scale(0.96); }
+  @keyframes breathe { to { box-shadow: 0 0 0 5px #f2c046, 0 0 0 8px #8a5d12, 0 0 30px 6px rgba(242,192,70,.45), inset 0 -6px 12px rgba(0,0,0,.25); } }
+  .hubbtn strong { font-size: clamp(1.1rem, 4.4cqw, 1.8rem); text-shadow: 0 1px 0 rgba(255,255,255,.6); }
+  .confetti { position: absolute; left: 50%; top: 50%; pointer-events: none; z-index: 4; }
+  .confetti i { position: absolute; width: 8px; height: 12px; border-radius: 2px; background: var(--c); animation: conf 1.4s var(--ease-snap) var(--d) both; }
+  @keyframes conf { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--x), calc(var(--y) + 160px)) rotate(var(--r)); opacity: 0; } }
   .win { margin: 0; min-height: 1.6em; font-size: 1.4rem; color: rgba(255,255,255,.6); }
   .win.pos { color: #8ff0bf; }
   .hist { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 26px; }

@@ -15,6 +15,7 @@
   let phase = $state<'idle' | 'play' | 'over'>('idle');
   let pos = $state(0); // 0 = sidewalk, 1..LANES = lanes
   let dead = $state(false);
+  let cleared = $state(0); // lanes confirmed safe (the barrier drops only on these)
   let busy = $state(false);
   let won = $state(0);
   let stakeNow = $state(0);
@@ -48,6 +49,7 @@
     stakeNow = bet;
     stake(bet);
     pos = 0;
+    cleared = 0;
     dead = false;
     won = 0;
     cars = cars.filter((c) => c.kind === 'pass');
@@ -72,6 +74,7 @@
       settle(0, 0);
       phase = 'over';
     } else {
+      cleared = pos;
       if (Math.random() < 0.4) { spawn(pos, 'brake', 0.75); setTimeout(() => sfx('stop'), 520); }
       if (pos === LANES) cashout();
     }
@@ -122,7 +125,7 @@
         <div class="curb start"></div>
         {#each Array(LANES) as _, i}
           {@const lane = i + 1}
-          <div class="lane" class:passed={lane < pos || (lane === pos && !dead)} class:next={phase === 'play' && lane === pos + 1} class:hit={dead && lane === pos}>
+          <div class="lane" class:passed={lane <= cleared} class:next={phase === 'play' && lane === pos + 1} class:hit={dead && lane === pos}>
             <div class="hole"><span class="mono">×{hopMult(level, lane).toFixed(2)}</span></div>
             <div class="gate"></div>
           </div>

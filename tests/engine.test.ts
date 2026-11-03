@@ -214,3 +214,18 @@ import { score5, bestHand, newTable as pkTable, startHand, act as pkAct, legal a
   }
   console.log('poker checks passed');
 }
+
+import { SCRATCH3, pick3Symbols } from '../src/games/arcade.ts';
+{
+  assert.ok(Math.abs(SCRATCH3.reduce((a, x) => a + x.mult * x.p, 0) - 0.97) < 1e-9, 'pick-3 scratch RTP');
+  for (let i = 0; i < 500; i++) { const s = pick3Symbols(null); assert.ok(!(s[0] === s[1] && s[1] === s[2]), 'losing pick never shows a triple'); }
+  console.log('pick-3 checks passed');
+}
+
+import { CLASSIC_CASE, atLeastOneGold, caseRtp as cr } from '../src/games/arcade.ts';
+{
+  assert.ok(Math.abs(atLeastOneGold(385) - 0.632) < 0.002, 'geometric: 63.2 % after 385 openings');
+  const ev = cr(CLASSIC_CASE);
+  assert.ok(ev > 0.3 && ev < 0.65, 'classic case keeps a strongly negative EV: ' + ev);
+  console.log('classic case EV', ev.toFixed(4), 'P(gold in 385)', atLeastOneGold(385).toFixed(4));
+}

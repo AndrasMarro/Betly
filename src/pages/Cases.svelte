@@ -2,15 +2,23 @@
   import { onDestroy, tick } from 'svelte';
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import SlotSymbol from '../components/SlotSymbol.svelte';
-  import { CASES, RARITIES, pickItem, type CaseItem } from '../games/arcade';
+  import { CASES, CLASSIC_CASE, RARITIES, GOLD_P, pickItem, atLeastOneGold, caseRtp, type CaseItem } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
   import { sfx, reveal } from '../lib/sfx';
   import { pop } from '../lib/motion';
   import { t } from '../lib/i18n';
 
+  let mode = $state<'arcade' | 'classic'>('arcade');
   let ci = $state(0);
-  const box = $derived(CASES[ci]);
+  const box = $derived(mode === 'classic' ? CLASSIC_CASE : CASES[ci]);
+  // classic mode keeps lifetime stats, like a real inventory history
+  let stats = $state({ opened: 0, golds: 0, spent: 0, back: 0 });
+  try { Object.assign(stats, JSON.parse(localStorage.getItem('betly:cases-classic') || '{}')); } catch {}
+  $effect(() => { try { localStorage.setItem('betly:cases-classic', JSON.stringify(stats)); } catch {} });
+  let calcN = $state(385);
+  const curve = $derived(Array.from({ length: 61 }, (_, i) => [i * 25, atLeastOneGold(i * 25)] as const));
+  let kick = $state(0);
   let quick = $state(false);
   let spinning = $state(false);
   let fast = $state(false);
@@ -43,24 +51,26 @@
     await tick();
     const center = viewport.clientWidth / 2;
     const target = WIN_AT * STEP + ITEM / 2 - center + (Math.random() - 0.5) * (ITEM * 0.8);
-    const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : quick ? 1900 : 6200;
+    const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : quick ? 2200 : 7200;
     const t0 = performance.now();
     let lastIdx = -1;
     sfx('spin');
     await new Promise<void>((resolve) => {
       const frame = (now: number) => {
         const k = Math.min(1, (now - t0) / dur);
-        // long, smooth deceleration: fast start, many seconds of slowing ticks
-        offset = target * (1 - Math.pow(1 - k, 4.2));
-        fast = k < 0.32;
+        // very fast start, then a long cubic slowdown so the last items crawl past the marker
+        offset = target * (1 - Math.pow(1 - k, 3.1));
+        fast = k < 0.22;
         const idx = Math.floor((offset + center) / STEP);
-        if (idx !== lastIdx) { lastIdx = idx; sfx('caseTick'); }
+        if (idx !== lastIdx) { lastIdx = idx; sfx('caseTick'); kick = now; }
         if (k < 1) raf = requestAnimationFrame(frame);
         else resolve();
       };
       raf = requestAnimationFrame(frame);
     });
+    await new Promise((r) => setTimeout(r, quick ? 120 : 380)); // a breath before the reveal
     const value = Math.round(box.price * prize.mult * 100) / 100;
+    if (mode === 'classic') { stats.opened++; stats.spent += box.price; stats.back += value; if (prize.rarity === 4) stats.golds++; }
     settle(value, value);
     reveal(prize.rarity);
     win = { item: prize, value };
@@ -78,15 +88,29 @@
 <ArcadeLayout eyebrow="Arcade · {box.items.length} items" title={gameName(byId('cases')!)}>
   {#snippet controls()}
     <button class="btn primary big" disabled={spinning || box.price > wallet.balance} onclick={open}>{t('cs.open')} <span class="mono">{fmt(box.price)}</span></button>
-    <div class="picker">
-      {#each CASES as c, i}
-        <button class="case" class:on={ci === i} disabled={spinning} onclick={() => { ci = i; sfx('click'); }} style="--c:{c.color}">
-          <span class="crate"><i></i></span>
-          <span class="nm">{c.name}</span>
-          <span class="mono pr">{fmt(c.price)}</span>
-        </button>
-      {/each}
+    <div class="seg" role="group">
+      <button class:on={mode === 'arcade'} disabled={spinning} onclick={() => (mode = 'arcade')}>Arcade</button>
+      <button class:on={mode === 'classic'} disabled={spinning} onclick={() => (mode = 'classic')}>Classic</button>
     </div>
+    {#if mode === 'arcade'}
+      <div class="picker">
+        {#each CASES as c, i}
+          <button class="case" class:on={ci === i} disabled={spinning} onclick={() => { ci = i; sfx('click'); }} style="--c:{c.color}">
+            <span class="crate"><i></i></span>
+            <span class="nm">{c.name}</span>
+            <span class="mono pr">{fmt(c.price)}</span>
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <div class="math">
+        <p class="eyebrow">{t('cs.odds')}</p>
+        {#each RARITIES as r, i}
+          <div class="row" style="--c:{r.color}"><i></i><span>{t(('cs.c' + i) as any)}</span><span class="mono">{(r.p * 100).toFixed(2)} %</span><span class="mono muted">1 : {1 / r.p < 10 ? (1 / r.p).toFixed(2) : Math.round(1 / r.p)}</span></div>
+        {/each}
+        <p class="small">{t('cs.evText').replace('{ev}', ((caseRtp(box) - 1) * 100).toFixed(0))}</p>
+      </div>
+    {/if}
     <label class="switch"><span>{t('cs.quick')}</span><input type="checkbox" bind:checked={quick} disabled={spinning} /></label>
   {/snippet}
 
@@ -100,7 +124,7 @@
           </div>
         {/each}
       </div>
-      <div class="marker" aria-hidden="true"></div>
+      {#key kick}<div class="marker" class:nudge={spinning} aria-hidden="true"></div>{/key}
       <div class="fade l"></div><div class="fade r"></div>
     </div>
 
@@ -129,6 +153,31 @@
         </div>
       {/each}
     </div>
+    {#if mode === 'classic'}
+      <div class="geo">
+        <div class="geo-text">
+          <h4 class="eyebrow">{t('cs.geoTitle')}</h4>
+          <p class="formula mono">P(≥1) = 1 − (1 − {GOLD_P})<sup>n</sup></p>
+          <label class="calc">n = <input class="mono" type="number" min="1" max="5000" bind:value={calcN} /> → <strong class="mono">{(atLeastOneGold(Math.max(0, calcN || 0)) * 100).toFixed(1)} %</strong></label>
+          <p class="small">{t('cs.geoText')}</p>
+          <div class="mine">
+            <span>{t('cs.opened')} <strong class="mono">{stats.opened}</strong></span>
+            <span>Gold <strong class="mono">{stats.golds}</strong></span>
+            <span>{t('cs.chanceSoFar')} <strong class="mono">{(atLeastOneGold(stats.opened) * 100).toFixed(1)} %</strong></span>
+            <span>{t('cs.spent')} <strong class="mono">{fmt(stats.spent)}</strong></span>
+            <span>{t('cs.back')} <strong class="mono" class:neg={stats.back < stats.spent}>{fmt(Math.round(stats.back * 100) / 100)}</strong></span>
+          </div>
+        </div>
+        <svg class="plot" viewBox="0 0 300 140" aria-label="P(n)">
+          <path d="M20 120 H290 M20 120 V10" class="axis" />
+          <path class="line" d={'M' + curve.map(([x, y]) => `${20 + (x / 1500) * 270} ${120 - y * 110}`).join(' L')} />
+          <line x1={20 + (Math.min(1500, calcN || 0) / 1500) * 270} x2={20 + (Math.min(1500, calcN || 0) / 1500) * 270} y1="10" y2="120" class="mark" />
+          <circle cx={20 + (Math.min(1500, stats.opened) / 1500) * 270} cy={120 - atLeastOneGold(stats.opened) * 110} r="4" class="me" />
+          <text x="20" y="136">0</text><text x="150" y="136">750</text><text x="270" y="136">1500</text>
+          <text x="2" y="14">100%</text>
+        </svg>
+      </div>
+    {/if}
     {#if history.length}
       <div class="hist">
         {#each history as h (h.id)}<span style="--c:{RARITIES[h.item.rarity].color}" title={h.item.name}><SlotSymbol sym={h.item.icon} /></span>{/each}
@@ -165,6 +214,32 @@
   .iname { font-size: 0.75rem; color: rgba(255,255,255,.75); }
   .item.won { animation: glow 1.2s var(--ease-snap) both; }
   @keyframes glow { 0% { box-shadow: inset 0 -4px 0 var(--c), 0 0 0 0 var(--c); } 40% { box-shadow: inset 0 -150px 0 color-mix(in srgb, var(--c) 30%, transparent), 0 0 40px 6px var(--c); } 100% { box-shadow: inset 0 -4px 0 var(--c), 0 0 24px 2px var(--c); } }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .seg button { min-height: 38px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2); font-size: 0.85rem; transition: background-color 0.25s var(--ease-snap), color 0.25s var(--ease-snap); }
+  .seg button.on { background: var(--text); color: var(--bg); }
+  .seg button:disabled:not(.on) { opacity: 0.45; }
+  .math { display: grid; gap: 6px; font-size: 0.82rem; }
+  .math .row { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 8px; align-items: center; }
+  .math .row i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.78rem; color: var(--muted); margin: 4px 0 0; }
+  .geo { display: grid; grid-template-columns: 1fr minmax(220px, 300px); gap: 18px; align-items: center; padding: 16px; border-radius: 16px; background: #161824; }
+  .geo h4 { margin: 0 0 8px; color: rgba(255,255,255,.55); }
+  .formula { margin: 0 0 10px; font-size: 0.95rem; }
+  .calc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .calc input { width: 90px; min-height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: #0e0f18; color: #fff; padding: 0 10px; }
+  .calc strong { color: #e4ae39; font-size: 1.1rem; }
+  .mine { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 0.8rem; color: rgba(255,255,255,.65); }
+  .mine strong { color: #fff; }
+  .mine .neg { color: #ff9a9d; }
+  .plot { width: 100%; height: auto; }
+  .plot .axis { stroke: rgba(255,255,255,.25); fill: none; }
+  .plot .line { stroke: #e4ae39; stroke-width: 2.5; fill: none; }
+  .plot .mark { stroke: rgba(255,255,255,.35); stroke-dasharray: 3 4; }
+  .plot .me { fill: #2fbf71; }
+  .plot text { fill: rgba(255,255,255,.45); font: 9px 'Geist Mono Variable', monospace; }
+  .marker.nudge { animation: nudge 0.12s var(--ease-snap); }
+  @keyframes nudge { 40% { transform: scaleX(1.8); } }
   .marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #f2c046; box-shadow: 0 0 14px #f2c046; }
   .marker::before, .marker::after { content: ''; position: absolute; left: 50%; translate: -50% 0; border: 9px solid transparent; }
   .marker::before { top: 0; border-top-color: #f2c046; }
@@ -191,5 +266,6 @@
   .hist span { width: 34px; height: 34px; padding: 5px; border-radius: 9px; background: #161824; box-shadow: inset 0 -3px 0 var(--c); }
   @media (max-width: 640px) {
     .item { flex-basis: 150px; }
+    .geo { grid-template-columns: 1fr; }
   }
 </style>
