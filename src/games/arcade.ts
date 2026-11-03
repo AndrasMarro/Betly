@@ -137,3 +137,33 @@ export function scratchCard(u = Math.random()) {
   }
   return { cells, prize };
 }
+
+// ---------- Cases (open a case, a reel spins and lands on one item) ----------
+export const RARITIES = [
+  { p: 0.7992, color: '#4b69ff' }, // common
+  { p: 0.1598, color: '#8847ff' }, // uncommon
+  { p: 0.032, color: '#d32ce6' }, // rare
+  { p: 0.0064, color: '#eb4b4b' }, // epic
+  { p: 0.0026, color: '#e4ae39' }, // legendary
+];
+const CASE_MULTS = [[0.2, 0.3, 0.4, 0.5], [1, 1.4, 1.8], [3.5, 5.1], [12, 22], [84.5]];
+export type CaseItem = { rarity: number; mult: number; icon: string; name: string };
+export type CaseDef = { id: string; name: string; price: number; color: string; items: CaseItem[] };
+const mk = (id: string, name: string, price: number, color: string, list: [string, string][]): CaseDef => {
+  let k = 0;
+  const items = CASE_MULTS.flatMap((ms, rarity) => ms.map((mult) => ({ rarity, mult, icon: list[k][0], name: list[k++][1] })));
+  return { id, name, price, color, items };
+};
+export const CASES: CaseDef[] = [
+  mk('starter', 'Starter Case', 10, '#4b69ff', [['cherry', 'Cherry Pop'], ['lemon', 'Sour Drop'], ['plum', 'Plum Wave'], ['horseshoe', 'Iron Luck'], ['bell', 'Bell Ringer'], ['coin', 'Gold Coin'], ['hat', 'Top Hat'], ['clover', 'Four Leaf'], ['bar', 'Bar Chart'], ['crown', 'Crown Jewel'], ['sun', 'Solar Flare'], ['seven', 'Lucky Seven']]),
+  mk('neon', 'Neon Case', 50, '#d32ce6', [['comet', 'Comet Tail'], ['moon', 'Half Moon'], ['amethyst', 'Violet Shard'], ['planet', 'Ring World'], ['ufo', 'Visitor'], ['emerald', 'Green Prism'], ['sapphire', 'Deep Blue'], ['ruby', 'Red Heart'], ['star', 'Super Nova'], ['wild', 'Wildcard'], ['sun', 'Red Giant'], ['crown', 'Neon Crown']]),
+  mk('royal', 'Royal Case', 250, '#e4ae39', [['coin', 'Old Coin'], ['bell', 'Brass Bell'], ['horseshoe', 'Silver Shoe'], ['hat', 'Gentleman'], ['pot', 'Pot of Gold'], ['sapphire', 'Royal Blue'], ['emerald', 'Emerald Ring'], ['ruby', 'Ruby Throne'], ['star', 'Golden Star'], ['seven', 'Seven Seas'], ['wild', 'Jester'], ['crown', 'The Crown']]),
+];
+export function pickItem(c: CaseDef, u = Math.random()) {
+  let acc = 0;
+  const rarity = Math.max(0, RARITIES.findIndex((r) => (acc += r.p) > u));
+  const pool = c.items.filter((i) => i.rarity === rarity);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+export const caseRtp = (c: CaseDef) =>
+  RARITIES.reduce((a, r, i) => { const pool = c.items.filter((x) => x.rarity === i); return a + r.p * pool.reduce((s, x) => s + x.mult, 0) / pool.length; }, 0);

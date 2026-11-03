@@ -6,6 +6,7 @@
   import { drawRank, hiloMult, pHigher, pLower } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
+  import { spring } from '../lib/motion';
   import { t } from '../lib/i18n';
   import type { Card } from '../lib/cards';
 
@@ -20,6 +21,15 @@
   let n = 0;
 
   const deal = (): Card => ({ r: drawRank(), s: Math.floor(Math.random() * 4) });
+  // the card slides off the deck face down, then flips over
+  let shown = $state<Card>({ r: 0, s: 0 });
+  $effect(() => {
+    const c = phase === 'idle' ? { r: 0, s: 0 } : card;
+    void chain.length;
+    shown = { r: 0, s: 0 };
+    const id = setTimeout(() => (shown = c), 160);
+    return () => clearTimeout(id);
+  });
   const mult = $derived(hiloMult(probs));
   const hi = $derived(pHigher(card.r)), lo = $derived(pLower(card.r));
   const pct = (p: number) => (p * 100).toFixed(1) + ' %';
@@ -43,7 +53,7 @@
     card = nextCard;
     chain = [...chain, { card: nextCard, dir, id: ++n }].slice(-10);
     sfx('card');
-    await new Promise((r) => setTimeout(r, 380));
+    await new Promise((r) => setTimeout(r, 700));
     if (dir !== 'skip') {
       const ok = dir === 'hi' ? nextCard.r >= prev : nextCard.r <= prev;
       if (ok) { probs = [...probs, p]; sfx('gem'); }
@@ -80,7 +90,7 @@
       <div class="stack" aria-hidden="true"><CardView card={{ r: 0, s: 0 }} /></div>
       <div class="current">
         {#key chain.length}
-          <div class="flip" in:fly={{ x: -140, duration: 450, opacity: 0.4 }}><CardView card={phase === 'idle' ? { r: 0, s: 0 } : card} /></div>
+          <div class="flip" in:fly={{ x: -150, duration: 420, opacity: 1, easing: spring }}><CardView card={shown} /></div>
         {/key}
       </div>
     </div>

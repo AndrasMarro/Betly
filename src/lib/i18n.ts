@@ -1,6 +1,9 @@
 import { settings } from './state.svelte';
 
 const de = {
+  'game.cases': 'Kisten öffnen wie im Shooter: Das Band rattert, bremst und bleibt auf deinem Gegenstand stehen. Fünf Seltenheiten.',
+  'cs.open': 'Kiste öffnen', 'cs.quick': 'Schnell öffnen', 'cs.hint': 'Wähle eine Kiste und öffne sie.', 'cs.contents': 'Inhalt',
+  'cs.r0': 'Gewöhnlich', 'cs.r1': 'Ungewöhnlich', 'cs.r2': 'Selten', 'cs.r3': 'Episch', 'cs.r4': 'Legendär',
   'game.tower': 'Klettere Stockwerk für Stockwerk nach oben. Jede Etage versteckt Bomben, jede sichere Wahl zahlt mehr.',
   'game.coinflip': 'Kopf oder Zahl. Jeder Treffer verdoppelt fast, halte die Serie oder kassiere.',
   'game.hilo': 'Ist die nächste Karte höher oder tiefer? Baue eine Kette und steig rechtzeitig aus.',
@@ -72,6 +75,9 @@ const de = {
 };
 
 const en: typeof de = {
+  'game.cases': 'Open cases like in a shooter: the reel rattles, slows down and stops on your item. Five rarities.',
+  'cs.open': 'Open case', 'cs.quick': 'Quick open', 'cs.hint': 'Pick a case and open it.', 'cs.contents': 'Contents',
+  'cs.r0': 'Common', 'cs.r1': 'Uncommon', 'cs.r2': 'Rare', 'cs.r3': 'Epic', 'cs.r4': 'Legendary',
   'game.tower': 'Climb floor by floor. Every level hides bombs, every safe pick pays more.',
   'game.coinflip': 'Heads or tails. Every hit nearly doubles, keep the streak or cash out.',
   'game.hilo': 'Is the next card higher or lower? Build a chain and get out in time.',

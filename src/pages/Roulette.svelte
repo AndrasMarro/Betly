@@ -9,7 +9,8 @@
   import { Room } from '../lib/net.svelte';
   import { settings, wallet, settle, fmt } from '../lib/state.svelte';
   import { chipOf, short } from '../lib/chips';
-  import { sfx } from '../lib/sfx';
+  import { sfx, rolling } from '../lib/sfx';
+  import { drop, pop } from '../lib/motion';
   import { t } from '../lib/i18n';
 
   type Player = { id: string; name: string; bot?: boolean; stake: number; net: number | null; bets?: { nums: number[]; amt: number }[] };
@@ -207,6 +208,9 @@
       const t0 = performance.now();
       let lastPocket = -1;
       const ease = (x: number) => 1 - Math.pow(1 - x, 3);
+      const roll = rolling();
+      const clacks = [0.63, 0.67, 0.705, 0.74, 0.775, 0.86];
+      let nextClack = 0;
       const frame = (now: number) => {
         const k = Math.min(1, (now - t0) / dur);
         rot = w0 + (w1 - w0) * ease(k);
@@ -215,10 +219,14 @@
         const drop = k < 0.62 ? 0 : Math.min(1, (k - 0.62) / 0.18);
         const bounce = k > 0.8 && k < 0.92 ? Math.sin(((k - 0.8) / 0.12) * Math.PI) * 3 : 0;
         ball = { a, r: 89 - 25 * drop + bounce };
+        // ball on the rim: rolling noise follows its speed; then it clatters over the frets
+        roll.set(k < 0.62 ? Math.pow(1 - k, 1.6) : Math.max(0, 0.35 - (k - 0.62) * 2));
+        if (nextClack < clacks.length && k >= clacks[nextClack]) { nextClack++; sfx('bounce'); }
+        if (k > 0.8 && nextClack >= clacks.length - 1) roll.set(0);
         const pocket = Math.floor((a - rot) / step);
         if (drop > 0 && pocket !== lastPocket && k < 0.9) { lastPocket = pocket; sfx('tick'); }
         if (k < 1) requestAnimationFrame(frame);
-        else { rot %= 360; resting = idx; spinning = false; sfx('stop'); done(); }
+        else { roll.stop(); rot %= 360; resting = idx; spinning = false; sfx('stop'); done(); }
       };
       requestAnimationFrame(frame);
     });
@@ -294,7 +302,7 @@
       <div class="wheelbox">
         <Wheel rotation={rot} {ball} highlight={share.phase !== 'bet' && !spinning ? share.result : -1} />
         {#if share.phase !== 'bet' && !spinning && share.result >= 0}
-          <div class="result {color(share.result)}" in:scale={{ start: 0.6, duration: 400 }}>{share.result}</div>
+          <div class="result {color(share.result)}" in:pop>{share.result}</div>
         {/if}
       </div>
       {#if lastWin !== null && !spinning}
@@ -349,7 +357,7 @@
             </div>
           {/each}
           {#each bets as b (b.key)}
-            <div class="placed" style={pointStyle(b.ax!, b.ay!)} in:scale={{ start: 1.6, duration: 260 }}>
+            <div class="placed" style={pointStyle(b.ax!, b.ay!)} in:drop out:pop={{ duration: 220 }}>
               <span class="chip" data-v={chipOf(b.amt)}>{short(b.amt)}</span>
             </div>
           {/each}

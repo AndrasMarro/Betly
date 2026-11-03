@@ -2,7 +2,7 @@
   import { fly, scale } from 'svelte/transition';
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
-  import Sprite from '../components/Sprite.svelte';
+  import Dice3D from '../components/Dice3D.svelte';
   import { DICE_BETS, diceMult, diceProb, roll } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
@@ -13,14 +13,16 @@
   let pickd = $state('over');
   let rolling = $state(false);
   let rolls = $state(0);
-  let dice = $state([{ rx: 0, ry: 0, n: 1 }, { rx: 0, ry: 0, n: 1 }]);
+  let values = $state<[number, number]>([1, 1]);
+  let done = () => {};
+  let diceSize = $state(96);
+  $effect(() => {
+    const mq = matchMedia('(max-width: 640px)');
+    diceSize = mq.matches ? 72 : 96;
+  });
   let last = $state<{ a: number; b: number; win: number } | null>(null);
   let history = $state<{ s: number; win: boolean; id: number }[]>([]);
 
-  // cube rotation that shows face n at the front
-  const FRONT: Record<number, [number, number]> = { 1: [0, 0], 6: [0, 180], 3: [0, -90], 4: [0, 90], 2: [-90, 0], 5: [90, 0] };
-  const FACES: [number, string][] = [[1, 'rotateY(0deg)'], [6, 'rotateY(180deg)'], [3, 'rotateY(90deg)'], [4, 'rotateY(-90deg)'], [2, 'rotateX(90deg)'], [5, 'rotateX(-90deg)']];
-  const spinTo = (cur: number, target: number, turns: number) => target + 360 * (Math.ceil((cur - target) / 360) + turns);
 
   async function go() {
     if (rolling || bet > wallet.balance || bet <= 0) return;
@@ -29,13 +31,12 @@
     rolling = true;
     last = null;
     const a = roll(), c = roll();
-    dice = dice.map((d, i) => {
-      const n = i ? c : a, [x, y] = FRONT[n];
-      return { n, rx: spinTo(d.rx, x, 2 + i), ry: spinTo(d.ry, y, 2) };
-    });
+    values = [a, c];
+    const landed = new Promise<void>((r) => (done = r));
     rolls++;
     sfx('dice');
-    await new Promise((r) => setTimeout(r, 1250));
+    setTimeout(() => sfx('dice'), 380);
+    await landed;
     const win = DICE_BETS[choice](a, c) ? Math.round(b * diceMult(choice) * 100) / 100 : 0;
     settle(win, win);
     sfx(win ? 'win' : 'lose');
@@ -65,17 +66,7 @@
   {/snippet}
 
   <div class="table">
-    <div class="stage">
-      {#each dice as d, i}
-        <div class="slot">
-          <div class="toss" style="--d:{i * 70}ms; animation-name:{rolls ? (rolls % 2 ? 'tossA' : 'tossB') : 'none'}"><div class="cube" style="transform: rotateX({d.rx}deg) rotateY({d.ry}deg)">
-            <i class="core x"></i><i class="core y"></i><i class="core z"></i>
-            {#each FACES as [n, tr]}<div class="face" style="transform: {tr} translateZ(var(--half))"><Sprite kind="die" {n} /></div>{/each}
-          </div></div>
-          <div class="shadow" style="--d:{i * 70}ms; animation-name:{rolls ? (rolls % 2 ? 'shadeA' : 'shadeB') : 'none'}"></div>
-        </div>
-      {/each}
-    </div>
+    <div class="stage"><Dice3D {values} {rolls} size={diceSize} ondone={() => done()} /></div>
     <div class="result">
       {#if last}
         <span class="sum mono" in:scale={{ start: 0.6, duration: 300 }}>{last.a + last.b}</span>
@@ -109,19 +100,7 @@
   .stats strong { font-size: 1.15rem; }
   .muted { color: var(--muted); } .small { font-size: 0.82rem; margin: 0; }
   .table { box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); border-radius: 28px; padding: clamp(16px, 3vw, 32px); background: radial-gradient(ellipse at 50% 0%, #4a1d24, #1a080b); color: #f4f2ee; display: grid; gap: 18px; }
-  .stage { display: flex; justify-content: center; gap: clamp(28px, 7vw, 72px); padding: 40px 0 6px; perspective: 1000px; }
-  .slot { --size: clamp(80px, 13vw, 116px); --half: calc(var(--size) / 2); display: grid; justify-items: center; gap: 14px; }
-  .toss { animation-duration: 1.15s; animation-timing-function: var(--ease-snap); animation-fill-mode: both; animation-delay: var(--d); transform-style: preserve-3d; }
-  @keyframes tossA { 0% { transform: translateY(0) scale(1); } 30% { transform: translateY(-70px) scale(1.06); } 62% { transform: translateY(0) scale(1); } 70% { transform: translateY(-12px); } 82% { transform: translateY(0); } 100% { transform: none; } }
-  @keyframes tossB { 0% { transform: translateY(0) scale(1); } 30% { transform: translateY(-70px) scale(1.06); } 62% { transform: translateY(0) scale(1); } 70% { transform: translateY(-12px); } 82% { transform: translateY(0); } 100% { transform: none; } }
-  .cube { width: var(--size); height: var(--size); position: relative; transform-style: preserve-3d; transition: transform 1.15s var(--spring-smooth); transition-delay: var(--d); }
-  .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 18%; }
-  /* inner planes hide the see-through gaps at the rounded corners */
-  .core { position: absolute; inset: 4%; background: #e9e5db; border-radius: 10%; }
-  .core.x { transform: rotateY(90deg); } .core.y { transform: rotateX(90deg); }
-  .shadow { width: calc(var(--size) * 0.9); height: 14px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent); animation-duration: 1.15s; animation-timing-function: var(--ease-snap); animation-fill-mode: both; animation-delay: var(--d); }
-  @keyframes shadeA { 30% { transform: scale(0.55); opacity: 0.45; } 62% { transform: scale(1); opacity: 1; } }
-  @keyframes shadeB { 30% { transform: scale(0.55); opacity: 0.45; } 62% { transform: scale(1); opacity: 1; } }
+  .stage { padding: 10px 0 0; overflow: hidden; }
   .result { min-height: 54px; display: flex; gap: 16px; align-items: center; justify-content: center; font-size: 1.3rem; }
   .sum { font-size: 2.4rem; font-weight: 700; }
   .pos { color: #6ff0a6; }

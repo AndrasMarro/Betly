@@ -77,6 +77,9 @@ const recipes = {
   flip: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.25, 1200, 0.6, 0.12, 'bandpass', 4000); tone(c, o, 2637, t + 0.02, 0.5, 'sine', 0.05); },
   peg: (c: AudioContext, o: AudioNode, t: number) => tone(c, o, 1800 + Math.random() * 900, t, 0.04, 'sine', 0.03),
   scratch: (c: AudioContext, o: AudioNode, t: number) => burst(c, o, t, 0.06, 3200, 0.8, 0.07, 'highpass'),
+  // case opening: the sharp mechanical click as each item passes the marker
+  caseTick: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.018, 5200, 4, 0.35, 'bandpass'); tone(c, o, 2400 + Math.random() * 200, t, 0.03, 'square', 0.025); },
+  bounce: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.03, 3800, 3, 0.3); tone(c, o, 2900, t, 0.04, 'sine', 0.05); },
   dice: (c: AudioContext, o: AudioNode, t: number) => {
     for (let i = 0; i < 9; i++) burst(c, o, t + i * 0.055 + Math.random() * 0.03, 0.025, 1500 + Math.random() * 2500, 3, 0.25 - i * 0.02);
   },
@@ -91,6 +94,55 @@ export function sfx(kind: Sfx) {
   } catch {
     /* audio unavailable */
   }
+}
+
+/** Reveal fanfare scaled by rarity: 0 = common ... 4 = legendary. */
+export function reveal(level: number) {
+  if (!settings.sound) return;
+  try {
+    const c = ac(), t = c.currentTime + 0.01, o = c.destination;
+    const scale = [523, 659, 784, 988, 1175, 1319, 1568, 2093];
+    const n = 2 + level * 2;
+    for (let i = 0; i < n; i++) tone(c, o, scale[i % scale.length] * (i >= scale.length ? 2 : 1), t + i * (0.07 - level * 0.006), 0.35 + level * 0.1, 'triangle', 0.08);
+    if (level >= 3) {
+      burst(c, o, t, 0.9, 6000, 0.7, 0.12, 'highpass');
+      for (let i = 0; i < 10 * level; i++) tone(c, o, 2200 + Math.random() * 2600, t + 0.3 + i * 0.04, 0.12, 'sine', 0.03);
+    }
+    if (level >= 4) tone(c, o, 131, t, 1.4, 'sawtooth', 0.05);
+  } catch { /* audio unavailable */ }
+}
+
+/** Roulette ball rolling on the rim: filtered noise whose pitch and level follow the ball speed (0..1). */
+export function rolling() {
+  if (!settings.sound) return { set() {}, stop() {} };
+  const c = ac();
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+  s.buffer = noise(c);
+  s.loop = true;
+  f.type = 'bandpass';
+  f.Q.value = 1.4;
+  f.frequency.value = 1400;
+  g.gain.value = 0.0001;
+  // a fast wobble gives the rattle of the ball over the frets
+  lfo.frequency.value = 18;
+  lg.gain.value = 0.02;
+  lfo.connect(lg).connect(g.gain);
+  s.connect(f).connect(g).connect(c.destination);
+  s.start();
+  lfo.start();
+  return {
+    set(speed: number) {
+      f.frequency.setTargetAtTime(500 + speed * 2200, c.currentTime, 0.05);
+      g.gain.setTargetAtTime(0.012 + speed * 0.07, c.currentTime, 0.05);
+      lfo.frequency.setTargetAtTime(6 + speed * 26, c.currentTime, 0.05);
+    },
+    stop() {
+      g.gain.cancelScheduledValues(c.currentTime);
+      g.gain.setTargetAtTime(0.0001, c.currentTime, 0.08);
+      s.stop(c.currentTime + 0.5);
+      lfo.stop(c.currentTime + 0.5);
+    },
+  };
 }
 
 /** Continuous rising engine tone (crash game). */
