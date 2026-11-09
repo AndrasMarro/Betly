@@ -24,12 +24,24 @@
     <radialGradient id="cone" cx="0.45" cy="0.4" r="0.7">
       <stop offset="0" stop-color="#7a5232" /><stop offset="1" stop-color="#3a2414" />
     </radialGradient>
+    <radialGradient id="track" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.8" stop-color="#2b1a0f" /><stop offset="0.93" stop-color="#5b3a22" /><stop offset="1" stop-color="#3a2414" />
+    </radialGradient>
     <radialGradient id="ballg" cx="0.35" cy="0.3" r="0.8">
       <stop offset="0" stop-color="#fff" /><stop offset="1" stop-color="#bdbdbd" />
     </radialGradient>
   </defs>
   <circle r="99" fill={mono ? 'var(--bg-2)' : 'url(#rim)'} stroke="var(--line-2)" stroke-width="0.6" />
-  <circle r="84" fill={mono ? 'var(--bg)' : '#1a120c'} />
+  {#if !mono}
+    <!-- polished ball track with gold edges and the eight diamond deflectors -->
+    <circle r="96.5" fill="none" stroke="#e8c478" stroke-width="0.8" opacity="0.8" />
+    <circle r="84" fill="url(#track)" />
+    {#each Array(8) as _, k}
+      <path d="M0 -94.5 L1.8 -91.5 L0 -88.5 L-1.8 -91.5Z" fill="#f2d79a" stroke="#8a6630" stroke-width="0.3" transform="rotate({k * 45 + 22.5})" />
+    {/each}
+    <circle r="84" fill="none" stroke="#e8c478" stroke-width="0.9" />
+  {/if}
+  <circle r="82" fill={mono ? 'var(--bg)' : '#1a120c'} />
   <g transform="rotate({rotation})">
     {#each WHEEL as n, i}
       <path d={wedge(i, 56, 80)} fill={fill(n)} stroke={mono ? 'var(--line-2)' : '#d8b26a'} stroke-width="0.4" class:hit={n === highlight} />
@@ -38,9 +50,15 @@
     <circle r="56" fill={mono ? 'var(--surface)' : 'url(#cone)'} stroke={mono ? 'var(--line-2)' : '#d8b26a'} stroke-width="0.6" />
     <circle r="62" fill="none" stroke={mono ? 'var(--line-2)' : '#d8b26a'} stroke-width="0.35" opacity="0.6" />
     {#each [0, 1, 2, 3] as k}
-      <rect x="-2" y="-40" width="4" height="80" rx="2" fill={mono ? 'var(--line-2)' : '#d8b26a'} transform="rotate({k * 45})" />
+      <rect x="-1.6" y="-40" width="3.2" height="80" rx="1.6" fill={mono ? 'var(--line-2)' : '#d8b26a'} transform="rotate({k * 90})" />
     {/each}
+    {#if !mono}
+      {#each [0, 1, 2, 3] as k}
+        <circle cx="0" cy="-41" r="3.4" fill="#f2d79a" stroke="#8a6630" stroke-width="0.4" transform="rotate({k * 90})" />
+      {/each}
+    {/if}
     <circle r="9" fill={mono ? 'var(--surface-2)' : '#e7c27a'} stroke={mono ? 'var(--line-2)' : '#8a6630'} />
+    {#if !mono}<circle r="4.5" fill="#f6e2b0" opacity="0.7" />{/if}
   </g>
   {#if ball}
     <circle cx={bx} cy={by} r="3.6" fill="url(#ballg)" class="ball" />

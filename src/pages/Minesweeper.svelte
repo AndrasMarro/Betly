@@ -222,8 +222,9 @@
 
   .frame { position: relative; border-radius: 28px; background: radial-gradient(ellipse at 50% 0%, #1f2a3d, #0b111b 75%); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); padding: clamp(10px, 2vw, 22px); }
   .hud { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; color: #f4f2ee; }
-  .chip-stat { display: inline-flex; align-items: center; gap: 8px; min-width: 76px; justify-content: center; padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.35); font-size: 1rem; }
+  .chip-stat { display: inline-flex; align-items: center; gap: 6px; min-width: 64px; flex: none; justify-content: center; padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.35); font-size: 1rem; }
   .chip-stat .ico { width: 18px; height: 18px; }
+  @media (max-width: 400px) { .hud { gap: 6px; } .chip-stat { padding: 6px 9px; font-size: 0.9rem; } .mode button { padding: 0 10px !important; } }
   .mode { display: flex; padding: 3px; border-radius: 999px; background: rgba(0,0,0,.35); }
   .mode button { border: 0; background: none; color: rgba(255,255,255,.7); min-height: 36px; padding: 0 14px; border-radius: 999px; font-size: 0.85rem; transition: background-color 0.25s var(--ease-snap), color 0.25s var(--ease-snap); }
   .mode button.on { background: #f4f2ee; color: #0b111b; }

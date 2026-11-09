@@ -1,0 +1,209 @@
+// How-to-play texts per game (German first, English second). Simple games like coin flip need none.
+export type Section = { h: string; p?: string; li?: string[] };
+type Guide = { de: Section[]; en: Section[]; ranks?: boolean };
+
+export const GUIDES: Record<string, Guide> = {
+  roulette: {
+    de: [
+      { h: 'Ziel', p: 'Setze auf die Zahl oder Zahlengruppe, in der die Kugel landet. Der Kessel hat 37 Fächer: 1–36 und die grüne Null.' },
+      { h: 'Setzen', li: ['Chip wählen, dann auf den Tisch klicken: Mitte eines Feldes = Zahl, Kante zwischen zwei Zahlen = Split, Ecke = Carré, Aussenkante einer Reihe = Transversale.', 'Rechtsklick (oder Rückgängig) nimmt Chips wieder weg; ×2 verdoppelt alles, Nochmal setzt die letzte Runde erneut.', 'Der Kessel-Ring (Racetrack) setzt Nachbarwetten und Ansagen: Voisins, Tiers, Orphelins, Jeu Zéro.'] },
+      { h: 'Auszahlungen', li: ['Plein (1 Zahl) 35:1 · Cheval/Split 17:1 · Transversale 11:1 · Carré 8:1 · Sixain 5:1', 'Dutzend / Kolonne 2:1', 'Rot/Schwarz, Gerade/Ungerade, 1–18/19–36 1:1'] },
+      { h: 'Autoplay', p: 'Mit «Auto-Runden» dreht der Kessel von selbst: Jede Runde hat ein Zeitfenster zum Setzen, danach heisst es «Rien ne va plus». Du kannst jederzeit einsteigen oder aussetzen, wie bei Rocket.' },
+      { h: 'La Partage', p: 'Wenn aktiv, bekommst du bei der Null die Hälfte deiner einfachen Chancen (Rot/Schwarz usw.) zurück.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Bet on the number or group of numbers the ball lands in. The wheel has 37 pockets: 1–36 and the green zero.' },
+      { h: 'Placing bets', li: ['Pick a chip, then click the layout: centre of a box = straight, edge between two numbers = split, corner = corner, outer edge of a row = street.', 'Right-click (or Undo) removes chips; ×2 doubles everything, Rebet repeats the last round.', 'The racetrack places neighbour and call bets: Voisins, Tiers, Orphelins, Jeu Zéro.'] },
+      { h: 'Payouts', li: ['Straight 35:1 · Split 17:1 · Street 11:1 · Corner 8:1 · Six line 5:1', 'Dozen / column 2:1', 'Red/black, even/odd, 1–18/19–36 1:1'] },
+      { h: 'Autoplay', p: 'With "Auto rounds" the wheel spins on its own: every round has a betting window, then "no more bets". Join or sit out any time, just like Rocket.' },
+      { h: 'La Partage', p: 'When on, a zero returns half of your even-money bets (red/black etc.).' },
+    ],
+  },
+  blackjack: {
+    de: [
+      { h: 'Ziel', p: 'Komm näher an 21 als der Dealer, ohne darüber zu gehen. Zahlenkarten zählen ihren Wert, Bilder 10, Ass 1 oder 11.' },
+      { h: 'Ablauf', li: ['Platz nehmen, Chip wählen und auf deinen Kreis setzen. Du kannst mehrere Plätze spielen.', 'Austeilen: Jeder bekommt zwei Karten, der Dealer eine offen.', 'Blackjack (Ass + 10er mit den ersten zwei Karten) zahlt 3:2, je nach Regel auch 6:5.'] },
+      { h: 'Aktionen', li: ['Hit (H): weitere Karte · Stand (S): stehen bleiben', 'Double (D): Einsatz verdoppeln, genau eine Karte', 'Split (P): Paar in zwei Hände teilen', 'Surrender (R): aufgeben, halber Einsatz zurück (falls erlaubt)', 'Insurance: Absicherung, wenn der Dealer ein Ass zeigt; zahlt 2:1'] },
+      { h: 'Dealer', p: 'Der Dealer zieht bis 17. Bei «H17» zieht er auch auf eine weiche 17. Die Regeln (Decks, Double, Split, Surrender …) stellst du unter «Regeln» ein.' },
+      { h: 'Tipps', p: 'Der Tipp-Schalter markiert die Basic-Strategy-Aktion mit einem goldenen Rand.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Get closer to 21 than the dealer without going over. Number cards count their value, faces 10, aces 1 or 11.' },
+      { h: 'Flow', li: ['Take a seat, pick a chip and click your circle. You can play several seats.', 'Deal: everyone gets two cards, the dealer shows one.', 'Blackjack (ace + ten-value on the first two cards) pays 3:2, or 6:5 depending on the rules.'] },
+      { h: 'Actions', li: ['Hit (H): another card · Stand (S): keep your hand', 'Double (D): double the bet, exactly one card', 'Split (P): split a pair into two hands', 'Surrender (R): give up, half the bet back (if allowed)', 'Insurance: side bet when the dealer shows an ace; pays 2:1'] },
+      { h: 'Dealer', p: 'The dealer draws to 17. With "H17" the dealer also hits a soft 17. Set the rules (decks, double, split, surrender …) under "Rules".' },
+      { h: 'Hints', p: 'The hints switch marks the basic strategy action with a gold outline.' },
+    ],
+  },
+  holdem: {
+    ranks: true,
+    de: [
+      { h: 'Ziel', p: 'Gewinne den Pot: mit der besten Fünf-Karten-Hand beim Showdown oder indem alle anderen aufgeben.' },
+      { h: 'Ablauf', li: ['Small und Big Blind sind Pflichteinsätze links vom Dealer-Knopf.', 'Jeder bekommt zwei verdeckte Karten (Preflop).', 'Flop: drei Gemeinschaftskarten · Turn: eine vierte · River: eine fünfte.', 'Nach jeder Phase gibt es eine Setzrunde.', 'Aus deinen zwei und den fünf offenen Karten zählt die beste Kombination aus fünf.'] },
+      { h: 'Aktionen', li: ['Fold: aufgeben · Check: schieben, wenn nichts zu bezahlen ist', 'Call: mitgehen · Bet/Raise: setzen oder erhöhen (mindestens um die letzte Erhöhung)', 'All-in: alles setzen; es entstehen Side-Pots'] },
+      { h: 'Helfer', p: 'Zeigt deine aktuelle Hand, die Gewinnchance (simuliert) und die Pot Odds. Wenn die Gewinnchance grösser ist als die Pot Odds, lohnt sich ein Call meist.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Win the pot: with the best five-card hand at showdown, or by making everyone else fold.' },
+      { h: 'Flow', li: ['Small and big blind are forced bets left of the dealer button.', 'Everyone gets two hole cards (preflop).', 'Flop: three community cards · Turn: a fourth · River: a fifth.', 'Each street has a betting round.', 'The best five of your two cards plus the five on the board count.'] },
+      { h: 'Actions', li: ['Fold: give up · Check: pass when there is nothing to call', 'Call: match the bet · Bet/Raise: bet or raise (at least by the last raise)', 'All-in: bet everything; side pots are formed'] },
+      { h: 'Helper', p: 'Shows your current hand, the (simulated) win chance and the pot odds. When the win chance is higher than the pot odds, a call usually pays.' },
+    ],
+  },
+  baccarat: {
+    de: [
+      { h: 'Ziel', p: 'Tippe, welche Hand näher an 9 kommt: Spieler (Punto) oder Bank (Banco). Du spielst keine Hand selbst.' },
+      { h: 'Kartenwerte', p: 'Ass = 1, 2–9 = Augenwert, 10 und Bilder = 0. Gezählt wird nur die Einerstelle: 7 + 8 = 15 → 5.' },
+      { h: 'Dritte Karte', li: ['8 oder 9 mit zwei Karten ist ein «Natural», dann wird nicht mehr gezogen.', 'Der Spieler zieht bei 0–5 und steht bei 6–7.', 'Die Bank zieht nach festen Regeln, abhängig von ihrem Wert und der dritten Karte des Spielers.'] },
+      { h: 'Auszahlungen', li: ['Spieler 1:1 · Bank 0,95:1 (5 % Kommission) · Unentschieden 8:1', 'Spieler- oder Bank-Paar (erste zwei Karten gleich) 11:1'] },
+      { h: 'Big Road', p: 'Die Anzeigetafel zeigt den Verlauf: blau = Spieler, rot = Bank. Sie hilft nicht beim Vorhersagen, jede Runde ist unabhängig.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Bet on which hand gets closer to 9: Player (Punto) or Banker (Banco). You do not play a hand yourself.' },
+      { h: 'Card values', p: 'Ace = 1, 2–9 = face value, 10 and court cards = 0. Only the last digit counts: 7 + 8 = 15 → 5.' },
+      { h: 'Third card', li: ['8 or 9 with two cards is a "natural" and nobody draws.', 'The player draws on 0–5 and stands on 6–7.', 'The banker draws by fixed rules, depending on its total and the player\'s third card.'] },
+      { h: 'Payouts', li: ['Player 1:1 · Banker 0.95:1 (5 % commission) · Tie 8:1', 'Player or banker pair (first two cards equal) 11:1'] },
+      { h: 'Big Road', p: 'The scoreboard shows the history: blue = player, red = banker. It does not predict anything, every round is independent.' },
+    ],
+  },
+  slots: {
+    de: [
+      { h: 'Ziel', p: 'Drei oder mehr gleiche Symbole auf einer Gewinnlinie, von links beginnend, zahlen ein Vielfaches des Linieneinsatzes.' },
+      { h: 'Bedienung', li: ['Linieneinsatz und Anzahl Linien wählen; Gesamteinsatz = Linieneinsatz × Linien.', 'Spin (oder Leertaste); Turbo spielt schneller, Auto spielt mehrere Runden.', 'Die Gewinntabelle zeigt, was jedes Symbol zahlt.'] },
+      { h: 'Sondersymbole', li: ['Wild ersetzt alle normalen Symbole.', 'Scatter zahlt überall auf den Walzen; drei oder mehr starten Freispiele (bei Maschinen mit Freispielen).'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Three or more matching symbols on a pay line, starting from the left, pay a multiple of the line bet.' },
+      { h: 'Controls', li: ['Choose line bet and number of lines; total bet = line bet × lines.', 'Spin (or space bar); Turbo plays faster, Auto plays several rounds.', 'The pay table shows what each symbol pays.'] },
+      { h: 'Special symbols', li: ['Wild substitutes for all regular symbols.', 'Scatter pays anywhere on the reels; three or more start free spins (on machines that have them).'] },
+    ],
+  },
+  rocket: {
+    de: [
+      { h: 'Ziel', p: 'Die Rakete steigt und der Multiplikator wächst, bis sie explodiert. Steig vorher aus, um Einsatz × Multiplikator zu bekommen.' },
+      { h: 'Ablauf', li: ['Während des Countdowns setzen. Verpasst? Dein Einsatz wird für die nächste Runde vorgemerkt.', 'Nach dem Start jederzeit «Auszahlen» drücken (oder Leertaste).', 'Auto-Auszahlung steigt automatisch bei deinem Wunsch-Multiplikator aus.', 'Explodiert die Rakete vorher, ist der Einsatz verloren.'] },
+      { h: 'Mehrspieler', p: 'Alle im Raum fliegen dieselbe Rakete. Bots und Mitspieler stehen in der Liste mit ihrem Ausstieg.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'The rocket climbs and the multiplier grows until it explodes. Cash out before that to get bet × multiplier.' },
+      { h: 'Flow', li: ['Bet during the countdown. Missed it? Your bet is queued for the next round.', 'After launch press "Cash out" (or space) any time.', 'Auto cash-out leaves automatically at your target multiplier.', 'If the rocket explodes first, the bet is lost.'] },
+      { h: 'Multiplayer', p: 'Everyone in the room flies the same rocket. Bots and players are listed with their cash-out.' },
+    ],
+  },
+  cases: {
+    de: [
+      { h: 'Ziel', p: 'Öffne eine Kiste: Die Walze rollt und bleibt auf einem Item stehen. Sein Wert wird dir gutgeschrieben.' },
+      { h: 'Classic', p: 'Mit den offiziellen Drop-Raten: Mil-Spec 79,92 %, Restricted 15,98 %, Classified 3,20 %, Covert 0,64 %, Gold 0,26 %. Wie beim Original verlierst du im Schnitt deutlich mehr, als du bekommst; seltene Items sind wirklich selten.' },
+      { h: 'Arcade', p: 'Drei Kisten mit Auszahlungsquote 97 %: Starter, Neon und Royal, jeweils mit eigenen Items.' },
+      { h: 'Tipps', li: ['Leertaste öffnet die nächste Kiste.', '«Schnell öffnen» verkürzt die Animation.', 'Unter «Inhalt» siehst du Wert und Chance jedes Items.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Open a case: the reel spins and stops on one item. Its value is credited to you.' },
+      { h: 'Classic', p: 'Uses the official drop rates: Mil-Spec 79.92 %, Restricted 15.98 %, Classified 3.20 %, Covert 0.64 %, Gold 0.26 %. Like the original you lose a lot more than you get on average; rare items really are rare.' },
+      { h: 'Arcade', p: 'Three cases with a 97 % return: Starter, Neon and Royal, each with its own items.' },
+      { h: 'Tips', li: ['Space opens the next case.', '"Quick open" shortens the animation.', '"Contents" lists the value and chance of every item.'] },
+    ],
+  },
+  mines: {
+    de: [
+      { h: 'Ziel', p: 'Unter 25 Feldern liegen Minen. Jedes sichere Feld erhöht deinen Multiplikator; steig aus, bevor du eine Mine triffst.' },
+      { h: 'Ablauf', li: ['Einsatz und Anzahl Minen wählen (mehr Minen = höhere Multiplikatoren).', 'Starten, dann Felder aufdecken. «Zufall» deckt ein beliebiges Feld auf.', '«Auszahlen» sichert den aktuellen Gewinn. Eine Mine beendet die Runde ohne Gewinn.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Mines hide under 25 tiles. Every safe tile raises your multiplier; cash out before you hit a mine.' },
+      { h: 'Flow', li: ['Choose your bet and the number of mines (more mines = higher multipliers).', 'Start, then reveal tiles. "Random" reveals any tile.', '"Cash out" locks in the current win. A mine ends the round with nothing.'] },
+    ],
+  },
+  minesweeper: {
+    de: [
+      { h: 'Ziel', p: 'Decke alle Felder ohne Mine auf. Zahlen zeigen, wie viele Minen in den acht Nachbarfeldern liegen.' },
+      { h: 'Steuerung', li: ['Computer: Klick deckt auf, Rechtsklick setzt eine Fahne, Klick auf eine Zahl mit passenden Fahnen deckt die Nachbarn auf.', 'Handy: Tippen deckt auf, lange drücken setzt eine Fahne; oder den Fahnen-Modus einschalten.', 'Der erste Klick ist immer sicher.'] },
+      { h: 'Einsatz', p: 'Optional: Mit Einsatz spielen. Gewinnst du, bekommst du je nach Schwierigkeit ein Vielfaches zurück.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Reveal every tile without a mine. Numbers show how many mines touch that tile.' },
+      { h: 'Controls', li: ['Desktop: click reveals, right-click flags, clicking a number with enough flags around it opens its neighbours.', 'Phone: tap reveals, long-press flags; or switch on flag mode.', 'The first click is always safe.'] },
+      { h: 'Stake', p: 'Optional: play with a stake. Win and you get a multiple back, depending on the difficulty.' },
+    ],
+  },
+  dice: {
+    de: [
+      { h: 'Ziel', p: 'Zwei Würfel werden geworfen. Tippe auf das Ergebnis, bevor sie fallen.' },
+      { h: 'Wetten', li: ['Unter 7 (2–6) oder Über 7 (8–12)', 'Genau 7', 'Pasch (beide Würfel gleich)', 'Eine bestimmte Summe von 2 bis 12'] },
+      { h: 'Auszahlung', p: 'Je unwahrscheinlicher die Wette, desto höher der Multiplikator. Chance und Multiplikator stehen neben dem Knopf.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Two dice are thrown. Call the result before they land.' },
+      { h: 'Bets', li: ['Under 7 (2–6) or over 7 (8–12)', 'Exactly 7', 'Doubles (both dice equal)', 'A specific sum from 2 to 12'] },
+      { h: 'Payout', p: 'The less likely the bet, the higher the multiplier. Chance and multiplier are shown next to the button.' },
+    ],
+  },
+  hop: {
+    de: [
+      { h: 'Ziel', p: 'Bring das Huhn über die Strasse. Jede überquerte Spur erhöht den Multiplikator.' },
+      { h: 'Ablauf', li: ['Einsatz und Schwierigkeit wählen, dann «Losgehen».', '«Weiter» springt eine Spur weiter. Manchmal kommt dabei ein Auto: Glück gehabt, es bremst vor der Barriere, oder Pech.', '«Auszahlen» sichert den Gewinn. Wirst du überfahren, ist der Einsatz weg.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Get the chicken across the road. Every lane crossed raises the multiplier.' },
+      { h: 'Flow', li: ['Choose bet and difficulty, then "Start".', '"Next lane" jumps one lane. Sometimes a car comes: lucky, it brakes at the barrier, or unlucky.', '"Cash out" locks in the win. Get run over and the bet is gone.'] },
+    ],
+  },
+  tower: {
+    de: [
+      { h: 'Ziel', p: 'Klettere den Turm hoch. Auf jeder Etage ist mindestens ein Feld eine Falle.' },
+      { h: 'Ablauf', li: ['Einsatz und Schwierigkeit wählen (mehr Fallen = höhere Multiplikatoren).', 'Pro Etage ein Feld wählen. Sicher? Eine Etage höher.', 'Jederzeit auszahlen; die Falle beendet die Runde ohne Gewinn.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Climb the tower. Every floor has at least one trap tile.' },
+      { h: 'Flow', li: ['Choose bet and difficulty (more traps = higher multipliers).', 'Pick one tile per floor. Safe? Up one floor.', 'Cash out any time; a trap ends the round with nothing.'] },
+    ],
+  },
+  hilo: {
+    de: [
+      { h: 'Ziel', p: 'Errate, ob die nächste Karte höher oder tiefer ist. Jeder Treffer multipliziert deinen Gewinn.' },
+      { h: 'Ablauf', li: ['Einsatz wählen und starten. Die erste Karte liegt offen.', '«Höher» oder «Tiefer»: Der Multiplikator hängt von der Wahrscheinlichkeit ab (auf eine 2 «höher» zahlt wenig).', '«Überspringen» legt eine neue Karte ohne Risiko.', 'Ein Fehler beendet die Runde; auszahlen kannst du jederzeit.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Guess whether the next card is higher or lower. Every hit multiplies your win.' },
+      { h: 'Flow', li: ['Choose a bet and start. The first card is face up.', '"Higher" or "Lower": the multiplier depends on the odds ("higher" on a 2 pays little).', '"Skip" deals a new card without risk.', 'A miss ends the round; you can cash out any time.'] },
+    ],
+  },
+  plinko: {
+    de: [
+      { h: 'Ziel', p: 'Die Kugel fällt durch die Stifte und landet in einem Fach. Das Fach bestimmt den Multiplikator.' },
+      { h: 'Einstellungen', li: ['Reihen: mehr Reihen = mehr Fächer und extremere Ränder.', 'Risiko: höher = in der Mitte weniger, am Rand viel mehr.', 'Kugeln: bis zu 20 auf einmal, jede kostet den Einsatz.'] },
+      { h: 'Wahrscheinlichkeit', p: 'Die meisten Kugeln landen in der Mitte, wo der Multiplikator unter 1 liegt. Die Ränder treffen selten, zahlen dafür gross.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'The ball drops through the pegs into a bucket. The bucket sets the multiplier.' },
+      { h: 'Settings', li: ['Rows: more rows = more buckets and more extreme edges.', 'Risk: higher = less in the middle, much more at the edges.', 'Balls: up to 20 at once, each costs the bet.'] },
+      { h: 'Odds', p: 'Most balls land in the middle, where the multiplier is below 1. The edges are hit rarely but pay big.' },
+    ],
+  },
+  scratch: {
+    de: [
+      { h: 'Klassisch', p: 'Kratze das ganze Los frei. Drei gleiche Symbole gewinnen den angezeigten Multiplikator.' },
+      { h: 'Glücksgriff', p: 'Kratze genau drei der neun Felder frei. Sind alle drei gleich, gewinnst du. Fängst du ein viertes Feld an, ist das Los ungültig.' },
+      { h: 'Tipp', p: 'Mit Maus oder Finger rubbeln. «Alles aufdecken» zeigt das klassische Los sofort.' },
+    ],
+    en: [
+      { h: 'Classic', p: 'Scratch the whole ticket. Three matching symbols win the multiplier shown.' },
+      { h: 'Lucky pick', p: 'Scratch exactly three of the nine fields. All three equal and you win. Start a fourth field and the ticket is void.' },
+      { h: 'Tip', p: 'Scratch with mouse or finger. "Reveal all" uncovers the classic ticket at once.' },
+    ],
+  },
+};
+
+/** Poker hand categories, best first, with an example hand (r: 1=A..13=K, s: 0♠ 1♥ 2♦ 3♣) and the cards that make it. */
+export const HAND_RANKS: { cat: string; cards: [number, number][]; use: number; de: string; en: string }[] = [
+  { cat: 'royal', cards: [[1, 0], [13, 0], [12, 0], [11, 0], [10, 0]], use: 5, de: 'A-K-Q-J-10 in einer Farbe', en: 'A-K-Q-J-10 of one suit' },
+  { cat: 'straightFlush', cards: [[9, 1], [8, 1], [7, 1], [6, 1], [5, 1]], use: 5, de: 'Fünf in Folge, gleiche Farbe', en: 'Five in a row, same suit' },
+  { cat: 'quads', cards: [[12, 0], [12, 1], [12, 2], [12, 3], [4, 0]], use: 4, de: 'Vier gleiche Werte', en: 'Four of the same rank' },
+  { cat: 'fullHouse', cards: [[10, 0], [10, 1], [10, 3], [7, 2], [7, 0]], use: 5, de: 'Drilling plus Paar', en: 'Three of a kind plus a pair' },
+  { cat: 'flush', cards: [[13, 2], [10, 2], [8, 2], [5, 2], [3, 2]], use: 5, de: 'Fünf Karten einer Farbe', en: 'Five cards of one suit' },
+  { cat: 'straight', cards: [[8, 3], [7, 1], [6, 0], [5, 2], [4, 3]], use: 5, de: 'Fünf in Folge, Farbe egal (A-2-3-4-5 zählt)', en: 'Five in a row, any suit (A-2-3-4-5 counts)' },
+  { cat: 'trips', cards: [[7, 0], [7, 2], [7, 3], [13, 1], [2, 0]], use: 3, de: 'Drei gleiche Werte', en: 'Three of the same rank' },
+  { cat: 'twoPair', cards: [[11, 1], [11, 3], [4, 0], [4, 2], [9, 1]], use: 4, de: 'Zwei verschiedene Paare', en: 'Two different pairs' },
+  { cat: 'pair', cards: [[1, 2], [1, 3], [12, 0], [8, 1], [3, 3]], use: 2, de: 'Zwei gleiche Werte', en: 'Two of the same rank' },
+  { cat: 'high', cards: [[1, 0], [11, 2], [8, 3], [6, 1], [2, 0]], use: 1, de: 'Nichts davon: die höchste Karte zählt', en: 'None of the above: the highest card plays' },
+];

@@ -6,6 +6,7 @@
   let { room, extra }: { room: Room; extra?: import('svelte').Snippet } = $props();
   let code = $state('');
   let copied = $state(false);
+  let open = $state(false); // phones: room controls and table options fold into one row
 
   onMount(() => {
     const c = new URLSearchParams(location.hash.split('?')[1]).get('room');
@@ -20,7 +21,14 @@
   }
 </script>
 
-<div class="bar">
+<div class="bar" class:open>
+  <button class="toggle" onclick={() => (open = !open)} aria-expanded={open}>
+    <span class="dot" class:live={room.role !== 'solo' && room.status === 'open'} class:wait={room.status === 'connecting'}></span>
+    <span>{room.role === 'host' ? t('room.host') : room.role === 'guest' ? t('room.guest') : t('room.solo')}</span>
+    {#if room.code && room.role !== 'solo'}<strong class="mono code">{room.code}</strong>{/if}
+    <span class="opt">{t('room.options')}</span>
+    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
+  </button>
   <div class="left">
     {#if room.status === 'connecting'}
       <span class="dot wait"></span><span class="muted">{t('room.connecting')}</span>
@@ -61,4 +69,15 @@
   form { display: flex; gap: 6px; }
   input { width: 92px; min-height: 36px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--bg-2); padding: 0 12px; text-transform: uppercase; letter-spacing: 0.12em; }
   .err { color: var(--accent); }
+  .toggle { display: none; }
+  @media (max-width: 720px) {
+    .bar { padding: 4px 0; }
+    .toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font-size: 0.82rem; }
+    .toggle .opt { margin-left: auto; color: var(--muted); }
+    .toggle svg { transition: transform 0.3s var(--ease-snap); }
+    .open .toggle svg { transform: rotate(180deg); }
+    .left, .right { display: none; }
+    .open .left, .open .right { display: flex; width: 100%; }
+    .left > .dot, .left > .dot + .muted { display: none; }
+  }
 </style>

@@ -113,7 +113,7 @@
   .stats strong { font-size: 1.15rem; }
   .board {
     position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: clamp(6px, 1.2vw, 12px); padding: clamp(12px, 2vw, 24px);
-    border-radius: 28px; background: radial-gradient(ellipse at 50% 0%, #1c2a3a, #0b121b); max-width: 620px; margin: 0 auto; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6);
+    border-radius: 28px; background: radial-gradient(ellipse at 50% 0%, #1c2a3a, #0b121b); max-width: min(620px, max(300px, calc(100dvh - var(--nav-h) - 170px))); margin: 0 auto; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6);
   }
   .tile {
     aspect-ratio: 1; border: 0; border-radius: 16px; background: linear-gradient(180deg, #34496a, #2a3b52); box-shadow: inset 0 -5px 0 rgba(0,0,0,.3);

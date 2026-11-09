@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onDestroy, onMount, untrack } from 'svelte';
-  import { fly, scale } from 'svelte/transition';
+  import { fly } from 'svelte/transition';
   import Wheel from '../components/Wheel.svelte';
+  import HowTo from '../components/HowTo.svelte';
   import Racetrack from '../components/Racetrack.svelte';
   import ChipTray from '../components/ChipTray.svelte';
   import RoomBar from '../components/RoomBar.svelte';
@@ -14,6 +15,7 @@
   import { t } from '../lib/i18n';
 
   type Player = { id: string; name: string; bot?: boolean; stake: number; net: number | null; bets?: { nums: number[]; amt: number }[] };
+  const BET_MS = 15000, RESULT_MS = 3400;
 
   // ---------- local betting state ----------
   let chip = $state(25);
@@ -25,22 +27,27 @@
   const stake = $derived(bets.reduce((s, b) => s + b.amt, 0));
 
   // ---------- shared table state (host authoritative) ----------
-  const share = $state({ phase: 'bet' as 'bet' | 'spin' | 'result', result: -1, round: 0, history: [] as number[], players: [] as Player[], partage: false });
+  // auto: rounds run on their own; every round opens a betting window of BET_MS (like Rocket), players join or sit out
+  const share = $state({ phase: 'bet' as 'bet' | 'spin' | 'result', result: -1, round: 0, history: [] as number[], players: [] as Player[], partage: false, auto: true, left: 0 });
   let lastWin = $state<number | null>(null);
   let myNet = $state<number | null>(null);
   let guests = $state<Player[]>([]); // host only
   let bots = $state<Player[]>([]); // host only
+  let betEnd = $state(0); // local deadline (performance.now) of the open betting window, 0 = none
+  let clock = $state(performance.now());
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const left = $derived(share.phase === 'bet' && betEnd ? Math.max(0, betEnd - clock) : 0);
 
   const room = new Room('roulette', onMsg, (id) => {
     guests = guests.filter((p) => p.id !== id);
     push();
   });
   const isHost = $derived(room.role !== 'guest');
-  // after leaving someone else's room, don't keep their (possibly mid-spin) table state
+  // after leaving someone else's room, start our own table fresh
   let wasGuest = false;
   $effect(() => {
-    if (room.role === 'guest') wasGuest = true;
-    else if (wasGuest) untrack(() => { wasGuest = false; Object.assign(share, { phase: 'bet', players: [] }); });
+    if (room.role === 'guest') { wasGuest = true; clearTimeout(timer); }
+    else if (wasGuest) untrack(() => { wasGuest = false; share.players = []; openBetting(); });
   });
   const me = $derived<Player>({ id: room.myId, name: settings.name, stake, net: myNet });
   const players = $derived(isHost ? [me, ...guests, ...bots] : share.players);
@@ -50,6 +57,7 @@
       const spinNow = m.s.phase === 'spin' && m.s.round !== share.round;
       Object.assign(share, m.s);
       partage = share.partage;
+      betEnd = share.phase === 'bet' && share.auto && share.left ? performance.now() + share.left : 0;
       if (spinNow) run(share.result);
     } else if (room.role === 'host' && m.t === 'hello') {
       let p = guests.find((x) => x.id === from);
@@ -64,7 +72,10 @@
   }
   function push() {
     if (room.role !== 'host') return;
-    untrack(() => room.broadcast({ t: 'state', s: { ...$state.snapshot(share), players: $state.snapshot(players).map(({ bets, ...p }) => p) } }));
+    untrack(() => {
+      share.left = betEnd ? Math.max(0, betEnd - performance.now()) : 0;
+      room.broadcast({ t: 'state', s: { ...$state.snapshot(share), players: $state.snapshot(players).map(({ bets, ...p }) => p) } });
+    });
   }
 
   // guest: tell the host who we are and what we bet
@@ -183,15 +194,23 @@
   const step = 360 / 37;
   let raf = 0;
   let spinning = $state(false);
-  function idle() {
+  let lastSec = 0;
+  function idle(now: number) {
+    clock = now;
     if (!spinning) {
       rot = (rot + 0.04) % 360;
       if (resting >= 0) ball = { a: rot + resting * step, r: 64 };
     }
+    // the croupier's last call: a soft tick for each of the final seconds
+    const sec = Math.ceil(left / 1000);
+    if (sec !== lastSec) { if (sec > 0 && sec <= 3) sfx('tick'); lastSec = sec; }
     raf = requestAnimationFrame(idle);
   }
-  onMount(() => { raf = requestAnimationFrame(idle); });
-  onDestroy(() => { cancelAnimationFrame(raf); room.leave(); });
+  onMount(() => {
+    raf = requestAnimationFrame(idle);
+    openBetting();
+  });
+  onDestroy(() => { cancelAnimationFrame(raf); clearTimeout(timer); room.leave(); });
 
   function animate(result: number) {
     return new Promise<void>((done) => {
@@ -232,9 +251,25 @@
     });
   }
 
-  // ---------- round flow ----------
+  // ---------- round flow (host) ----------
+  function openBetting() {
+    if (!isHost) return;
+    clearTimeout(timer);
+    share.phase = 'bet';
+    for (const p of [...guests, ...bots]) p.stake = 0;
+    betEnd = share.auto ? performance.now() + BET_MS : 0;
+    if (share.auto) timer = setTimeout(spin, BET_MS);
+    push();
+  }
+  function setAuto(on: boolean) {
+    share.auto = on;
+    if (share.phase === 'bet') openBetting();
+    else push();
+  }
   async function spin() {
     if (!isHost || share.phase !== 'bet') return;
+    clearTimeout(timer);
+    betEnd = 0;
     const result = Math.floor(Math.random() * 37);
     for (const p of bots) { p.bets = botBets(); p.stake = p.bets.reduce((s, b) => s + b.amt, 0); }
     Object.assign(share, { phase: 'spin', result, round: share.round + 1 });
@@ -248,11 +283,7 @@
     share.history = [result, ...share.history].slice(0, 18);
     share.phase = 'result';
     push();
-    setTimeout(() => {
-      share.phase = 'bet';
-      for (const p of [...guests, ...bots]) p.stake = 0;
-      push();
-    }, 2200);
+    timer = setTimeout(openBetting, RESULT_MS);
   }
 
   /** Every client animates the spin and settles its own bets. */
@@ -272,24 +303,29 @@
     undoStack = [];
   }
 
+  // in auto mode the host may still spin early, as long as nobody else is waiting on the window
+  const canSpinNow = $derived(isHost && share.phase === 'bet' && (!share.auto || guests.length === 0));
   function key(e: KeyboardEvent) {
     if ((e.target as HTMLElement).closest('input, select, textarea')) return;
-    if (e.code === 'Space') { e.preventDefault(); spin(); }
+    if (e.code === 'Space') { e.preventDefault(); if (canSpinNow) spin(); }
     if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
   }
+  const colorName = (n: number) => t(('r.' + color(n) + '2') as any);
 </script>
 
 <svelte:window onkeydown={key} />
 
-<section class="wrap page">
+<section class="rt" class:vertical>
   <header class="head">
-    <div>
-      <p class="eyebrow">European · 1–36 + 0</p>
+    <div class="h1row">
       <h1>Roulette</h1>
+      <span class="eyebrow sub">Européenne · 0–36</span>
+      <HowTo id="roulette" />
     </div>
     <RoomBar {room}>
       {#snippet extra()}
         {#if isHost}
+          <label class="switch mini"><span>{t('r.auto')}</span><input type="checkbox" checked={share.auto} onchange={(e) => setAuto(e.currentTarget.checked)} /></label>
           <label class="switch mini"><span>{t('bots')}</span><input type="checkbox" bind:checked={settings.bots} /></label>
           <label class="switch mini"><span>{t('r.partage')}</span><input type="checkbox" bind:checked={partage} /></label>
         {/if}
@@ -297,45 +333,57 @@
     </RoomBar>
   </header>
 
-  <div class="layout">
-    <aside class="side">
-      <div class="wheelbox">
-        <Wheel rotation={rot} {ball} highlight={share.phase !== 'bet' && !spinning ? share.result : -1} />
-        {#if share.phase !== 'bet' && !spinning && share.result >= 0}
-          <div class="result {color(share.result)}" in:pop>{share.result}</div>
-        {/if}
-      </div>
-      {#if lastWin !== null && !spinning}
-        <p class="win" class:lose={lastWin === 0} in:fly={{ y: 10 }}>{lastWin > 0 ? '+' + fmt(lastWin) : '0'}</p>
-      {/if}
-      <div class="hist">
-        <span class="eyebrow">{t('r.history')}</span>
-        <div class="nums">
+  <div class="rail">
+    <div class="felt">
+      <div class="wheelcol">
+        <div class="wheelbox">
+          <Wheel rotation={rot} {ball} highlight={share.phase !== 'bet' && !spinning ? share.result : -1} />
+          {#if share.phase !== 'bet' && !spinning && share.result >= 0}
+            <div class="result {color(share.result)}" in:pop>{share.result}</div>
+          {/if}
+        </div>
+        <div class="hist" aria-label={t('r.history')}>
           {#each share.history as n, i (share.round - i)}
-            <span class="n {color(n)}" in:fly={{ x: -16, duration: 300 }}>{n}</span>
+            <span class="n {color(n)}" class:first={i === 0} in:fly={{ x: -16, duration: 300 }}>{n}</span>
           {/each}
         </div>
+        <div class="trackwrap side">
+          <Racetrack onbet={addGroups} onhover={(n) => (hover = n)} disabled={share.phase !== 'bet'} />
+        </div>
+        {#if players.length > 1}
+          <ul class="players">
+            {#each players as p (p.id)}
+              <li class:me={p.id === room.myId}>
+                <span class="av" class:bot={p.bot}>{p.name.slice(0, 1)}</span>
+                <span class="pn">{p.name}</span>
+                <span class="mono ps">{p.stake ? short(p.stake) : ''}</span>
+                <span class="mono pnet" class:pos={(p.net ?? 0) > 0} class:neg={(p.net ?? 0) < 0}>{p.net === null ? '' : (p.net > 0 ? '+' : '') + short(p.net)}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
-      {#if players.length > 1}
-        <ul class="players">
-          {#each players as p (p.id)}
-            <li class:me={p.id === room.myId}>
-              <span class="av" class:bot={p.bot}>{p.name.slice(0, 1)}</span>
-              <span class="pn">{p.name}</span>
-              <span class="mono ps">{p.stake ? short(p.stake) : ''}</span>
-              <span class="mono pnet" class:pos={(p.net ?? 0) > 0} class:neg={(p.net ?? 0) < 0}>{p.net === null ? '' : (p.net > 0 ? '+' : '') + short(p.net)}</span>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </aside>
 
-    <div class="tablecol">
-      <div class="felt">
+      <div class="tablecol">
+        <!-- croupier banner: open window with countdown, no more bets, or the result -->
+        <div class="banner" aria-live="polite">
+          {#if share.phase === 'bet'}
+            <span class="call">{t('r.place')}</span>
+            {#if betEnd}
+              <span class="mono secs" class:hot={left < 3500}>{Math.ceil(left / 1000)}</span>
+              <span class="bar"><i style="transform: scaleX({left / BET_MS})"></i></span>
+            {/if}
+          {:else if share.phase === 'spin'}
+            <span class="call serif">{t('r.noMore')}</span>
+          {:else}
+            <span class="call"><b class="dot {color(share.result)}"></b>{share.result} · {colorName(share.result)}</span>
+            {#if lastWin !== null}<span class="mono won" class:zero={lastWin === 0} in:fly={{ y: 8 }}>{lastWin > 0 ? '+' + fmt(lastWin) : '0'}</span>{/if}
+          {/if}
+        </div>
+
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
         <div
           class="table"
-          class:vertical
           class:locked={share.phase !== 'bet'}
           bind:this={tableEl}
           role="application"
@@ -362,7 +410,7 @@
             </div>
           {/each}
         </div>
-        <div class="trackwrap">
+        <div class="trackwrap main">
           <Racetrack onbet={addGroups} onhover={(n) => (hover = n)} disabled={share.phase !== 'bet'} />
         </div>
         <p class="hint">{t('r.hint')}</p>
@@ -382,93 +430,174 @@
       <span class="eyebrow">{warn ? t('notEnough') : t('bet.total')}</span>
       <strong class="mono" class:warn>{fmt(stake)}</strong>
     </div>
-    {#if isHost}
-      <button class="btn primary spin" onclick={spin} disabled={share.phase !== 'bet'}>{share.phase === 'bet' ? t('r.spin') : t('r.noMore')}</button>
+    {#if canSpinNow}
+      <button class="btn primary spin" onclick={spin}>
+        {share.auto ? t('r.spinNow') : t('r.spin')}{#if betEnd}<span class="mono cd">{Math.ceil(left / 1000)}</span>{/if}
+      </button>
     {:else}
-      <span class="btn ghost spin waiting">{share.phase === 'bet' ? t('r.waitHost') : t('r.noMore')}</span>
+      <span class="btn ghost spin waiting">
+        {#if share.phase === 'bet' && betEnd}{t('r.place')} <span class="mono cd">{Math.ceil(left / 1000)}</span>
+        {:else if share.phase === 'bet'}{t('r.waitHost')}
+        {:else if share.phase === 'spin'}{t('r.noMore')}
+        {:else}{t('r.next')}{/if}
+      </span>
     {/if}
   </div>
 </section>
 
 <style>
-  .page { padding-bottom: 120px; }
-  .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 8px; }
-  h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; font-weight: 700; }
+  /* ---------- page frame: the table fills the screen on desktop ---------- */
+  .rt { width: min(100%, 1680px); margin-inline: auto; padding: 0 20px 14px; display: grid; gap: 10px; }
+  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 4px 0; }
+  .h1row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.4rem); letter-spacing: -0.04em; line-height: 1; font-weight: 700; }
+  .sub { margin-top: 4px; }
   .switch.mini { min-height: 36px; font-size: 0.8rem; color: var(--muted); gap: 8px; }
-  .layout { display: grid; grid-template-columns: minmax(240px, 340px) 1fr; gap: 28px; align-items: start; margin-top: 8px; }
-  .side { display: grid; gap: 18px; }
-  .wheelbox { position: relative; }
+
+  /* ---------- the royal table: walnut rail, gold inlay, deep felt ---------- */
+  .rail {
+    --gold-line: color-mix(in srgb, var(--gold) 62%, transparent);
+    padding: 12px; border-radius: 44px; position: relative;
+    background: linear-gradient(160deg, #6b3d22, #3b1f10 45%, #24120a 100%);
+    box-shadow: 0 40px 80px -40px rgba(0,0,0,.8), inset 0 2px 0 rgba(255,255,255,.12), inset 0 -3px 0 rgba(0,0,0,.4);
+  }
+  .rail::before { content: ''; position: absolute; inset: 5px; border-radius: 39px; border: 1px solid rgba(232, 196, 120, 0.35); pointer-events: none; }
+  .felt {
+    position: relative; border-radius: 32px; padding: clamp(14px, 2.4vw, 32px);
+    display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 2fr); gap: clamp(16px, 3vw, 44px); align-items: center;
+    background:
+      radial-gradient(ellipse at 30% 20%, color-mix(in srgb, var(--felt) 70%, #fff 6%), transparent 60%),
+      repeating-conic-gradient(from 45deg, rgba(255,255,255,.018) 0 25%, transparent 0 50%) 0 0 / 28px 28px,
+      radial-gradient(ellipse at 50% 40%, var(--felt), var(--felt-2) 80%);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), inset 0 0 0 9px rgba(0,0,0,.08), inset 0 0 0 10px var(--gold-line), inset 0 30px 80px rgba(0,0,0,.35);
+  }
+
+  /* ---------- wheel column ---------- */
+  .wheelcol { display: grid; justify-items: center; align-content: center; gap: 14px; min-width: 0; }
+  .wheelbox { position: relative; width: 100%; max-width: 520px; }
   .result {
-    position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 26%; aspect-ratio: 1; border-radius: 50%;
-    display: grid; place-items: center; font: 700 clamp(1.4rem, 3vw, 2.2rem) 'Geist Mono Variable', monospace; color: #fff;
-    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.85), 0 20px 40px rgba(0, 0, 0, 0.5);
+    position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 25%; aspect-ratio: 1; border-radius: 50%;
+    display: grid; place-items: center; font: 400 clamp(1.8rem, 3.2vw, 3rem) 'Instrument Serif', Georgia, serif; color: #fff;
+    box-shadow: 0 0 0 3px #e8c478, 0 0 0 6px rgba(0,0,0,.4), 0 20px 40px rgba(0, 0, 0, 0.5);
   }
   .result.red { background: var(--pocket-red); } .result.black { background: var(--pocket-black); } .result.green { background: var(--pocket-green); }
-  .win { margin: -8px 0 0; text-align: center; font: 700 1.6rem 'Geist Mono Variable', monospace; color: #2fbf71; }
-  .win.lose { color: var(--muted); }
-  .hist { display: grid; gap: 8px; }
-  .nums { display: flex; gap: 4px; flex-wrap: wrap; min-height: 28px; }
-  .n { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font: 600 0.75rem 'Geist Mono Variable', monospace; color: #fff; }
-  .n.red { background: var(--pocket-red); } .n.black { background: var(--pocket-black); border: 1px solid var(--line-2); } .n.green { background: var(--pocket-green); }
-  .players { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-  .players li { display: grid; grid-template-columns: 26px 1fr auto 64px; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 12px; font-size: 0.85rem; }
-  .players li.me { background: var(--surface); }
-  .av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 0.75rem; }
-  .av.bot { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line-2); }
+  .hist { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; min-height: 28px; max-width: 100%; }
+  .n { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font: 600 0.75rem 'Geist Mono Variable', monospace; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+  .n.first { box-shadow: 0 0 0 2px #e8c478; }
+  .n.red { background: var(--pocket-red); } .n.black { background: var(--pocket-black); } .n.green { background: var(--pocket-green); }
+  /* players sit around the wheel as small name plates */
+  .players { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 100%; color: #fff; }
+  .players li { display: flex; gap: 6px; align-items: center; padding: 3px 10px 3px 3px; border-radius: 999px; font-size: 0.78rem; background: rgba(0,0,0,.28); box-shadow: inset 0 0 0 1px rgba(232,196,120,.18); }
+  .players li.me { box-shadow: inset 0 0 0 1px #e8c478; }
+  .pn { max-width: 9ch; }
+  .av { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #e8c478; color: #2a1c05; font-weight: 700; font-size: 0.72rem; }
+  .av.bot { background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); border: 1px dashed rgba(255,255,255,.3); }
   .pn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ps { color: var(--muted); }
-  .pnet { text-align: right; }
-  .pos { color: #2fbf71; } .neg { color: var(--accent); }
+  .ps { color: rgba(255,255,255,.55); }
+  .pnet:empty, .ps:empty { display: none; }
+  .pos { color: #6ff0a6; } .neg { color: #ff9a9d; }
 
-  .felt { background: radial-gradient(ellipse at 50% 0%, var(--felt), var(--felt-2)); border-radius: 28px; padding: clamp(14px, 2.4vw, 28px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 30px 80px rgba(0,0,0,.25); }
+  /* ---------- layout column ---------- */
+  .tablecol { display: grid; justify-items: center; align-content: center; gap: clamp(10px, 1.6vw, 18px); min-width: 0; }
+  .tablecol > * { width: 100%; }
+  .banner {
+    display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 42px; color: #f7ecd4; position: relative;
+    font: 500 1.05rem 'Geist Variable', sans-serif; letter-spacing: 0.02em;
+  }
+  .banner .call { display: inline-flex; align-items: center; gap: 8px; }
+  .banner .serif { font-size: 1.5rem; }
+  .banner .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,.4); }
+  .dot.red { background: var(--pocket-red); } .dot.black { background: var(--pocket-black); } .dot.green { background: var(--pocket-green); }
+  .secs { min-width: 2ch; font-size: 1.3rem; color: #e8c478; text-align: right; }
+  .secs.hot { color: #ff8a8d; animation: beat 1s ease-in-out infinite; }
+  @keyframes beat { 50% { transform: scale(1.15); } }
+  .bar { width: min(220px, 30%); height: 4px; border-radius: 4px; background: rgba(255,255,255,.14); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, #e8c478, #f6e2b0); transform-origin: left; }
+  .won { font-size: 1.3rem; color: #6ff0a6; }
+  .won.zero { color: rgba(255,255,255,.6); }
+
   .table { position: relative; aspect-ratio: 14 / 5.4; user-select: none; touch-action: manipulation; cursor: pointer; }
-  .table.vertical { aspect-ratio: 4.4 / 8.6; max-width: 420px; margin-inline: auto; }
+  .vertical .table { aspect-ratio: 4.4 / 8.6; max-width: 420px; margin-inline: auto; }
   .table.locked { cursor: default; }
   .cell {
-    position: absolute; display: grid; place-items: center; border: 1px solid var(--felt-line); margin: -0.5px;
-    color: #fff; font: 600 clamp(0.7rem, 1.25vw, 1.05rem) 'Geist Variable', sans-serif; transition: background 0.15s;
+    position: absolute; display: grid; place-items: center; border: 1.5px solid var(--gold-line); margin: -0.75px;
+    color: #fff; font: 600 clamp(0.72rem, 1.2vw, 1.15rem) 'Geist Variable', sans-serif; transition: background 0.15s;
   }
   .cell span { pointer-events: none; }
-  .cell.red span, .cell.black span, .cell.green span { width: 70%; max-width: 40px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; }
+  .cell.red span, .cell.black span, .cell.green span { width: 72%; max-width: 46px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 -2px 0 rgba(0,0,0,.25), 0 1px 0 rgba(255,255,255,.12); }
   .cell.red span { background: var(--pocket-red); }
   .cell.black span { background: var(--pocket-black); }
-  .cell.zero { border-radius: 40px 0 0 40px; }
-  .vertical .cell.zero { border-radius: 40px 40px 0 0; }
+  .cell.zero { border-radius: 60px 0 0 60px; }
+  .vertical .cell.zero { border-radius: 60px 60px 0 0; }
   .cell.zero span { background: var(--pocket-green); }
-  .cell.out { font: 600 clamp(0.62rem, 1vw, 0.85rem) 'Geist Mono Variable', monospace; letter-spacing: 0.04em; color: rgba(255,255,255,.88); }
-  .cell.lit { background: rgba(255, 255, 255, 0.16); }
-  .cell.won { background: rgba(255, 255, 255, 0.28); animation: glow 0.7s ease-in-out infinite alternate; }
-  @keyframes glow { to { background: rgba(255, 255, 255, 0.08); } }
-  .diamond { width: 34%; max-width: 30px; aspect-ratio: 1; transform: rotate(45deg) scaleY(0.7); pointer-events: none; }
-  .diamond.red { background: var(--pocket-red); } .diamond.black { background: var(--pocket-black); border: 1px solid rgba(255,255,255,.4); }
+  .cell.out { font: 400 clamp(0.9rem, 1.4vw, 1.35rem) 'Instrument Serif', Georgia, serif; font-style: italic; letter-spacing: 0.01em; color: #f7ecd4; }
+  .cell.lit { background: rgba(255, 236, 190, 0.16); }
+  .cell.won { background: rgba(255, 236, 190, 0.3); animation: glow 0.7s ease-in-out infinite alternate; }
+  @keyframes glow { to { background: rgba(255, 236, 190, 0.08); } }
+  .diamond { width: 34%; max-width: 34px; aspect-ratio: 1; transform: rotate(45deg) scaleY(0.7); pointer-events: none; box-shadow: 0 0 0 1.5px #e8c478; }
+  .diamond.red { background: var(--pocket-red); } .diamond.black { background: var(--pocket-black); }
   .placed { position: absolute; translate: -50% -50%; pointer-events: none; z-index: 2; }
-  .placed .chip { --size: clamp(24px, 3vw, 36px); }
+  .placed .chip { --size: clamp(24px, 2.7vw, 38px); }
   .vertical .placed .chip { --size: 28px; }
-  .trackwrap { margin: clamp(14px, 2vw, 22px) auto 0; max-width: 620px; }
-  .hint { margin: 12px 0 0; font-size: 0.78rem; color: rgba(255,255,255,.6); text-align: center; }
+  .trackwrap { max-width: 640px; }
+  .trackwrap.side { display: none; }
+  .trackwrap :global(.outline) { stroke: var(--gold-line); }
+  .hint { margin: 0; font-size: 0.76rem; color: rgba(255,255,255,.55); text-align: center; }
 
+  /* ---------- dock ---------- */
   .dock {
-    position: sticky; bottom: 12px; z-index: 20; margin-top: 20px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px;
+    position: sticky; bottom: 10px; z-index: 20; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px;
+    width: min(1240px, 100%); margin-inline: auto;
     background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(14px); border-radius: 24px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.5);
   }
   .actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .total { display: grid; gap: 4px; min-width: 90px; }
   .total strong { font-size: 1.25rem; }
   .warn { color: var(--accent); }
-  .spin { min-width: 140px; min-height: 52px; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .spin { min-width: 160px; min-height: 52px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .cd { display: inline-grid; place-items: center; min-width: 30px; height: 26px; padding: 0 6px; border-radius: 999px; background: rgba(0,0,0,.2); font-size: 0.85rem; letter-spacing: 0; }
   .waiting { cursor: default; color: var(--muted); }
+  .waiting .cd { background: var(--surface-2); color: var(--text); }
 
-  @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; }
-    .side { grid-template-columns: minmax(160px, 220px) 1fr; align-items: start; }
-    .players { grid-column: 1 / -1; }
+  /* desktop: wheel, layout and dock always fit the window; sizes follow the felt's real height */
+  @media (min-width: 1000px) {
+    .rt { height: calc(100dvh - var(--nav-h)); min-height: 640px; grid-template-rows: auto minmax(0, 1fr) auto; }
+    .rail { min-height: 0; }
+    .felt { height: 100%; container-type: size; }
+    .wheelbox { width: min(100%, calc(100cqh - 160px)); }
+    /* layout ≈ 0.39 w, racetrack ≈ 0.17 w, plus banner and hint */
+    .tablecol > * { width: min(100%, calc((92cqh - 110px) / 0.57)); }
+    .trackwrap { width: min(100%, calc((92cqh - 110px) / 0.57 * 0.66)) !important; }
+    .dock { position: relative; bottom: auto; }
+  }
+  /* short desktop screens: the racetrack moves under the wheel so the layout can stay large */
+  @media (min-width: 1000px) and (max-height: 860px) {
+    .trackwrap.main, .hint { display: none; }
+    .trackwrap.side { display: block; width: 100%; }
+    .wheelbox { width: min(100%, calc(100cqh - 120px - 9cqw)); }
+    .tablecol > * { width: min(100%, calc((100cqh - 70px) / 0.386)); }
+  }
+  @media (max-width: 999px) {
+    .rt { padding-bottom: 100px; }
+    .felt { grid-template-columns: 1fr; }
+    .wheelcol { grid-template-columns: minmax(170px, 280px) 1fr; align-items: center; justify-items: stretch; }
+    .wheelcol .hist { justify-content: flex-start; }
+    .players { grid-column: 1 / -1; justify-content: flex-start; }
   }
   @media (max-width: 720px) {
+    .rt { padding: 0 10px 110px; }
+    .rail { padding: 8px; border-radius: 30px; }
+    .rail::before { border-radius: 26px; inset: 3px; }
+    .felt { border-radius: 22px; padding: 14px 10px; }
+    .wheelcol { grid-template-columns: 1fr; justify-items: center; }
+    .wheelbox { max-width: 220px; }
+    .wheelcol .hist { justify-content: center; }
+    .banner { font-size: 0.95rem; }
     .dock { bottom: 8px; padding: 10px; gap: 8px; }
     .dock :global(.tray) { flex-wrap: nowrap; overflow-x: auto; width: 100%; justify-content: flex-start; padding: 8px 4px 4px; }
     .dock :global(.tray .chip) { --size: 38px; }
     .actions { order: 3; width: 100%; justify-content: space-between; }
     .actions .btn { min-height: 32px; flex: 1; padding: 0 6px; }
-    .spin { flex: 1; min-height: 46px; }
+    .spin { flex: 1; min-height: 46px; min-width: 0; }
   }
 </style>

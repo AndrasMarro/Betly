@@ -17,14 +17,14 @@ Betly ist ein privates Hobbyprojekt: eine Casino-Simulation, die sich wie ein ec
 ### Classic
 | Spiel | Highlights |
 |---|---|
-| **Roulette** | Europäisch (eine Null), präzises Setzen auf Splits/Carrés/Transversalen per Klick auf Kanten und Ecken, Racetrack mit Nachbar- und Ansagewetten (Voisins, Tiers, Orphelins, Jeu Zéro), La Partage |
+| **Roulette** | Grosser royaler Tisch, europäisch (eine Null), Auto-Runden mit Setz-Countdown zum jederzeit Einsteigen (abschaltbar), präzises Setzen auf Splits/Carrés/Transversalen, Racetrack mit Nachbar- und Ansagewetten (Voisins, Tiers, Orphelins, Jeu Zéro), La Partage |
 | **Blackjack** | 5 Plätze, Vollbild-Tisch, Regel-Varianten (Vegas, Atlantic City, Europäisch, Single Deck, Downtown) und frei einstellbar, Basic-Strategy-Tipps, Bots |
-| **Texas Hold'em** | No-Limit an 6 Plätzen, Side-Pots, korrekte Mindest-Erhöhungen, Bots mit fünf Spielstilen (Monte-Carlo-Gewinnchancen), Helfer für Hand, Gewinnchance und Pot Odds |
+| **Texas Hold'em** | No-Limit an 6 Plätzen, Side-Pots, korrekte Mindest-Erhöhungen, Bots mit fünf Spielstilen (Monte-Carlo-Gewinnchancen), Helfer für Hand, Gewinnchance und Pot Odds, Übersicht aller Hände |
 | **Baccarat** | Punto Banco mit echter Ziehregel, Paar-Wetten, Big-Road-Anzeigetafel |
 | **Slots** | Lucky Sevens, Midnight Gems, Cosmic Cash, Lucky Clover (Wilds, Scatter, Freispiele) |
 
 ### Arcade
-Rocket (Crash) · Kisten (Cases, inkl. *Classic*-Modus mit offiziellen Drop-Raten) · Minen · Minesweeper · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (3D) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
+Rocket (Crash) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und eigenem Item-Set) · Minen · Minesweeper · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (3D) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
 
 Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno, Limbo, …).
 
@@ -32,9 +32,12 @@ Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno,
 
 - **Mehrspieler ohne Server**: Raum öffnen, Code oder Link teilen. Die Verbindung läuft direkt von Browser zu Browser (WebRTC über PeerJS). Der Browser des Hosts führt den Tisch; beim Poker sieht jeder nur seine eigenen Karten. Ein Heartbeat erkennt Spieler, die verschwinden, und abwesende Plätze werden automatisch weitergespielt.
 - **Bots an/aus** pro Tisch, inklusive Anzahl.
+- **Anleitungen** für jedes Spiel (ausser ganz einfachen wie dem Münzwurf), auf Deutsch und Englisch.
+- **Installierbar (PWA)**: Auf dem Handy «Zum Startbildschirm hinzufügen» liefert das Betly-Icon; die Seite funktioniert danach auch offline (ohne Mehrspieler).
+- **Responsive**: Tische passen sich der Bildschirmhöhe an, vom Handy bis 1440p.
 - **Deutsch & Englisch**, Schweizer Schreibweise und Zahlenformat (10'000).
 - **Drei Designs**: Noir (Standard), Midnight (blau), Ivory (hell).
-- **Sound**: Alle Effekte und die Lounge-Musik im Menü werden live mit WebAudio erzeugt; es gibt keine Audiodateien.
+- **Sound**: Effekte und die Lounge-Musik im Menü werden live mit WebAudio erzeugt; einzige Aufnahme ist das Öffnen der Kisten.
 - **Bewegung**: Federnde Animationen, die `prefers-reduced-motion` respektieren.
 
 ## Fairness & Mathematik

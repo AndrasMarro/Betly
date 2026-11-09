@@ -3,6 +3,7 @@
   import { fly, scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import CardView from '../components/Card.svelte';
+  import HowTo from '../components/HowTo.svelte';
   import ChipTray from '../components/ChipTray.svelte';
   import RoomBar from '../components/RoomBar.svelte';
   import {
@@ -278,16 +279,22 @@
   };
   const dealerCards = $derived(st.hole && room.role !== 'guest' ? [st.dealer[0], { r: 0, s: 0 }] : st.dealer);
   const anyBet = $derived(st.seats.some((s) => s.owner && s.bet > 0));
-  const insuranceSeats = $derived(st.phase === 'insurance' ? st.seats.map((s, i) => [s, i] as const).filter(([s]) => s.owner === room.myId && s.ins === null) : []);
+  // phones show the seats as a swipe row: keep the seat that is playing in view
+  let seatEls = $state<HTMLElement[]>([]);
+  $effect(() => {
+    const i = st.turn?.[0] ?? st.seats.findIndex((s) => s.owner === room.myId);
+    if (i >= 0 && matchMedia('(max-width: 820px)').matches) seatEls[i]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  });
+  const insuranceSeats = $derived(st.phase === 'insurance' ? st.seats.map((s, i) => [s, i] as const).filter(([s]) => s.owner === room.myId && s.ins === null && s.hands.length > 0) : []);
 </script>
 
 <svelte:window onkeydown={key} />
 
-<section class="bj">
+<section class="bjt">
   <header class="head">
     <div>
       <p class="eyebrow">{presetName === 'custom' ? t('bj.custom') : t(('preset.' + presetName) as Key)} · {st.rules.decks} {t('bj.decks')}</p>
-      <h1>Blackjack</h1>
+      <div class="h1row"><h1>Blackjack</h1><HowTo id="blackjack" /></div>
     </div>
     <RoomBar {room}>
       {#snippet extra()}
@@ -382,7 +389,7 @@
     <div class="seats">
       {#each st.seats as s, i}
         {@const own = s.owner === room.myId}
-        <div class="seat" class:own class:active={st.turn?.[0] === i} style="--k:{[0, 0.62, 1, 0.62, 0][i]}">
+        <div class="seat" bind:this={seatEls[i]} class:own class:active={st.turn?.[0] === i} style="--k:{[0, 0.62, 1, 0.62, 0][i]}">
           <div class="hands">
             {#each s.hands as h, j}
               <div class="hand" class:on={st.turn?.[0] === i && st.turn?.[1] === j}>
@@ -449,7 +456,10 @@
 </section>
 
 <style>
-  .bj { width: min(1280px, 100% - 32px); margin-inline: auto; padding-bottom: 120px; position: relative; }
+  .h1row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .h1row h1 { margin: 0; }
+  /* the table always fills the screen: header, felt (flexible), dock */
+  .bjt { width: min(100%, 1680px); margin-inline: auto; position: relative; height: calc(100dvh - var(--nav-h)); min-height: 600px; padding: 0 20px 14px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; }
   .shoe { position: absolute; right: 4%; top: 22px; width: 74px; height: 56px; border-radius: 10px 10px 14px 14px; background: linear-gradient(180deg, #2a2a30, #121216); box-shadow: 0 10px 20px rgba(0,0,0,.45), inset 0 0 0 2px rgba(255,255,255,.08); transform: perspective(300px) rotateX(18deg) rotate(-8deg); }
   .shoe i { position: absolute; left: 8px; right: 8px; top: 8px; height: 30px; border-radius: 4px; background: #8e1b22; box-shadow: 0 2px 0 #fbfaf7; }
   .shoe i:nth-child(2) { top: 12px; } .shoe i:nth-child(3) { top: 16px; }
@@ -460,34 +470,40 @@
   .seg { display: flex; border: 1px solid var(--line-2); border-radius: 999px; overflow: hidden; }
   .seg button { border: 0; background: none; width: 32px; height: 32px; font-size: 0.8rem; }
   .seg button.on { background: var(--text); color: var(--bg); }
-  .rules { padding: 18px; margin: 8px 0 16px; }
+  .rules { padding: 18px; position: absolute; z-index: 40; top: 64px; right: 20px; width: min(720px, calc(100% - 40px)); max-height: calc(100% - 80px); overflow: auto; box-shadow: 0 30px 80px -20px rgba(0,0,0,.6); }
   .rules fieldset { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 24px; align-items: end; }
   .rules fieldset:disabled { opacity: 0.6; }
   .rules .switch { font-size: 0.85rem; }
   .muted { color: var(--muted); } .small { font-size: 0.8rem; margin: 10px 0 0; }
 
   .felt {
-    position: relative; margin-top: 8px; border-radius: 40px 40px 50% 50% / 40px 40px 140px 140px; padding: 24px clamp(10px, 2vw, 28px) 64px;
+    position: relative; margin: 0; border-radius: 48px 48px 50% 50% / 48px 48px 20% 20%; padding: 18px clamp(10px, 3vw, 48px) 3cqh;
     background: radial-gradient(ellipse at 50% 10%, var(--felt), var(--felt-2) 75%);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 0 0 10px rgba(0,0,0,.12), inset 0 40px 100px rgba(0,0,0,.25);
-    min-height: 520px; overflow: hidden;
+    min-height: 0; overflow: hidden; display: flex; flex-direction: column;
+    /* card size follows the room the felt really has, so nothing overlaps at any resolution */
+    container-type: size; --cw: clamp(44px, min(7cqw, calc((90cqh - 200px) / 2.8)), 116px); --arc: 9cqh;
   }
-  .arc { display: block; width: min(620px, 80%); margin: 0 auto -6px; pointer-events: none; }
+  .felt > * { flex-shrink: 0; }
+  .seats { margin-top: auto; }
+  .hands { min-height: calc(var(--cw) * 1.4 + 40px); }
+  .arc { position: absolute; left: 50%; translate: -50% 0; top: calc(var(--cw) * 1.4 + 72px); width: min(620px, 60%); pointer-events: none; }
   .arc text { font: 600 13px 'Geist Mono Variable', monospace; letter-spacing: 0.18em; fill: rgba(255,255,255,.32); text-anchor: middle; }
-  .dealer { display: grid; justify-items: center; gap: 10px; min-height: 160px; position: relative; z-index: 1; }
+  .dealer { display: grid; justify-items: center; gap: 8px; position: relative; z-index: 1; }
+  .dealer .cards { min-height: calc(var(--cw) * 1.4); }
   .eyebrow.light { color: rgba(255,255,255,.5); }
   .cards { display: flex; gap: 8px; min-height: 90px; }
   .cards.fan { gap: 0; }
   .cards.fan .slot + .slot { margin-left: calc(var(--cw, 64px) * -0.55); }
   .total { font: 700 0.8rem 'Geist Mono Variable', monospace; background: rgba(0,0,0,.45); color: #fff; padding: 4px 10px; border-radius: 999px; }
   .total.bust { background: var(--accent); }
-  .status { min-height: 56px; display: grid; place-items: center; position: relative; z-index: 1; }
+  .status { min-height: 44px; display: grid; place-items: center; position: relative; z-index: 1; }
   .pill { font-size: 0.8rem; padding: 6px 14px; border-radius: 999px; background: rgba(0,0,0,.35); color: rgba(255,255,255,.85); }
   .pill.accent { background: var(--accent); color: var(--accent-ink); }
   .prompt { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; color: #fff; background: rgba(0,0,0,.4); padding: 8px 12px; border-radius: 999px; }
 
   .seats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; align-items: start; position: relative; z-index: 1; }
-  .seat { display: grid; justify-items: center; gap: 10px; transform: translateY(calc(var(--arc, 34px) * var(--k))); min-width: 0; }
+  .seat { display: grid; justify-items: center; gap: 10px; transform: translateY(calc(var(--arc, 34px) * (var(--k) - 1))); /* outer seats rise with the rail */ min-width: 0; }
   .hands { display: flex; gap: 6px; min-height: 120px; align-items: end; }
   .hand { display: grid; justify-items: center; gap: 6px; padding: 6px; border-radius: 14px; transition: background 0.3s; }
   .hand.on { background: rgba(255,255,255,.12); box-shadow: 0 0 0 1px rgba(255,255,255,.3); }
@@ -514,7 +530,7 @@
   .x { border: 0; background: rgba(0,0,0,.3); color: #fff; width: 22px; height: 22px; border-radius: 50%; line-height: 1; }
 
   .dock {
-    position: sticky; bottom: 12px; z-index: 20; margin-top: 20px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px;
+    position: relative; z-index: 20; margin: 0 auto; width: min(900px, 100%); padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px;
     background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(14px); border-radius: 24px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.5); min-height: 76px;
   }
   .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; }
@@ -527,31 +543,35 @@
   .waiting { cursor: default; color: var(--muted); }
 
   @media (min-width: 900px) {
-    /* the table owns the whole viewport on desktop */
-    .bj { width: 100%; height: calc(100dvh - var(--nav-h)); min-height: 640px; padding: 0 20px 16px; display: grid; grid-template-rows: auto 1fr; gap: 6px; }
     .head { padding: 10px 6px 4px; }
     .head h1 { font-size: 1.7rem; }
     .head .eyebrow { display: none; }
-    .rules { position: absolute; z-index: 40; top: 70px; right: 20px; width: min(720px, calc(100% - 40px)); box-shadow: 0 30px 80px -20px rgba(0,0,0,.6); }
-    .felt { --cw: clamp(76px, 6vw, 112px); --arc: 6vh; margin: 0; min-height: 0; display: flex; flex-direction: column; padding: 28px 3vw 150px; border-radius: 48px 48px 50% 50% / 48px 48px 34% 34%; }
-    .seats { margin-top: auto; }
-    .hands { min-height: calc(var(--cw) * 1.5); }
-    .spot { width: 78px; height: 78px; }
-    .spot .chip { --size: 54px; }
-    .dock { position: absolute; bottom: 30px; left: 50%; translate: -50% 0; margin: 0; width: min(900px, calc(100% - 80px)); }
+  }
+  @media (max-height: 760px) and (min-width: 821px) {
+    .spot { width: 60px !important; height: 60px !important; }
+    .spot .chip { --size: 42px !important; }
+    .status { min-height: 36px; }
+    .hands { min-height: calc(var(--cw) * 1.4 + 30px); }
   }
   @media (max-width: 820px) {
+    .bjt { padding: 0 10px 8px; min-height: 540px; gap: 6px; }
+    .head { padding: 10px 0 0; gap: 4px; }
+    .head h1 { font-size: 1.6rem; }
+    .head .eyebrow { display: none; }
+    .rules { top: 110px; right: 10px; width: calc(100% - 20px); }
     .shoe, .tray { display: none; }
-    .felt { border-radius: 28px; padding-bottom: 24px; }
+    .felt { border-radius: 28px; padding: 12px 8px 10px; --cw: clamp(40px, min(13cqw, calc((100cqh - 250px) / 2.9)), 96px); --arc: 0px; }
     .arc { display: none; }
-    .seats { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+    .status { min-height: 36px; }
+    .seats { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; scrollbar-width: none; }
     .seat { transform: none; flex: 0 0 46%; scroll-snap-align: center; }
-    .cards.fan { --cw: 52px; }
-    .act { min-width: 0; flex: 1 1 28%; }
+    .spot { width: 56px; height: 56px; }
+    .spot .chip { --size: 40px; }
+    .act { min-width: 0; flex: 1 1 28%; min-height: 46px; padding: 0 8px; font-size: 0.88rem; }
+    .act kbd { display: none; }
     .dock :global(.tray) { flex-wrap: nowrap; overflow-x: auto; width: 100%; justify-content: flex-start; padding: 8px 4px 4px; }
     .dock :global(.tray .chip) { --size: 38px; }
-    .dock { gap: 8px; padding: 10px; }
+    .dock { gap: 8px; padding: 10px; min-height: 0; }
     .deal { flex: 1; min-width: 0; min-height: 46px; }
-    .felt { min-height: 0; }
   }
 </style>

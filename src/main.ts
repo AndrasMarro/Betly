@@ -6,3 +6,6 @@ import { mount } from 'svelte';
 import App from './App.svelte';
 
 mount(App, { target: document.getElementById('app')! });
+
+// installable app + offline play (production only, so dev reloads stay fresh)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));

@@ -77,7 +77,8 @@ export const drawRank = () => 1 + Math.floor(Math.random() * 13);
 
 // ---------- Plinko ----------
 export const PLINKO_ROWS = [8, 12, 16] as const;
-export const RISKS = { low: { 8: 12, 12: 25, 16: 35 }, medium: { 8: 35, 12: 120, 16: 400 }, high: { 8: 150, 12: 900, 16: 5000 } } as const; // edge/center ratio
+// edge/center ratio; steep curve so most balls land below 1× and the edges carry the return
+export const RISKS = { low: { 8: 30, 12: 60, 16: 90 }, medium: { 8: 90, 12: 300, 16: 1000 }, high: { 8: 380, 12: 2250, 16: 12500 } } as const;
 export type Risk = keyof typeof RISKS;
 const binom = (n: number, k: number) => { let c = 1; for (let i = 1; i <= k; i++) c = (c * (n - k + i)) / i; return c; };
 export const plinkoProb = (rows: number, i: number) => binom(rows, i) / 2 ** rows;
@@ -85,7 +86,7 @@ const roundMult = (x: number) => (x >= 100 ? Math.round(x) : x >= 10 ? Math.roun
 /** Bucket multipliers: exponential towards the edges, symmetric, scaled so the expected return is 97 %. */
 export function plinkoTable(rows: number, risk: Risk) {
   const ratio = (RISKS[risk] as Record<number, number>)[rows];
-  const shape = Array.from({ length: rows + 1 }, (_, i) => ratio ** ((Math.abs(i - rows / 2) / (rows / 2)) ** 1.35));
+  const shape = Array.from({ length: rows + 1 }, (_, i) => ratio ** ((Math.abs(i - rows / 2) / (rows / 2)) ** 2));
   const ev = shape.reduce((a, m, i) => a + m * plinkoProb(rows, i), 0);
   return shape.map((m) => roundMult((m * EDGE) / ev));
 }
@@ -147,7 +148,7 @@ export const RARITIES = [
   { p: 0.0026, color: '#e4ae39' }, // legendary
 ];
 const CASE_MULTS = [[0.2, 0.3, 0.4, 0.5], [1, 1.4, 1.8], [3.5, 5.1], [12, 22], [84.5]];
-export type CaseItem = { rarity: number; mult: number; icon: string; name: string };
+export type CaseItem = { rarity: number; mult: number; icon: string; name: string; img?: string };
 export type CaseDef = { id: string; name: string; price: number; color: string; items: CaseItem[] };
 const mk = (id: string, name: string, price: number, color: string, list: [string, string][]): CaseDef => {
   let k = 0;
@@ -191,12 +192,18 @@ export function pick3Symbols(prize: { sym: string } | null) {
 export const randomSym = () => SYMS[Math.floor(Math.random() * SYMS.length)];
 
 // Classic cases: official drop rates, item values like the real thing (the case is a losing bet on average).
+// Items carry an `img` slug (artwork in src/assets/cases). The neon "prototype" set sits mostly in the top tiers.
 export const GOLD_P = RARITIES[4].p;
-const CLASSIC_MULTS = [[0.06, 0.1, 0.14, 0.18], [0.4, 0.6, 0.8], [1.8, 3], [7, 13], [60]];
-export const CLASSIC_CASE: CaseDef = (() => {
-  const names: [string, string][] = [['cherry', 'Field Kit'], ['lemon', 'Sand Dune'], ['plum', 'Night Ops'], ['horseshoe', 'Iron Rust'], ['bell', 'Brass Echo'], ['coin', 'Old Mint'], ['hat', 'Gentleman'], ['clover', 'Jade Fang'], ['bar', 'Blackout'], ['ruby', 'Crimson Web'], ['sapphire', 'Deep Tide'], ['crown', 'Golden Edge']];
-  let k = 0;
-  return { id: 'classic', name: 'Classic Case', price: 25, color: '#e4ae39', items: CLASSIC_MULTS.flatMap((ms, rarity) => ms.map((mult) => ({ rarity, mult, icon: names[k][0], name: names[k++][1] }))) };
-})();
+const CLASSIC_TIERS: [number, string, string][][] = [
+  [[0.06, 'field-kit', 'Field Kit'], [0.08, 'sand-dune', 'Sand Dune'], [0.1, 'night-ops', 'Night Ops'], [0.12, 'iron-rust', 'Iron Rust'], [0.14, 'blackout', 'Blackout'], [0.16, 'old-mint', 'Old Mint'], [0.18, 'gentleman', 'Gentleman']],
+  [[0.4, 'brass-echo', 'Brass Echo'], [0.5, 'dune-scavenger', 'Dune Scavenger'], [0.6, 'rust-tech', 'Rust-Tech'], [0.7, 'jade-fang', 'Jade Fang'], [0.8, 'deep-tide', 'Deep Tide']],
+  [[1.6, 'acid-bite', 'Acid Bite'], [2, 'glitch-trigger', 'Glitch Trigger'], [2.4, 'neo-vanguard', 'Neo Vanguard'], [2.8, 'night-phantom', 'Night Phantom'], [3.2, 'crimson-web', 'Crimson Web']],
+  [[7, 'amber-volt', 'Amber Volt'], [8.5, 'cyber-sting', 'Cyber Sting'], [10, 'overdrive', 'Overdrive'], [11.5, 'solar-flare', 'Solar Flare'], [13, 'void-pulse', 'Void Pulse']],
+  [[50, 'golden-edge', 'Golden Edge'], [70, 'quantum-edge', 'Quantum Edge']],
+];
+export const CLASSIC_CASE: CaseDef = {
+  id: 'classic', name: 'Classic Case', price: 25, color: '#e4ae39',
+  items: CLASSIC_TIERS.flatMap((tier, rarity) => tier.map(([mult, img, name]) => ({ rarity, mult, icon: img, img, name }))),
+};
 /** Chance of at least one gold item in n openings: 1 - (1 - p)^n. */
 export const atLeastOneGold = (n: number) => 1 - (1 - GOLD_P) ** n;

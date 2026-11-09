@@ -4,6 +4,7 @@
   import { cubicOut } from 'svelte/easing';
   import { fly, scale } from 'svelte/transition';
   import SlotSymbol from '../components/SlotSymbol.svelte';
+  import HowTo from '../components/HowTo.svelte';
   import { MACHINES, strips, spinGrid, evaluate, type Win } from '../games/slots';
   import { wallet, settle, fmt } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
@@ -101,7 +102,7 @@
   <header class="head">
     <div>
       <p class="eyebrow">{m.lines.length} {t('s.lines')} · {m.weights.length}×{m.rows}</p>
-      <h1>Slots</h1>
+      <div class="h1row"><h1>Slots</h1><HowTo id="slots" /></div>
     </div>
     <div class="tabs" role="tablist">
       {#each MACHINES as mm, i}
@@ -189,6 +190,8 @@
 </section>
 
 <style>
+  .h1row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .h1row h1 { margin: 0; }
   .page { padding-bottom: 120px; }
   .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 16px; }
   h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; font-weight: 700; }
@@ -208,7 +211,7 @@
   .marquee .serif { font-size: clamp(1.6rem, 3.5vw, 2.4rem); color: var(--frame); }
   .free { font-size: 0.8rem; background: var(--frame); color: #120b07; padding: 6px 12px; border-radius: 999px; }
   .window {
-    position: relative; display: grid; --cell: min(140px, 14vh, calc(54vh / var(--rows)), calc((100vw - 96px) / var(--reels))); grid-template-columns: repeat(var(--reels), var(--cell)); gap: 6px; padding: 6px; border-radius: 22px;
+    position: relative; display: grid; width: fit-content; margin-inline: auto; --cell: min(140px, 14vh, calc(54vh / var(--rows)), calc((100vw - 96px) / var(--reels))); grid-template-columns: repeat(var(--reels), var(--cell)); gap: 6px; padding: 6px; border-radius: 22px;
     background: #0b0b0c; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--frame) 40%, transparent), inset 0 20px 40px rgba(0,0,0,.6);
   }
   .reel { overflow: hidden; height: calc(var(--cell) * var(--rows)); border-radius: 14px; background: linear-gradient(180deg, #e8e4da, #fbfaf6 20%, #fbfaf6 80%, #e8e4da); position: relative; }

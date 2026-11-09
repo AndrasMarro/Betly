@@ -1,5 +1,5 @@
-// All audio is synthesised with WebAudio: no files to download, no licences to worry about.
-// Everything runs through one bus: a gentle compressor for punch plus a short room reverb for glue.
+// Effects are synthesised with WebAudio; the only recorded sample is the case opening (src/assets/case-open.mp3).
+// Everything synthesised runs through one bus: a gentle compressor for punch plus a short room reverb for glue.
 import { settings } from './state.svelte';
 
 let ctx: AudioContext | undefined;
@@ -145,7 +145,6 @@ const recipes = {
   peg: (c: AudioContext, o: AudioNode, t: number) => bell(c, o, note(12 + PENTA[Math.floor(Math.random() * PENTA.length)]), t, 0.18, 0.025, 2),
   scratch: (c: AudioContext, o: AudioNode, t: number) => burst(c, o, t, 0.07, vary(3600, 0.2), 1.1, 0.08, 'bandpass'),
   // case reel: hard, short mechanical click
-  caseTick: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.012, 6200, 3, 0.4); tone(c, o, vary(2600, 0.02), t, 0.022, 'square', 0.02); },
   bounce: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.025, vary(4200), 3, 0.3); tone(c, o, vary(3200), t, 0.04, 'sine', 0.05); },
   dice: (c: AudioContext, o: AudioNode, t: number) => {
     for (let i = 0; i < 10; i++) { const at = t + i * 0.05 + Math.random() * 0.03; burst(c, o, at, 0.02, 1800 + Math.random() * 2600, 3, 0.26 - i * 0.02); tone(c, o, vary(900, 0.2), at, 0.03, 'sine', 0.04); }
@@ -301,4 +300,23 @@ export function menuMusic(on: boolean) {
   waiting = () => { menuMusic(false); startMusic(); };
   addEventListener('pointerdown', waiting, { once: true });
   addEventListener('keydown', waiting, { once: true });
+}
+
+/** A recorded sound file, decoded once; play(from, dur) plays a slice of it. Load early with preload(). */
+export function sampler(url: string, vol = 1) {
+  let buf: Promise<AudioBuffer | null> | undefined;
+  const load = () => (buf ??= fetch(url).then((r) => r.arrayBuffer()).then((b) => ac().decodeAudioData(b)).catch(() => null));
+  return {
+    preload: () => void load(),
+    async play(from = 0, dur?: number, gain = 1) {
+      if (!settings.sound) return;
+      const b = await load();
+      if (!b || !settings.sound) return;
+      const c = ac(), src = c.createBufferSource(), g = c.createGain();
+      src.buffer = b;
+      g.gain.value = vol * gain;
+      src.connect(g).connect(c.destination);
+      src.start(c.currentTime, from, dur);
+    },
+  };
 }

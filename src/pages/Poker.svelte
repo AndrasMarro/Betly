@@ -3,6 +3,8 @@
   import { fly } from 'svelte/transition';
   import { cubicOut, cubicIn } from 'svelte/easing';
   import CardView from '../components/Card.svelte';
+  import HowTo from '../components/HowTo.svelte';
+  import HandRanks from '../components/HandRanks.svelte';
   import FlipCard from '../components/FlipCard.svelte';
   import RoomBar from '../components/RoomBar.svelte';
   import {
@@ -314,7 +316,7 @@
     mq.onchange = (e) => (wide = e.matches);
   });
   const POS_WIDE = [[50, 86], [10, 64], [15, 17], [50, 5], [85, 17], [90, 64]];
-  const POS_TALL = [[50, 88], [13, 66], [13, 30], [50, 7], [87, 30], [87, 66]];
+  const POS_TALL = [[50, 79], [13, 66], [13, 30], [50, 8], [87, 30], [87, 66]];
   const base = $derived(myIndex >= 0 ? myIndex : 0);
   const posOf = (i: number) => (wide ? POS_WIDE : POS_TALL)[(i - base + SEATS) % SEATS];
   const toward = (i: number, k: number) => { const [x, y] = posOf(i); return [x + (50 - x) * k, y + (46 - y) * k]; };
@@ -331,6 +333,7 @@
     return { delay, duration: 480, easing: cubicOut, css: (_t: number, u: number) => `transform: translate(${u * dx}px, ${u * dy}px) rotate(${u * 30}deg) scale(${1 - u * 0.3}); opacity:${Math.min(1, (1 - u) * 3)}` };
   }
 
+  let showRanks = $state(false);
   const RANK = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   function handName(score: number) {
     const k = topRanks(score), cat = bestCat(score);
@@ -349,7 +352,7 @@
 <section class="pk">
   <header class="head">
     <div class="ttl">
-      <h1>Texas Hold'em</h1>
+      <div class="h1row"><h1>Texas Hold'em</h1><HowTo id="holdem" label={false} /><button class="btn sm" class:on={showRanks} onclick={() => (showRanks = !showRanks)} aria-expanded={showRanks}>{t('pk.ranks')}</button></div>
       <span class="mono blinds">{view.sb}/{view.bb}</span>
     </div>
     <RoomBar {room}>
@@ -488,9 +491,20 @@
       </div>
     {/if}
   </div>
+  {#if showRanks}
+    <aside class="ranks panel" transition:fly={{ x: 40, duration: 280 }}>
+      <header><strong>{t('pk.ranks')}</strong><button class="btn icon sm ghost" onclick={() => (showRanks = false)} aria-label={t('close')}>×</button></header>
+      <HandRanks active={myHand && mine && !mine.folded ? bestCat(myHand.score) : ''} />
+    </aside>
+  {/if}
 </section>
 
 <style>
+  .h1row .btn.on { background: var(--text); color: var(--bg); }
+  .ranks { position: fixed; z-index: 60; right: 16px; top: calc(var(--nav-h) + 12px); width: min(430px, calc(100% - 32px)); max-height: calc(100dvh - var(--nav-h) - 24px); overflow: auto; padding: 12px 10px 14px; box-shadow: 0 30px 80px -20px rgba(0,0,0,.6); }
+  .ranks header { display: flex; justify-content: space-between; align-items: center; padding: 0 6px 6px; }
+  .h1row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .h1row h1 { margin: 0; }
   .pk { width: min(1280px, 100% - 32px); margin-inline: auto; padding-bottom: 40px; }
   .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 18px 0 10px; }
   .ttl { display: flex; align-items: baseline; gap: 12px; }
@@ -503,7 +517,9 @@
   .switch.mini { min-height: 34px; font-size: 0.8rem; color: var(--muted); gap: 8px; }
 
   .table { position: relative; container-type: size; height: clamp(520px, calc(100dvh - var(--nav-h) - 230px), 760px); --cw: clamp(52px, 5.4cqw, 86px); }
-  .table:not(.wide) { height: min(128vw, 56vh); min-height: 430px; --cw: 40px; }
+  /* phones: the table, hero seat and action dock fit one screen */
+  .table:not(.wide) { height: clamp(340px, calc(100dvh - var(--nav-h) - 300px), 128vw); min-height: 0; margin-top: 28px; --cw: 40px; }
+  .table:not(.wide) .seat.me .hole { --cw: 54px; }
   .felt {
     position: absolute; inset: 9% 4% 12%; border-radius: 999px;
     background: radial-gradient(ellipse at 50% 35%, #1a6b4c, #0b3626 70%); box-shadow: 0 0 0 14px #3a2416, 0 0 0 16px #5a3a22, inset 0 0 80px rgba(0,0,0,.5), 0 40px 80px -30px rgba(0,0,0,.7);
@@ -588,4 +604,5 @@
     .presets .btn { min-height: 28px; padding: 0 8px; font-size: 0.72rem; }
     .head { padding-top: 10px; }
   }
+  @media (max-width: 400px) { h1 { font-size: 1.4rem; } .h1row { gap: 8px; } .blinds { font-size: 0.8rem; } }
 </style>

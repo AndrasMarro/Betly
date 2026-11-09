@@ -1,6 +1,7 @@
 <script lang="ts">
   import { cubicOut } from 'svelte/easing';
   import CardView from '../components/Card.svelte';
+  import HowTo from '../components/HowTo.svelte';
   import ChipTray from '../components/ChipTray.svelte';
   import { coup, payout, points, type BetKey, type Coup } from '../games/baccarat';
   import { newShoe, type Card } from '../lib/cards';
@@ -102,7 +103,7 @@
   <header class="head rise">
     <div>
       <p class="eyebrow">Punto Banco · 8 decks</p>
-      <h1>Baccarat</h1>
+      <div class="h1row"><h1>Baccarat</h1><HowTo id="baccarat" /></div>
     </div>
     <div class="stats mono">
       <span class="p">P {counts.player}</span><span class="b">B {counts.banker}</span><span class="tt">T {counts.tie}</span>
@@ -164,6 +165,8 @@
 </section>
 
 <style>
+  .h1row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .h1row h1 { margin: 0; }
   .page { padding-bottom: 120px; }
   .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 12px; }
   h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; }
@@ -217,11 +220,14 @@
   @media (max-width: 720px) {
     .felt { border-radius: 28px; }
     .spots { grid-template-columns: repeat(3, 1fr); }
-    .spot.small { grid-row: 2; min-height: 70px; }
-    .spot { min-height: 84px; }
+    .spot.small { grid-row: 2; min-height: 54px; }
+    .spot { min-height: 70px; }
+    .side { min-height: calc(var(--cw) * 1.4 + 64px); gap: 6px; }
+    .banner-slot { min-height: 36px; }
+    .pts { font-size: 1.3rem; }
     .hands { gap: 10px; }
     .side { padding: 10px 6px; }
-    .felt { --cw: 54px; }
+    .felt { --cw: 46px; }
     .dock { padding: 10px; gap: 8px; }
     .dock :global(.tray) { flex-wrap: nowrap; overflow-x: auto; width: 100%; justify-content: flex-start; padding: 8px 4px 4px; }
     .dock :global(.tray .chip) { --size: 38px; }
