@@ -11,6 +11,15 @@
   import { short } from '../lib/chips';
   import { sfx, engine } from '../lib/sfx';
   import { t } from '../lib/i18n';
+  import teslaSrc from '../assets/space/tesla.webp';
+  import forceSrc from '../assets/space/force.webp';
+  import planetSrc from '../assets/space/planet.webp';
+  import rockSrc from '../assets/space/rock.webp';
+  const IMG: Record<string, HTMLImageElement> = {};
+  for (const [k, src] of [['tesla', teslaSrc], ['force', forceSrc], ['planet', planetSrc], ['rock', rockSrc]]) { const i = new Image(); i.src = src; IMG[k] = i; }
+  const ready = (k: string) => IMG[k]?.complete && IMG[k].naturalWidth > 0;
+  // drawn width of each artwork sighting
+  const ART_W: Record<string, number> = { tesla: 150, force: 124, planet: 190 };
 
   type P = { id: string; name: string; bot?: boolean; bet: number; auto: number; cash: number | null };
   const BET_MS = 6000, PAUSE_MS = 3500;
@@ -198,6 +207,16 @@
     rocks.push({ x: anywhere ? Math.random() * W : W + r * 2, y: anywhere ? Math.random() * H * 0.8 : -r * 2 + Math.random() * H * 0.7, vx: -(30 + Math.random() * 50) * z, vy: (10 + Math.random() * 25) * z, r: r * z, a: Math.random() * 6, va: (Math.random() - 0.5) * 1.4, pts, z });
   }
   function drawRock(ctx: CanvasRenderingContext2D, k: Rock) {
+    if (ready('rock')) {
+      ctx.save();
+      ctx.translate(k.x, k.y);
+      ctx.rotate(k.a);
+      ctx.globalAlpha = 0.55 + k.z * 0.45;
+      const d = k.r * 2.3;
+      ctx.drawImage(IMG.rock, -d / 2, -d / 2, d, d * 0.89);
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.translate(k.x, k.y);
     ctx.rotate(k.a);
@@ -231,7 +250,7 @@
   let sighting = $state<{ label: string; id: number } | null>(null);
   function spawnSight(W: number, H: number, kind: string) {
     const big = kind === 'planet' || kind === 'hole' || kind === 'whale';
-    flybys.push({ kind, x: W + (big ? 160 : 80), y: H * (big ? 0.22 : 0.15 + Math.random() * 0.35), vx: -(W + 320) / (big ? 11 : 6.5), vy: big ? 4 : 8, a: kind === 'tesla' ? -0.3 : 0, va: kind === 'tesla' ? 0.5 : kind === 'sat' ? 0.25 : 0, s: Math.max(0.7, Math.min(1.3, W / 800)), t: 0 });
+    flybys.push({ kind, x: W + (big ? 160 : 80), y: H * (big ? 0.22 : 0.15 + Math.random() * 0.35), vx: -(W + 320) / (big ? 11 : 6.5), vy: big ? 4 : 8, a: kind === 'tesla' ? -0.1 : 0, va: kind === 'tesla' ? 0.04 : kind === 'sat' ? 0.25 : 0, s: Math.max(0.7, Math.min(1.3, W / 800)), t: 0 });
   }
   function drawSight(ctx: CanvasRenderingContext2D, f: Fly) {
     ctx.save();
@@ -239,6 +258,13 @@
     ctx.rotate(f.a);
     ctx.scale(f.s, f.s);
     const blink = Math.sin(f.t * 8) > 0;
+    if (ART_W[f.kind] && ready(f.kind)) {
+      const img = IMG[f.kind], w = ART_W[f.kind], h = (w * img.naturalHeight) / img.naturalWidth;
+      if (f.kind === 'planet') { ctx.shadowColor = 'rgba(255,200,150,.35)'; ctx.shadowBlur = 30; }
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.restore();
+      return;
+    }
     if (f.kind === 'sat') {
       for (const d of [-1, 1]) {
         ctx.fillStyle = '#2b4f9e'; ctx.fillRect(d > 0 ? 12 : -42, -9, 30, 18);

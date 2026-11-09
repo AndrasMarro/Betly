@@ -194,16 +194,33 @@ export const randomSym = () => SYMS[Math.floor(Math.random() * SYMS.length)];
 // Classic cases: official drop rates, item values like the real thing (the case is a losing bet on average).
 // Items carry an `img` slug (artwork in src/assets/cases). The neon "prototype" set sits mostly in the top tiers.
 export const GOLD_P = RARITIES[4].p;
-const CLASSIC_TIERS: [number, string, string][][] = [
-  [[0.06, 'field-kit', 'Field Kit'], [0.08, 'sand-dune', 'Sand Dune'], [0.1, 'night-ops', 'Night Ops'], [0.12, 'iron-rust', 'Iron Rust'], [0.14, 'blackout', 'Blackout'], [0.16, 'old-mint', 'Old Mint'], [0.18, 'gentleman', 'Gentleman']],
-  [[0.4, 'brass-echo', 'Brass Echo'], [0.5, 'dune-scavenger', 'Dune Scavenger'], [0.6, 'rust-tech', 'Rust-Tech'], [0.7, 'jade-fang', 'Jade Fang'], [0.8, 'deep-tide', 'Deep Tide']],
-  [[1.6, 'acid-bite', 'Acid Bite'], [2, 'glitch-trigger', 'Glitch Trigger'], [2.4, 'neo-vanguard', 'Neo Vanguard'], [2.8, 'night-phantom', 'Night Phantom'], [3.2, 'crimson-web', 'Crimson Web']],
-  [[7, 'amber-volt', 'Amber Volt'], [8.5, 'cyber-sting', 'Cyber Sting'], [10, 'overdrive', 'Overdrive'], [11.5, 'solar-flare', 'Solar Flare'], [13, 'void-pulse', 'Void Pulse']],
-  [[50, 'golden-edge', 'Golden Edge'], [70, 'quantum-edge', 'Quantum Edge']],
+type Tier = [number, string, string][];
+const crate = (id: string, name: string, price: number, color: string, tiers: Tier[]): CaseDef => ({
+  id, name, price, color, items: tiers.flatMap((tier, rarity) => tier.map(([mult, img, name]) => ({ rarity, mult, icon: img, img, name }))),
+});
+/** Three classic crates, all with the official drop rates; pricier crates have rarer art and higher top values. */
+export const CLASSIC_CASES: CaseDef[] = [
+  crate('field', 'Field Case', 10, '#8a9bb5', [
+    [[0.08, 'steel-basic', 'Steel Basic'], [0.12, 'veteran', 'Veteran'], [0.16, 'midnight-op', 'Midnight Op'], [0.2, 'shadow-spray', 'Shadow Spray']],
+    [[0.45, 'old-west', 'Old West'], [0.65, 'tide-breaker', 'Tide Breaker'], [0.85, 'desert-whisper', 'Desert Whisper']],
+    [[1.8, 'jungle-edge', 'Jungle Edge'], [2.8, 'longshot', 'Longshot']],
+    [[6, 'silver-wing', 'Silver Wing'], [10, 'blood-moon', 'Blood Moon']],
+    [[45, 'tiger-claw', 'Tiger Claw']],
+  ]),
+  crate('arsenal', 'Arsenal Case', 25, '#e4ae39', [
+    [[0.06, 'field-kit', 'Field Kit'], [0.1, 'sand-dune', 'Sand Dune'], [0.14, 'night-ops', 'Night Ops'], [0.18, 'iron-rust', 'Iron Rust']],
+    [[0.4, 'blackout', 'Blackout'], [0.6, 'old-mint', 'Old Mint'], [0.8, 'gentleman', 'Gentleman']],
+    [[1.8, 'brass-echo', 'Brass Echo'], [3, 'deep-tide', 'Deep Tide']],
+    [[7, 'jade-fang', 'Jade Fang'], [13, 'crimson-web', 'Crimson Web']],
+    [[60, 'golden-edge', 'Golden Edge']],
+  ]),
+  crate('prototype', 'Prototype Case', 75, '#d32ce6', [
+    [[0.04, 'rust-tech', 'Rust-Tech'], [0.07, 'dune-scavenger', 'Dune Scavenger'], [0.1, 'glitch-trigger', 'Glitch Trigger'], [0.13, 'neo-vanguard', 'Neo Vanguard']],
+    [[0.35, 'acid-bite', 'Acid Bite'], [0.55, 'night-phantom', 'Night Phantom'], [0.75, 'amber-volt', 'Amber Volt']],
+    [[1.8, 'cyber-sting', 'Cyber Sting'], [3.4, 'overdrive', 'Overdrive']],
+    [[8, 'solar-flare', 'Solar Flare'], [16, 'void-pulse', 'Void Pulse']],
+    [[90, 'quantum-edge', 'Quantum Edge']],
+  ]),
 ];
-export const CLASSIC_CASE: CaseDef = {
-  id: 'classic', name: 'Classic Case', price: 25, color: '#e4ae39',
-  items: CLASSIC_TIERS.flatMap((tier, rarity) => tier.map(([mult, img, name]) => ({ rarity, mult, icon: img, img, name }))),
-};
 /** Chance of at least one gold item in n openings: 1 - (1 - p)^n. */
 export const atLeastOneGold = (n: number) => 1 - (1 - GOLD_P) ** n;

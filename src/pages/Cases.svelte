@@ -2,7 +2,7 @@
   import { onDestroy, tick } from 'svelte';
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import SlotSymbol from '../components/SlotSymbol.svelte';
-  import { CASES, CLASSIC_CASE, RARITIES, GOLD_P, pickItem, atLeastOneGold, caseRtp, type CaseItem } from '../games/arcade';
+  import { CASES, CLASSIC_CASES, RARITIES, GOLD_P, pickItem, atLeastOneGold, caseRtp, type CaseItem } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
   import { sfx, reveal, sampler } from '../lib/sfx';
@@ -17,7 +17,8 @@
 
   let mode = $state<'arcade' | 'classic'>('classic');
   let ci = $state(0);
-  const box = $derived(mode === 'classic' ? CLASSIC_CASE : CASES[ci]);
+  let cci = $state(1); // classic crate
+  const box = $derived(mode === 'classic' ? CLASSIC_CASES[cci] : CASES[ci]);
   // classic mode keeps lifetime stats, like a real inventory history
   let stats = $state({ opened: 0, golds: 0, spent: 0, back: 0 });
   try { Object.assign(stats, JSON.parse(localStorage.getItem('betly:cases-classic') || '{}')); } catch {}
@@ -113,6 +114,16 @@
         {/each}
       </div>
     {:else}
+      <div class="picker">
+        {#each CLASSIC_CASES as c, i}
+          {@const top = c.items.find((x) => x.rarity === 4)!}
+          <button class="case" class:on={cci === i} disabled={spinning} onclick={() => { cci = i; sfx('click'); }} style="--c:{c.color}">
+            <span class="thumb"><img src={ART[top.img!]} alt="" /></span>
+            <span class="nm">{c.name}</span>
+            <span class="mono pr">{fmt(c.price)}</span>
+          </button>
+        {/each}
+      </div>
       <div class="math">
         <p class="eyebrow">{t('cs.odds')}</p>
         {#each RARITIES as r, i}
@@ -216,6 +227,8 @@
   .crate::before { content: ''; position: absolute; left: 0; right: 0; top: 12px; height: 3px; background: rgba(0,0,0,.35); }
   .crate i { position: absolute; left: 50%; top: 9px; width: 12px; height: 10px; margin-left: -6px; border-radius: 3px; background: #f2c046; box-shadow: 0 1px 0 rgba(0,0,0,.4); }
   .nm { font-weight: 600; font-size: 0.9rem; }
+  .thumb { height: 40px; border-radius: 8px; display: grid; place-items: center; overflow: hidden; background: linear-gradient(180deg, #1d1f2c, color-mix(in srgb, var(--c) 35%, #1d1f2c)); box-shadow: inset 0 -2px 0 var(--c); }
+  .thumb img { width: 100%; height: 100%; object-fit: contain; }
   .pr { font-size: 0.8rem; color: var(--muted); }
 
   .stage { display: grid; gap: 18px; padding: clamp(16px, 2.4vw, 28px); border-radius: 28px; background: radial-gradient(ellipse at 50% 0%, #22243a, #0e0f18 75%); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); color: #f4f2ee; }

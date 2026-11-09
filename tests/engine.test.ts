@@ -222,12 +222,16 @@ import { SCRATCH3, pick3Symbols } from '../src/games/arcade.ts';
   console.log('pick-3 checks passed');
 }
 
-import { CLASSIC_CASE, atLeastOneGold, caseRtp as cr } from '../src/games/arcade.ts';
+import { CLASSIC_CASES, atLeastOneGold, caseRtp as cr } from '../src/games/arcade.ts';
 {
   assert.ok(Math.abs(atLeastOneGold(385) - 0.632) < 0.002, 'geometric: 63.2 % after 385 openings');
-  const ev = cr(CLASSIC_CASE);
-  assert.ok(ev > 0.3 && ev < 0.65, 'classic case keeps a strongly negative EV: ' + ev);
-  console.log('classic case EV', ev.toFixed(4), 'P(gold in 385)', atLeastOneGold(385).toFixed(4));
+  for (const c of CLASSIC_CASES) {
+    const ev = cr(c);
+    assert.ok(ev > 0.3 && ev < 0.65, 'classic case keeps a strongly negative EV: ' + ev);
+    assert.equal(c.items.length, 12);
+    console.log('classic', c.id, 'EV', ev.toFixed(4));
+  }
+  console.log('P(gold in 385)', atLeastOneGold(385).toFixed(4));
 }
 
 // Snake: movement, eating, walls/border, portals, daily setup
@@ -263,4 +267,20 @@ import { rng, dailyGame } from '../src/lib/daily.ts';
   s.points = 10;
   assert.equal(multiplier({ ...s, mods: DEFAULT_MODS }), 1, '10 points = 1x on default settings');
   console.log('snake checks passed');
+}
+
+// Crossy: calm start, crocodiles only later, forgiving hitboxes
+import { newWorld, ensure as crEnsure, hit as crHit, onCrocHead } from '../src/games/crossy.ts';
+{
+  const w = newWorld(rng(42));
+  crEnsure(w, 200);
+  const cars = (from: number, to: number) => { const ls = w.lanes.slice(from, to).filter((l) => l.type === 'road'); return ls.reduce((a, l) => a + l.items.length, 0) / Math.max(1, ls.length); };
+  assert.ok(cars(0, 25) < cars(60, 200), 'fewer cars per road early on');
+  assert.ok(w.lanes.slice(0, 30).every((l) => l.items.every((it) => !it.croc)), 'no crocodiles early');
+  assert.ok(w.lanes.slice(60).some((l) => l.items.some((it) => it.croc)), 'crocodiles later');
+  const road = { type: 'road' as const, dir: 1 as const, speed: 1, items: [{ x: 3, len: 1, c: 0 }], trees: [], t: 0, train: null };
+  assert.ok(crHit(road, 3) && !crHit(road, 3.95) && !crHit(road, 2.1), 'hitbox');
+  const croc = { x: 2, len: 3, c: 0, croc: true };
+  assert.ok(onCrocHead({ ...road, type: 'river' }, croc, 4) && !onCrocHead({ ...road, type: 'river' }, croc, 2.2), 'croc head');
+  console.log('crossy checks passed');
 }

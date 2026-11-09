@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
-  import { newWorld, ensure, update, hit, logAt, blocked, warning, COLS, type World, type Lane } from '../games/crossy';
+  import { newWorld, ensure, update, hit, logAt, onCrocHead, blocked, warning, COLS, type World, type Lane } from '../games/crossy';
   import HowTo from '../components/HowTo.svelte';
   import { settle, fmt } from '../lib/state.svelte';
   import { dailyGame } from '../lib/daily';
@@ -20,12 +20,12 @@
   let best = $state(+(localStorage.getItem('betly:crossy') || 0));
   let phase = $state<'ready' | 'play' | 'dead'>('ready');
   let score = $state(0);
-  let cause = $state<'car' | 'water' | 'train' | 'eagle' | ''>('');
+  let cause = $state<'car' | 'water' | 'train' | 'eagle' | 'croc' | ''>('');
   let reward = $state(0);
 
   let world: World;
   const P = { x: 5, row: 0, fromX: 5, fromRow: 0, hop: 1, face: 'up' as Dir, onLog: false, deadT: 0 };
-  let cam = 0, camMin = 0, shake = 0;
+  let cam = 0, camMin = 0, shake = 0, runT = 0;
   let queued: Dir | null = null;
   type Bit = { x: number; y: number; vx: number; vy: number; life: number; c: string };
   let bits: Bit[] = [];
@@ -33,7 +33,7 @@
   function reset() {
     world = newWorld(Math.random);
     Object.assign(P, { x: 5, row: 2, fromX: 5, fromRow: 2, hop: 1, face: 'up', onLog: false, deadT: 0 });
-    cam = 0; camMin = 0; shake = 0; bits = []; queued = null;
+    cam = 0; camMin = 0; shake = 0; runT = 0; bits = []; queued = null;
     score = 0; cause = ''; reward = 0;
   }
   reset();
@@ -67,6 +67,7 @@
     sfx(c === 'water' ? 'bounce' : c === 'train' ? 'boom' : 'splat');
     if (c === 'water') burst('#bfe8ff', 18);
     if (c === 'car' || c === 'train') burst('#ffd23f', 22);
+    if (c === 'croc') burst('#3f8f2a', 20);
     reward = score;
     if (score > 0) settle(score, score);
     if (score > best) { best = score; localStorage.setItem('betly:crossy', String(best)); }
@@ -119,7 +120,9 @@
     last = now;
     clock += dt;
     const rows = Math.ceil(H / (W / COLS)) + 2;
-    update(world, dt, Math.floor(cam) - 2, Math.floor(cam) + rows);
+    // the whole world speeds up the longer you survive
+    const pace = Math.min(2, 1 + runT / 70);
+    update(world, dt, Math.floor(cam) - 2, Math.floor(cam) + rows, pace);
     if (P.hop < 1) {
       P.hop = Math.min(1, P.hop + dt / 0.11);
       if (P.hop === 1) {
@@ -128,16 +131,21 @@
       }
     }
     if (phase === 'play') {
+      runT += dt;
       const lane = world.lanes[P.row];
       if (P.onLog && lane.type === 'river') {
-        P.x += lane.dir * lane.speed * dt;
+        P.x += lane.dir * lane.speed * pace * dt;
         P.fromX = P.x;
-        if (P.x < -0.45 || P.x > COLS - 0.55) die('water');
+        const it = logAt(lane, P.x);
+        if (P.x < -0.45 || P.x > COLS - 0.55 || !it) die('water');
+        else if (onCrocHead(lane, it, P.x)) die('croc');
       }
+      // collisions use where the duck visibly is, not where it is heading
       const vx = P.fromX + (P.x - P.fromX) * P.hop;
-      if (hit(lane, vx)) die(lane.type === 'rail' ? 'train' : 'car');
-      // the screen keeps creeping forward; fall behind and the eagle takes you
-      const pressure = 0.28 + Math.min(score, 160) / 320;
+      const here = world.lanes[P.hop < 0.5 ? P.fromRow : P.row];
+      if (here && hit(here, vx)) die(here.type === 'rail' ? 'train' : 'car');
+      // the screen keeps creeping forward, faster over time; fall behind and the eagle takes you
+      const pressure = Math.min(1.1, 0.25 + runT / 240 + score / 400);
       camMin += pressure * dt;
       if (P.row < camMin - 0.6) die('eagle');
       // train warnings for rails on screen
@@ -166,6 +174,7 @@
     if (lane.type === 'river') {
       const log = logAt(lane, P.x);
       if (!log) { die('water'); return; }
+      if (onCrocHead(lane, log, P.x)) { die('croc'); return; }
       P.onLog = true;
     }
     if (P.row - 2 > score) score = P.row - 2;
@@ -213,6 +222,7 @@
         ctx.fillStyle = '#8f8070'; ctx.fillRect(0, y, W, C + 1);
         ctx.fillStyle = '#5a4030'; for (let x = 0; x < W; x += C * 0.5) ctx.fillRect(x + C * 0.1, y + C * 0.15, C * 0.18, C * 0.7);
         ctx.fillStyle = '#c9ced6'; ctx.fillRect(0, y + C * 0.28, W, C * 0.07); ctx.fillRect(0, y + C * 0.66, W, C * 0.07);
+        if (warning(l)) { ctx.fillStyle = `rgba(255,50,50,${0.12 + 0.12 * (Math.floor(clock * 5) % 2)})`; ctx.fillRect(0, y, W, C + 1); }
       }
     }
     // objects, far rows first so nearer things overlap them; the duck is drawn with its row
@@ -223,9 +233,10 @@
       if (!l) continue;
       const y = Y(r);
       if (l.type === 'grass') for (const c of l.trees) drawTree(ctx, c * C, y, C, (r * 31 + c * 7) % 4 === 0);
-      if (l.type === 'river') for (const it of l.items) drawLog(ctx, it.x * C, y, it.len * C, C);
+      if (l.type === 'river') for (const it of l.items) (it.croc ? drawCroc(ctx, it.x * C, y, it.len, C, l.dir) : drawLog(ctx, it.x * C, y, it.len * C, C));
       if (l.type === 'road') for (const it of l.items) drawCar(ctx, it.x * C, y, it.len, C, CAR[it.c], l.dir);
       if (l.type === 'rail') {
+        drawSignal(ctx, 0.25 * C, y, C, warning(l));
         drawSignal(ctx, (COLS - 0.6) * C, y, C, warning(l));
         if (l.train) drawTrain(ctx, l.train.x * C, y, l.train.len, C, l.dir);
       }
@@ -278,15 +289,32 @@
     ctx.fillStyle = '#ffe680'; ctx.fillRect(dir > 0 ? x + len * C - C * 0.2 : x, y + C * 0.84 - C * 0.3, C * 0.12, C * 0.14);
   }
   function drawSignal(ctx: CanvasRenderingContext2D, x: number, y: number, C: number, on: boolean) {
-    box(ctx, x + C * 0.12, y + C * 0.05, C * 0.1, C * 0.1, C * 0.95, '#555', '#333');
-    box(ctx, x, y + C * 0.02, C * 0.34, C * 0.12, C * 1.22, '#2a2a30', '#1a1a1f');
-    const blink = on && Math.floor(clock * 6) % 2 === 0;
-    for (const [k, b] of [[0.03, blink], [0.19, on && !blink]] as const) {
-      ctx.fillStyle = b ? '#ff3b3b' : '#4a1a1a';
-      if (b) { ctx.shadowColor = '#ff3b3b'; ctx.shadowBlur = 14; }
-      ctx.beginPath(); ctx.arc(x + C * (k + 0.06), y + C * 0.02 - C * 1.05, C * 0.06, 0, 7); ctx.fill();
-      ctx.shadowBlur = 0;
+    box(ctx, x + C * 0.13, y + C * 0.05, C * 0.08, C * 0.1, C * 0.9, '#666', '#3a3a40');
+    box(ctx, x - C * 0.04, y + C * 0.02, C * 0.42, C * 0.14, C * 1.3, '#26262c', '#16161a');
+    // alternating lamps with a big halo: impossible to miss before a train comes
+    const blink = Math.floor(clock * 5) % 2 === 0;
+    for (const [k, b] of [[0, on && blink], [0.2, on && !blink]] as const) {
+      const lx = x + C * (k + 0.07), ly = y + C * 0.02 - C * 1.12;
+      if (b) {
+        const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, C * 0.9);
+        g.addColorStop(0, 'rgba(255,70,60,.75)'); g.addColorStop(1, 'rgba(255,70,60,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(lx, ly, C * 0.9, 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = b ? '#ffe2dc' : '#4a1a1a';
+      ctx.beginPath(); ctx.arc(lx, ly, C * 0.075, 0, 7); ctx.fill();
+      if (b) { ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = C * 0.03; ctx.stroke(); }
     }
+  }
+  function drawCroc(ctx: CanvasRenderingContext2D, x: number, y: number, len: number, C: number, dir: number) {
+    const w = len * C - 4;
+    box(ctx, x + 2, y + C * 0.22, w, C * 0.56, C * 0.16, '#4f9a3a', '#2f6a24');
+    ctx.fillStyle = '#3b7f2c'; for (let k = C * 0.5; k < w - C * 1.1; k += C * 0.45) ctx.fillRect(x + (dir > 0 ? k : w - k), y + C * 0.16, C * 0.16, C * 0.14);
+    // head at the front, jaws opening and closing
+    const hx = dir > 0 ? x + w - C * 0.95 : x + 2, open = (Math.sin(clock * 4) + 1) * 0.5;
+    box(ctx, hx, y + C * 0.24, C * 0.95, C * 0.5, C * 0.22, '#62b347', '#3b7f2c');
+    ctx.fillStyle = '#c42f2f'; ctx.fillRect(dir > 0 ? hx + C * 0.35 : hx + C * 0.1, y + C * 0.24 - C * 0.22 + C * 0.18, C * 0.5, C * 0.12 * open);
+    ctx.fillStyle = '#fff'; for (let k = 0; k < 4; k++) ctx.fillRect((dir > 0 ? hx + C * 0.38 : hx + C * 0.12) + k * C * 0.12, y + C * 0.2, C * 0.05, C * 0.05 + C * 0.05 * open);
+    ctx.fillStyle = '#ffe14a'; for (const dy of [0.0, 0.3]) ctx.fillRect(dir > 0 ? hx + C * 0.16 : hx + C * 0.72, y + C * (0.06 + dy), C * 0.1, C * 0.1);
   }
   function drawDuck(ctx: CanvasRenderingContext2D, vx: number, vrow: number, C: number, Y: (r: number) => number) {
     const img = SPRITES[P.face];
@@ -298,8 +326,10 @@
       if (cause === 'water') { alpha = Math.max(0, 1 - P.deadT * 1.6); syk = Math.max(0.2, 1 - P.deadT); }
       if (cause === 'eagle') { alpha = Math.max(0, 1 - P.deadT * 1.2); }
     } else if (P.hop < 1) { syk = 1 + Math.sin(P.hop * Math.PI) * 0.12; sxk = 1 - Math.sin(P.hop * Math.PI) * 0.08; }
-    ctx.fillStyle = 'rgba(0,0,0,.22)';
-    ctx.beginPath(); ctx.ellipse(cx, base - C * 0.05, C * 0.34, C * 0.12, 0, 0, 7); ctx.fill();
+    // a soft contact shadow under the feet that shrinks while airborne
+    const air = P.hop < 1 ? Math.sin(P.hop * Math.PI) : 0;
+    ctx.fillStyle = `rgba(0,0,0,${0.32 - air * 0.14})`;
+    ctx.beginPath(); ctx.ellipse(cx, base - C * 0.07, C * 0.24 * (1 - air * 0.35), C * 0.085 * (1 - air * 0.35), 0, 0, 7); ctx.fill();
     if (!img.complete || !img.naturalWidth) return;
     const h = C * 1.32 * syk, w = (img.naturalWidth / img.naturalHeight) * C * 1.32 * sxk;
     ctx.globalAlpha = alpha;
@@ -308,6 +338,7 @@
   }
 
   const isDaily = dailyGame() === 'crossy';
+  if (import.meta.env.DEV) (window as any).__cr = { jump(r: number) { ensure(world, r + 40); P.row = P.fromRow = r; cam = camMin = r - 3; for (const l of world.lanes) if (l.type === 'rail') l.t = 1; }, world: () => world };
 </script>
 
 <svelte:window onkeydown={key} />

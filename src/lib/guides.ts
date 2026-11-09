@@ -93,13 +93,13 @@ export const GUIDES: Record<string, Guide> = {
   cases: {
     de: [
       { h: 'Ziel', p: 'Öffne eine Kiste: Die Walze rollt und bleibt auf einem Item stehen. Sein Wert wird dir gutgeschrieben.' },
-      { h: 'Classic', p: 'Mit den offiziellen Drop-Raten: Mil-Spec 79,92 %, Restricted 15,98 %, Classified 3,20 %, Covert 0,64 %, Gold 0,26 %. Wie beim Original verlierst du im Schnitt deutlich mehr, als du bekommst; seltene Items sind wirklich selten.' },
+      { h: 'Classic', p: 'Drei Kisten: Field (10), Arsenal (25) und Prototype (75), jede mit eigenen Items und Werten. Alle mit den offiziellen Drop-Raten: Mil-Spec 79,92 %, Restricted 15,98 %, Classified 3,20 %, Covert 0,64 %, Gold 0,26 %. Wie beim Original verlierst du im Schnitt deutlich mehr, als du bekommst; seltene Items sind wirklich selten.' },
       { h: 'Arcade', p: 'Drei Kisten mit Auszahlungsquote 97 %: Starter, Neon und Royal, jeweils mit eigenen Items.' },
       { h: 'Tipps', li: ['Leertaste öffnet die nächste Kiste.', '«Schnell öffnen» verkürzt die Animation.', 'Unter «Inhalt» siehst du Wert und Chance jedes Items.'] },
     ],
     en: [
       { h: 'Goal', p: 'Open a case: the reel spins and stops on one item. Its value is credited to you.' },
-      { h: 'Classic', p: 'Uses the official drop rates: Mil-Spec 79.92 %, Restricted 15.98 %, Classified 3.20 %, Covert 0.64 %, Gold 0.26 %. Like the original you lose a lot more than you get on average; rare items really are rare.' },
+      { h: 'Classic', p: 'Three cases: Field (10), Arsenal (25) and Prototype (75), each with its own items and values. All use the official drop rates: Mil-Spec 79.92 %, Restricted 15.98 %, Classified 3.20 %, Covert 0.64 %, Gold 0.26 %. Like the original you lose a lot more than you get on average; rare items really are rare.' },
       { h: 'Arcade', p: 'Three cases with a 97 % return: Starter, Neon and Royal, each with its own items.' },
       { h: 'Tips', li: ['Space opens the next case.', '"Quick open" shortens the animation.', '"Contents" lists the value and chance of every item.'] },
     ],
@@ -202,13 +202,13 @@ export const GUIDES: Record<string, Guide> = {
     de: [
       { h: 'Ziel', p: 'Komm so weit wie möglich. Jeder Schritt nach vorne ist ein Punkt, am Ende gibt es einen Credit pro Punkt.' },
       { h: 'Steuerung', li: ['WASD oder Pfeiltasten: ein Druck, ein Feld.', 'Handy: tippen hüpft vorwärts, wischen ändert die Richtung.', 'Leertaste oder Enter startet nach dem Game Over neu.'] },
-      { h: 'Gefahren', li: ['Autos und Lastwagen: Berührung ist tödlich.', 'Flüsse: nur auf Baumstämmen stehen, sie tragen dich mit. Wasser oder Abdriften aus dem Bild ist das Ende.', 'Bahngleise: blinkt das Signal rot, kommt in rund 1,5 Sekunden ein sehr schneller Zug.', 'Der Bildschirm schiebt sich langsam nach vorne. Wer hinten trödelt, wird geschnappt.'] },
+      { h: 'Gefahren', li: ['Autos und Lastwagen: Berührung ist tödlich.', 'Flüsse: nur auf Baumstämmen stehen, sie tragen dich mit. Wasser oder Abdriften aus dem Bild ist das Ende.', 'Bahngleise: leuchten die Lampen rot und blinkt das Gleis, kommt in knapp 2 Sekunden ein sehr schneller Zug.', 'Krokodile (später im Fluss): auf dem Rücken mitfahren geht, der Kopf schnappt zu.', 'Mit der Zeit wird alles schneller.', 'Der Bildschirm schiebt sich langsam nach vorne. Wer hinten trödelt, wird geschnappt.'] },
       { h: 'Bäume und Steine', p: 'Blockieren den Weg, du musst aussen herum.' },
     ],
     en: [
       { h: 'Goal', p: 'Get as far as you can. Every step forward is a point, and at the end you get one credit per point.' },
       { h: 'Controls', li: ['WASD or arrow keys: one press, one tile.', 'Phone: tap to hop forward, swipe to change direction.', 'Space or Enter restarts after game over.'] },
-      { h: 'Dangers', li: ['Cars and trucks: touching them is fatal.', 'Rivers: only stand on logs, they carry you along. Water or drifting off screen ends the run.', 'Railways: when the signal flashes red, a very fast train arrives in about 1.5 seconds.', 'The screen slowly pushes forward. Dawdle at the bottom and you get snatched.'] },
+      { h: 'Dangers', li: ['Cars and trucks: touching them is fatal.', 'Rivers: only stand on logs, they carry you along. Water or drifting off screen ends the run.', 'Railways: when the lamps glow red and the track flashes, a very fast train arrives in under 2 seconds.', 'Crocodiles (later in rivers): ride the back, the head snaps.', 'Everything speeds up over time.', 'The screen slowly pushes forward. Dawdle at the bottom and you get snatched.'] },
       { h: 'Trees and rocks', p: 'They block the way, go around them.' },
     ],
   },

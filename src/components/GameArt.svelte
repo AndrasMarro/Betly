@@ -7,6 +7,8 @@
   import voidPulse from '../assets/cases/void-pulse.webp';
   import deepTide from '../assets/cases/deep-tide.webp';
   import duck from '../assets/duck/right.webp';
+  import planet from '../assets/space/planet.webp';
+  import rock from '../assets/space/rock.webp';
   const CASE_ART = [[deepTide, '#8847ff'], [golden, '#e4ae39'], [voidPulse, '#eb4b4b']] as const;
   let { id }: { id: string } = $props();
 </script>
@@ -22,8 +24,16 @@
   {:else if id === 'slots'}
     <div class="syms">{#each ['seven', 'seven', 'seven'] as s}<div><SlotSymbol sym={s} /></div>{/each}</div>
   {:else if id === 'rocket'}
-    <svg class="curve" viewBox="0 0 300 200" preserveAspectRatio="none"><path d="M0 200 Q180 190 260 40" /></svg>
-    <div class="ship"><Sprite kind="rocket" /></div>
+    <div class="stars"></div>
+    <img class="planet" src={planet} alt="" />
+    {#each [[8, 18, 15, 0], [52, 12, 9, 1], [88, 66, 11, 2], [30, 52, 7, 3]] as [x, y, w, i]}<img class="rock" src={rock} alt="" style="left:{x}%; top:{y}%; width:{w}%; --i:{i}" />{/each}
+    <svg class="curve" viewBox="0 0 300 200" preserveAspectRatio="none">
+      <defs><linearGradient id="rkfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e5484d" stop-opacity=".2" /><stop offset="1" stop-color="#e5484d" stop-opacity="0" /></linearGradient></defs>
+      <path class="area" d="M0 200 Q165 192 228 74 L228 200 Z" />
+      <path class="line" d="M0 200 Q165 192 228 74" />
+    </svg>
+    <div class="ship"><Sprite kind="rocket" flame /></div>
+    <span class="mult mono">2.47×</span>
   {:else if id === 'mines'}
     <div class="grid">
       {#each [0, 1, 2, 3, 4, 5, 6, 7, 8] as i}<div class="tile" class:open={i !== 4 && i % 2 === 0}>{#if i === 4}<Sprite kind="bomb" />{:else if i % 2 === 0}<Sprite kind="gem" />{/if}</div>{/each}
@@ -180,9 +190,16 @@
   .syms div { width: 64px; height: 64px; transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
   :global(.game:hover) .syms div:nth-child(2) { transform: translateY(-8px); }
   .curve { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .curve path { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 8px var(--accent)); }
-  .ship { position: absolute; width: 70px; height: 70px; left: 78%; top: 6%; rotate: 35deg; transition: translate 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
-  :global(.game:hover) .ship { translate: 10px -12px; }
+  .curve .area { fill: url(#rkfill); stroke: none; }
+  .curve .line { fill: none; stroke: #ff5a5f; stroke-width: 3.5; stroke-linecap: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 6px #ff5a5f); }
+  .stars { position: absolute; inset: 0; opacity: .7; background-image: radial-gradient(1.2px 1.2px at 12% 30%, #fff, transparent), radial-gradient(1px 1px at 34% 70%, #fff, transparent), radial-gradient(1.4px 1.4px at 62% 22%, #fff, transparent), radial-gradient(1px 1px at 80% 44%, #fff, transparent), radial-gradient(1.2px 1.2px at 46% 40%, #fff, transparent), radial-gradient(1px 1px at 92% 18%, #fff, transparent), radial-gradient(1px 1px at 22% 86%, #fff, transparent); }
+  .planet { position: absolute; right: -9%; top: -14%; width: 38%; opacity: .9; filter: drop-shadow(0 0 20px rgba(255, 200, 150, .25)); transition: transform 1.2s var(--ease-snap); }
+  .rock { position: absolute; animation: tumble calc(9s + var(--i) * 3s) linear infinite; animation-delay: calc(var(--i) * -2s); opacity: .9; }
+  @keyframes tumble { to { transform: translate(-40px, 26px) rotate(360deg); } }
+  .mult { position: absolute; left: 7%; top: 10%; font-size: 1.5rem; font-weight: 700; color: #fff; text-shadow: 0 0 18px rgba(255, 90, 95, .7); }
+  :global(.game:hover) .planet { transform: translate(-8px, 6px) scale(1.04); }
+  .ship { position: absolute; width: 64px; height: 64px; left: 76%; top: 37%; translate: -50% -60%; rotate: 28deg; transition: translate 0.8s cubic-bezier(0.16, 1, 0.3, 1); filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+  :global(.game:hover) .ship { translate: calc(-50% + 8px) calc(-60% - 12px); }
   .grid { display: grid; grid-template-columns: repeat(3, 56px); gap: 8px; }
   .tile { width: 56px; height: 56px; border-radius: 12px; background: #2a3b52; box-shadow: inset 0 -4px 0 rgba(0,0,0,.3); padding: 10px; }
   .tile.open { background: #13202e; }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fly } from 'svelte/transition';
+  import { fly, scale } from 'svelte/transition';
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
   import SlotSymbol from '../components/SlotSymbol.svelte';
@@ -17,12 +17,15 @@
   let face = $state<'heads' | 'tails'>('heads');
   let done = () => {};
   let coinSize = $state(180);
-  $effect(() => { coinSize = matchMedia('(max-width: 640px)').matches ? 130 : 180; });
+  $effect(() => { coinSize = matchMedia('(max-width: 640px)').matches ? 120 : 190; });
   let flips = $state(0);
   let busy = $state(false);
   let stakeNow = $state(0);
   let won = $state(0);
   let history = $state<{ s: 'heads' | 'tails'; id: number }[]>([]);
+  let cphase = $state<'air' | 'edge' | 'fall' | 'rest'>('rest');
+  let last = $state<'heads' | 'tails' | null>(null);
+  let lastHit = $state(false);
 
   const mult = $derived(coinMult(wins));
   const next = $derived(coinMult(wins + 1));
@@ -37,6 +40,7 @@
       won = 0;
     }
     busy = true;
+    last = null;
     const r = flip();
     // land on the face that came up: heads = 0deg, tails = 180deg, plus 5-6 full turns
     face = r;
@@ -45,6 +49,8 @@
     sfx('flip');
     await landed;
     history = [{ s: r, id: flips }, ...history].slice(0, 18);
+    last = r;
+    lastHit = r === side;
     if (r === side) {
       wins++;
       phase = 'play';
@@ -93,7 +99,13 @@
   {/snippet}
 
   <div class="stage">
-    <Coin3D {face} tosses={flips} size={coinSize} ondone={() => done()} />
+    <div class="coinbox">
+      <Coin3D {face} tosses={flips} size={coinSize} heads={t('cf.heads')} tails={t('cf.tails')} ondone={() => done()} onphase={(p) => (cphase = p)} />
+      <div class="call" aria-live="polite">
+        {#if cphase === 'edge'}<span class="tense">{t('cf.edge')}</span>
+        {:else if cphase === 'rest' && last}{#key flips}<span class="res {last}" class:hit={lastHit} in:scale={{ start: 0.6, duration: 380 }}>{t(last === 'heads' ? 'cf.heads' : 'cf.tails')}!</span>{/key}{/if}
+      </div>
+    </div>
     <div class="info">
       <div><span class="eyebrow light">{t('cf.streak')}</span><strong class="mono">{wins}</strong></div>
       <div><span class="eyebrow light">×</span><strong class="mono">{mult.toFixed(2)}</strong></div>
@@ -114,15 +126,23 @@
   .sides button:active:not(:disabled) { transform: scale(0.97); }
   .mini { width: 22px; height: 22px; }
   .stage {
-    display: grid; justify-items: center; gap: 18px; padding: 20px 20px 24px; overflow: hidden; border-radius: 28px; color: #f4f2ee; min-height: 440px;
+    display: grid; justify-items: center; gap: 10px; padding: 12px 16px 24px; overflow: hidden; border-radius: 28px; color: #f4f2ee; min-height: 440px;
     background: radial-gradient(ellipse at 50% 30%, #2b2a46, #101020 70%); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); perspective: 1000px;
   }
+  .coinbox { position: relative; display: grid; justify-items: center; }
+  .call { position: absolute; left: 0; right: 0; top: 6%; display: grid; place-items: center; pointer-events: none; min-height: 48px; }
+  .tense { font: 600 0.9rem 'Geist Mono Variable', monospace; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,.75); animation: tense 0.5s ease-in-out infinite alternate; }
+  @keyframes tense { to { opacity: 0.35; letter-spacing: 0.3em; } }
+  .res { font: 800 clamp(2rem, 6vw, 3.2rem) 'Geist Variable', sans-serif; letter-spacing: -0.03em; padding: 4px 22px; border-radius: 999px; }
+  .res.heads { color: #f6d77a; } .res.tails { color: #dfe2ec; }
+  .res.hit { text-shadow: 0 0 30px rgba(143, 240, 191, .55); }
+  .res:not(.hit) { opacity: 0.85; }
   .info { display: grid; grid-template-columns: repeat(3, minmax(90px, 1fr)); gap: 10px; width: min(100%, 460px); margin-top: 10px; }
   .info div { display: grid; gap: 4px; justify-items: center; background: rgba(0,0,0,.25); border-radius: 16px; padding: 12px; }
   .info strong { font-size: 1.2rem; }
   .eyebrow.light { color: rgba(255,255,255,.5); }
   .pos { color: #8ff0bf; }
-  @media (max-width: 640px) { .stage { min-height: 0; padding-top: 40px; } }
+  @media (max-width: 640px) { .stage { min-height: 0; } }
   .hist { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 28px; }
   .dot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 700 0.7rem 'Geist Mono Variable', monospace; }
   .dot.heads { background: #f2c046; color: #3a2a06; }
