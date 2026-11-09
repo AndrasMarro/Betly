@@ -315,11 +315,19 @@
     wide = mq.matches;
     mq.onchange = (e) => (wide = e.matches);
   });
-  const POS_WIDE = [[50, 86], [10, 64], [15, 17], [50, 5], [85, 17], [90, 64]];
+  // wide table: top seats hang from the top edge, the hero stands on the bottom edge, so nothing leaves the table
+  const POS_WIDE = [[50, 99], [9, 57], [19, 1], [50, 1], [81, 1], [91, 57]];
+  // chips sit a fixed distance from each seat's cards, so they never slide under them on short screens
+  const HANG = 'calc(1cqh + 138px)';
+  const BET_WIDE: [number, string][] = [[50, 'calc(99cqh - var(--hcw) * 1.4 - 74px)'], [24, '57cqh'], [29, HANG], [50, HANG], [71, HANG], [76, '57cqh']];
   const POS_TALL = [[50, 79], [13, 66], [13, 30], [50, 8], [87, 30], [87, 66]];
   const base = $derived(myIndex >= 0 ? myIndex : 0);
   const posOf = (i: number) => (wide ? POS_WIDE : POS_TALL)[(i - base + SEATS) % SEATS];
   const toward = (i: number, k: number) => { const [x, y] = posOf(i); return [x + (50 - x) * k, y + (46 - y) * k]; };
+  const betPos = (i: number): [number, string] => { if (wide) return BET_WIDE[(i - base + SEATS) % SEATS]; const [x, y] = toward(i, 0.4); return [x, y + 'cqh']; };
+  const btnPos = (i: number): [number, string] => { if (!wide) { const [x, y] = toward(i, 0.2); return [x, y + 'cqh']; } const [x, y] = betPos(i); return [x + (x <= 50 ? 7 : -7), y]; };
+  let roomy = $state(true); // enough width for all table options in the header row
+  onMount(() => { const mq = matchMedia('(min-width: 1500px)'); roomy = mq.matches; mq.onchange = (e) => (roomy = e.matches); });
 
   let potEl = $state<HTMLElement>();
   function toPot(node: Element) {
@@ -357,8 +365,8 @@
     </div>
     <RoomBar {room}>
       {#snippet extra()}
-        {#if !wide}<button class="btn sm" onclick={() => (showOpts = !showOpts)} aria-expanded={showOpts}>{t('bj.rules')}</button>{/if}
-        {#if isHost && (wide || showOpts)}
+        {#if !roomy}<button class="btn sm" class:on={showOpts} onclick={() => (showOpts = !showOpts)} aria-expanded={showOpts}>{t('room.options')}</button>{/if}
+        {#if isHost && (roomy || showOpts)}
           <div class="seg" role="group" aria-label="Blinds">
             {#each BLINDS as b}<button class:on={view.bb === b[1]} disabled={view.street !== 'idle' && view.street !== 'showdown'} onclick={() => setBlinds(b)}>{b[0]}/{b[1]}</button>{/each}
           </div>
@@ -367,7 +375,7 @@
             <div class="seg" role="group" aria-label={t('bots')}>{#each [1, 2, 3, 4, 5] as n}<button class:on={botCount === n} onclick={() => (botCount = n)}>{n}</button>{/each}</div>
           {/if}
         {/if}
-        {#if wide || showOpts}<label class="switch mini"><span>{t('pk.help')}</span><input type="checkbox" bind:checked={help} /></label>{/if}
+        {#if roomy || showOpts}<label class="switch mini"><span>{t('pk.help')}</span><input type="checkbox" bind:checked={help} /></label>{/if}
       {/snippet}
     </RoomBar>
   </header>
@@ -402,16 +410,16 @@
 
     <!-- dealer button -->
     {#if view.button >= 0 && view.street !== 'idle'}
-      {@const [bx, by] = toward(view.button, 0.2)}
-      <div class="dealer" style="transform: translate({bx}cqw, {by}cqh)">D</div>
+      {@const [bx, by] = btnPos(view.button)}
+      <div class="dealer" style="transform: translate({bx}cqw, {by})">D</div>
     {/if}
 
     <!-- seats -->
     {#each view.seats as s, i}
       {@const [x, y] = posOf(i)}
-      {@const [cx, cy] = toward(i, 0.4)}
+      {@const [cx, cy] = betPos(i)}
       {#if s.id}
-        <div class="seat" style="left:{x}%; top:{y}%" class:me={i === myIndex} class:turn={view.turn === i} class:folded={s.folded} class:out={!s.inHand && view.street !== 'idle'} class:winner={s.won > 0 && view.street === 'showdown'}>
+        <div class="seat" style="left:{x}%; top:{y}%" class:hang={wide && y < 10} class:stand={wide && y > 90} class:me={i === myIndex} class:turn={view.turn === i} class:folded={s.folded} class:out={!s.inHand && view.street !== 'idle'} class:winner={s.won > 0 && view.street === 'showdown'}>
           <div class="hole">
             {#each s.cards as c, k (view.hand + '-' + k)}
               <div class="hc" class:hi={winSet.has(ckey(c))} in:fromCenter={{ delay: (((i - view.button + SEATS) % SEATS) + k * SEATS) * 70 }}>
@@ -424,11 +432,11 @@
             <span class="nm">{s.name}</span>
             <span class="mono st">{fmt(s.stack)}</span>
           </div>
-          {#if s.last && view.street !== 'showdown'}{#key s.last + view.street}<span class="say {s.last}" in:pop>{lastLabel(s.last)}</span>{/key}{/if}
+          {#if s.last && view.street !== 'showdown'}{#key s.last + view.street}<span class="say s-{s.last}" in:pop>{lastLabel(s.last)}</span>{/key}{/if}
           {#if s.won > 0 && view.street === 'showdown'}<span class="won mono" in:pop={{ delay: 300 }}>+{fmt(s.won)}</span>{/if}
         </div>
         {#if s.bet > 0}
-          <div class="bet" style="left:{cx}%; top:{cy}%" in:drop out:toPot>
+          <div class="bet" style="left:{cx}%; top:{cy}" in:drop out:toPot>
             <span class="chip" data-v={chipOf(s.bet)} style="--size:24px"></span><span class="mono">{short(s.bet)}</span>
           </div>
         {/if}
@@ -506,6 +514,13 @@
   .h1row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .h1row h1 { margin: 0; }
   .pk { width: min(1280px, 100% - 32px); margin-inline: auto; padding-bottom: 40px; }
+  /* desktop: header, table and dock always share exactly one screen */
+  @media (min-width: 760px) {
+    .pk { width: min(1600px, 100%); padding: 0 20px 14px; height: calc(100dvh - var(--nav-h)); min-height: 620px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; }
+    .pk .head { padding: 10px 0 0; }
+    .pk .table.wide { height: auto; min-height: 0; }
+    .pk .dock { position: relative; bottom: auto; margin: 0; width: min(1240px, 100%); justify-self: center; }
+  }
   .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 18px 0 10px; }
   .ttl { display: flex; align-items: baseline; gap: 12px; }
   h1 { margin: 0; font-size: clamp(1.6rem, 3.4vw, 2.4rem); letter-spacing: -0.04em; }
@@ -516,7 +531,12 @@
   .seg button:disabled:not(.on) { opacity: 0.4; }
   .switch.mini { min-height: 34px; font-size: 0.8rem; color: var(--muted); gap: 8px; }
 
-  .table { position: relative; container-type: size; height: clamp(520px, calc(100dvh - var(--nav-h) - 230px), 760px); --cw: clamp(52px, 5.4cqw, 86px); }
+  .table { position: relative; container-type: size; height: clamp(520px, calc(100dvh - var(--nav-h) - 230px), 760px); --cw: clamp(46px, min(5cqw, 8.5cqh), 86px); }
+  .table.wide .center { top: 49%; }
+  .table.wide { --hcw: clamp(56px, min(6.2cqw, 12cqh), 100px); }
+  .table.wide .seat.me .hole { --cw: var(--hcw); }
+  /* actions of top seats and the hero show beside the name plate instead of over the chips */
+  .seat.hang .say, .seat.stand .say { top: auto; bottom: 12px; left: calc(100% + 6px); }
   /* phones: the table, hero seat and action dock fit one screen */
   .table:not(.wide) { height: clamp(340px, calc(100dvh - var(--nav-h) - 300px), 128vw); min-height: 0; margin-top: 28px; --cw: 40px; }
   .table:not(.wide) .seat.me .hole { --cw: 54px; }
@@ -562,13 +582,16 @@
   .nm { font-size: 0.8rem; font-weight: 600; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .st { font-size: 0.75rem; color: var(--gold); }
   .say { position: absolute; top: calc(100% + 2px); white-space: nowrap; font: 600 0.68rem 'Geist Mono Variable', monospace; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; }
-  .say.fold { color: rgba(255,255,255,.55); }
-  .say.raise, .say.bet { background: #c8262c; } .say.allin { background: #6b3fa0; } .say.call { background: #2a6fd6; }
+  .say.s-fold { color: rgba(255,255,255,.55); }
+  .say.s-raise, .say.s-bet { background: #c8262c; } .say.s-allin { background: #6b3fa0; } .say.s-call { background: #2a6fd6; }
+  .seat.hang { translate: -50% 0; }
+  .seat.stand { translate: -50% -100%; }
+
   .won { position: absolute; top: -18px; padding: 3px 10px; border-radius: 999px; background: #2fbf71; color: #062a16; font-size: 0.8rem; font-weight: 700; }
   .bet { position: absolute; translate: -50% -50%; display: flex; align-items: center; gap: 5px; padding: 2px 8px 2px 2px; border-radius: 999px; background: rgba(0,0,0,.4); color: #fff; font-size: 0.75rem; z-index: 2; }
   .empty { position: absolute; translate: -50% -50%; width: 74px; height: 74px; border-radius: 50%; border: 2px dashed rgba(255,255,255,.35); background: rgba(0,0,0,.2); color: rgba(255,255,255,.8); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; z-index: 3; transition: border-color 0.25s var(--ease-snap), transform 0.35s var(--ease-snap); }
   .empty:hover:not(:disabled) { border-color: #fff; transform: scale(1.05); }
-  .log { position: absolute; left: 1%; bottom: 0; margin: 0; padding: 0; list-style: none; font-size: 0.72rem; color: var(--muted); display: grid; gap: 2px; max-width: 32%; }
+  .log { position: absolute; left: 1%; bottom: 1%; margin: 0; padding: 0; list-style: none; font-size: 0.72rem; color: var(--muted); display: grid; gap: 2px; max-width: 32%; }
   .table:not(.wide) .log { display: none; }
 
   .dock {

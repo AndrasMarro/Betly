@@ -180,6 +180,38 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Odds', p: 'Most balls land in the middle, where the multiplier is below 1. The edges are hit rarely but pay big.' },
     ],
   },
+  snake: {
+    de: [
+      { h: 'Ziel', p: 'Friss Äpfel, wachse und crashe nicht: Rand, Mauern und der eigene Körper sind tödlich. Jeder Punkt erhöht den Multiplikator.' },
+      { h: 'Steuerung', li: ['Pfeiltasten oder WASD (Handy: wischen oder die Pfeile tippen).', 'Leertaste startet, Enter zahlt aus.'] },
+      { h: 'Äpfel', li: ['Roter Apfel: 1 Punkt', 'Goldener Apfel: 3 Punkte, verschwindet nach kurzer Zeit', 'Kosmischer Apfel: 10 Punkte, sehr selten und schnell weg'] },
+      { h: 'Modifier', li: ['Spielfeld klein/mittel/gross, Tempo normal/schnell/turbo', 'Mauern: nach jedem dritten Apfel wächst ein Block', 'Portale: rein in das eine, raus beim anderen', 'Härtere Einstellungen zahlen mehr pro Punkt, mehr Äpfel zahlen weniger.'] },
+      { h: 'Einsatz', p: 'Mit Einsatz bekommst du beim Auszahlen Einsatz × Multiplikator. Crashst du vorher, ist der Einsatz weg. Ohne Einsatz spielst du nur um den Rekord.' },
+      { h: 'Daily-Challenge', p: 'Jeden Tag neue, zufällige und harte Modifier, für alle gleich. Dafür doppelte Auszahlung pro Punkt.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Eat apples, grow and do not crash: the border, walls and your own body are deadly. Every point raises the multiplier.' },
+      { h: 'Controls', li: ['Arrow keys or WASD (phone: swipe or tap the arrows).', 'Space starts, Enter cashes out.'] },
+      { h: 'Apples', li: ['Red apple: 1 point', 'Golden apple: 3 points, vanishes after a while', 'Cosmic apple: 10 points, very rare and quickly gone'] },
+      { h: 'Modifiers', li: ['Board small/medium/large, speed normal/fast/turbo', 'Walls: a block grows after every third apple', 'Portals: in through one, out of the other', 'Harder settings pay more per point, more apples pay less.'] },
+      { h: 'Stake', p: 'With a stake, cashing out pays stake × multiplier. Crash first and the stake is gone. Without a stake you only play for the record.' },
+      { h: 'Daily challenge', p: 'New, random and hard modifiers every day, the same for everyone. In return double pay per point.' },
+    ],
+  },
+  crossy: {
+    de: [
+      { h: 'Ziel', p: 'Komm so weit wie möglich. Jeder Schritt nach vorne ist ein Punkt, am Ende gibt es einen Credit pro Punkt.' },
+      { h: 'Steuerung', li: ['WASD oder Pfeiltasten: ein Druck, ein Feld.', 'Handy: tippen hüpft vorwärts, wischen ändert die Richtung.', 'Leertaste oder Enter startet nach dem Game Over neu.'] },
+      { h: 'Gefahren', li: ['Autos und Lastwagen: Berührung ist tödlich.', 'Flüsse: nur auf Baumstämmen stehen, sie tragen dich mit. Wasser oder Abdriften aus dem Bild ist das Ende.', 'Bahngleise: blinkt das Signal rot, kommt in rund 1,5 Sekunden ein sehr schneller Zug.', 'Der Bildschirm schiebt sich langsam nach vorne. Wer hinten trödelt, wird geschnappt.'] },
+      { h: 'Bäume und Steine', p: 'Blockieren den Weg, du musst aussen herum.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Get as far as you can. Every step forward is a point, and at the end you get one credit per point.' },
+      { h: 'Controls', li: ['WASD or arrow keys: one press, one tile.', 'Phone: tap to hop forward, swipe to change direction.', 'Space or Enter restarts after game over.'] },
+      { h: 'Dangers', li: ['Cars and trucks: touching them is fatal.', 'Rivers: only stand on logs, they carry you along. Water or drifting off screen ends the run.', 'Railways: when the signal flashes red, a very fast train arrives in about 1.5 seconds.', 'The screen slowly pushes forward. Dawdle at the bottom and you get snatched.'] },
+      { h: 'Trees and rocks', p: 'They block the way, go around them.' },
+    ],
+  },
   scratch: {
     de: [
       { h: 'Klassisch', p: 'Kratze das ganze Los frei. Drei gleiche Symbole gewinnen den angezeigten Multiplikator.' },

@@ -1,4 +1,5 @@
 // Global persisted state: settings + play-money wallet (localStorage only, nothing leaves the browser).
+import { dailyGame, DAILY_BONUS } from './daily';
 const load = <T extends object>(key: string, def: T): T => {
   try {
     return { ...def, ...JSON.parse(localStorage.getItem(key) || '{}') };
@@ -38,8 +39,14 @@ $effect.root(() => {
   $effect(() => localStorage.setItem('betly:wallet', JSON.stringify(wallet)));
 });
 
-/** Apply the net result of a finished round (stake already included). */
+/** Apply the net result of a finished round (stake already included). The game of the day adds a bonus on payouts. */
 export function settle(net: number, won = 0) {
+  if (won > 0 && location.hash.slice(2).split(/[/?]/)[0] === dailyGame()) {
+    const extra = Math.round(won * DAILY_BONUS * 100) / 100;
+    net += extra;
+    won += extra;
+    ui.bonus = { amt: extra, id: Date.now() };
+  }
   wallet.balance = Math.max(0, Math.round((wallet.balance + net) * 100) / 100);
   wallet.rounds++;
   if (won > wallet.biggestWin) wallet.biggestWin = won;
@@ -72,7 +79,7 @@ export function resetWallet() {
 export const fmt = (n: number) =>
   new Intl.NumberFormat(settings.lang === 'de' ? 'de-CH' : 'en-US', { maximumFractionDigits: 2 }).format(n);
 
-export const ui = $state({ credits: false, settings: false, nameAsk: null as null | ((ok: boolean) => void), welcome: false });
+export const ui = $state({ credits: false, settings: false, nameAsk: null as null | ((ok: boolean) => void), welcome: false, bonus: null as null | { amt: number; id: number } });
 
 let pending: Promise<boolean> | null = null;
 /** Show the name dialog. welcome = first screen of a session (cannot be cancelled). Concurrent calls share one dialog. */

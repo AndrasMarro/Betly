@@ -215,6 +215,91 @@
     ctx.restore();
   }
 
+  // ---------- sightings: the higher you fly, the stranger the neighbourhood ----------
+  type Fly = { kind: string; x: number; y: number; vx: number; vy: number; a: number; va: number; s: number; t: number };
+  const SIGHTS: { at: number; kind: string; p: number; de: string; en: string }[] = [
+    { at: 1.4, kind: 'sat', p: 1, de: 'Satellit', en: 'Satellite' },
+    { at: 2.2, kind: 'force', p: 1, de: 'Space Force', en: 'Space Force' },
+    { at: 3.5, kind: 'tesla', p: 0.6, de: 'Starman im Roadster', en: 'Starman in a roadster' },
+    { at: 5, kind: 'ufo', p: 1, de: 'Aliens!', en: 'Aliens!' },
+    { at: 10, kind: 'planet', p: 1, de: 'Ringplanet', en: 'Ringed planet' },
+    { at: 25, kind: 'hole', p: 1, de: 'Schwarzes Loch', en: 'Black hole' },
+    { at: 60, kind: 'whale', p: 1, de: 'Weltraumwal?!', en: 'Space whale?!' },
+  ];
+  let flybys: Fly[] = [];
+  let sightRound = -1, sightNext = 0;
+  let sighting = $state<{ label: string; id: number } | null>(null);
+  function spawnSight(W: number, H: number, kind: string) {
+    const big = kind === 'planet' || kind === 'hole' || kind === 'whale';
+    flybys.push({ kind, x: W + (big ? 160 : 80), y: H * (big ? 0.22 : 0.15 + Math.random() * 0.35), vx: -(W + 320) / (big ? 11 : 6.5), vy: big ? 4 : 8, a: kind === 'tesla' ? -0.3 : 0, va: kind === 'tesla' ? 0.5 : kind === 'sat' ? 0.25 : 0, s: Math.max(0.7, Math.min(1.3, W / 800)), t: 0 });
+  }
+  function drawSight(ctx: CanvasRenderingContext2D, f: Fly) {
+    ctx.save();
+    ctx.translate(f.x, f.y + Math.sin(f.t * 1.6) * 5);
+    ctx.rotate(f.a);
+    ctx.scale(f.s, f.s);
+    const blink = Math.sin(f.t * 8) > 0;
+    if (f.kind === 'sat') {
+      for (const d of [-1, 1]) {
+        ctx.fillStyle = '#2b4f9e'; ctx.fillRect(d > 0 ? 12 : -42, -9, 30, 18);
+        ctx.strokeStyle = 'rgba(160,200,255,.6)'; ctx.lineWidth = 1;
+        for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo((d > 0 ? 12 : -42) + i * 7.5, -9); ctx.lineTo((d > 0 ? 12 : -42) + i * 7.5, 9); ctx.stroke(); }
+        ctx.fillStyle = '#9aa3b5'; ctx.fillRect(d > 0 ? 8 : -12, -1.5, 4, 3);
+      }
+      ctx.fillStyle = '#d9a640'; ctx.fillRect(-8, -10, 16, 20);
+      ctx.fillStyle = '#f2d79a'; ctx.fillRect(-8, -10, 16, 5);
+      ctx.strokeStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, -20); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -22, 4, Math.PI, 0); ctx.fillStyle = '#e8e8e8'; ctx.fill();
+      ctx.fillStyle = blink ? '#ff5a5a' : '#5a1a1a'; ctx.beginPath(); ctx.arc(0, -26, 1.6, 0, 7); ctx.fill();
+    } else if (f.kind === 'force') {
+      // white shuttle with delta wings, escorted by its own exhaust
+      ctx.fillStyle = 'rgba(120,180,255,.35)'; ctx.beginPath(); ctx.ellipse(46, 0, 18, 4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#e9edf5';
+      ctx.beginPath(); ctx.moveTo(-40, 0); ctx.quadraticCurveTo(-30, -9, 10, -8); ctx.lineTo(30, -6); ctx.lineTo(30, 6); ctx.lineTo(10, 8); ctx.quadraticCurveTo(-30, 9, -40, 0); ctx.fill();
+      ctx.fillStyle = '#c9cfdb'; ctx.beginPath(); ctx.moveTo(-6, 6); ctx.lineTo(24, 22); ctx.lineTo(30, 6); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(14, -7); ctx.lineTo(30, -20); ctx.lineTo(32, -6); ctx.fill();
+      ctx.fillStyle = '#1d2433'; ctx.beginPath(); ctx.moveTo(-34, -2); ctx.quadraticCurveTo(-28, -7, -20, -6); ctx.lineTo(-20, -1); ctx.fill();
+      ctx.fillStyle = '#2a5ac8'; ctx.fillRect(-8, -3, 22, 2.5);
+      ctx.fillStyle = '#d6324b'; ctx.fillRect(-8, 0.5, 22, 2.5);
+      ctx.font = '700 7px "Geist Mono Variable", monospace'; ctx.fillStyle = '#1d2433'; ctx.fillText('SPACE FORCE', -14, 12);
+    } else if (f.kind === 'tesla') {
+      // cherry-red roadster, tumbling, with a spacesuited driver
+      ctx.fillStyle = '#c4161c';
+      ctx.beginPath(); ctx.moveTo(-34, 4); ctx.quadraticCurveTo(-33, -6, -18, -7); ctx.lineTo(-6, -8); ctx.quadraticCurveTo(8, -16, 18, -8); ctx.quadraticCurveTo(32, -7, 34, 2); ctx.lineTo(34, 6); ctx.lineTo(-34, 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(160,210,255,.7)'; ctx.beginPath(); ctx.moveTo(-4, -8); ctx.lineTo(4, -14); ctx.lineTo(8, -8); ctx.fill();
+      ctx.fillStyle = '#111'; for (const x of [-21, 21]) { ctx.beginPath(); ctx.arc(x, 6, 6.5, 0, 7); ctx.fill(); ctx.fillStyle = '#888'; ctx.beginPath(); ctx.arc(x, 6, 2.5, 0, 7); ctx.fill(); ctx.fillStyle = '#111'; }
+      ctx.fillStyle = '#f4f4f4'; ctx.beginPath(); ctx.arc(10, -15, 6, 0, 7); ctx.fill();
+      ctx.fillStyle = '#2b2b3a'; ctx.beginPath(); ctx.arc(11.5, -15, 3.6, 0, 7); ctx.fill();
+      ctx.fillStyle = '#f4f4f4'; ctx.fillRect(6, -10, 8, 4);
+    } else if (f.kind === 'ufo') {
+      ctx.fillStyle = 'rgba(120,255,160,.10)'; ctx.beginPath(); ctx.moveTo(-14, 4); ctx.lineTo(14, 4); ctx.lineTo(34, 70); ctx.lineTo(-34, 70); ctx.fill();
+      ctx.fillStyle = 'rgba(150,230,255,.55)'; ctx.beginPath(); ctx.ellipse(0, -6, 14, 12, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#6fe08a'; ctx.beginPath(); ctx.ellipse(0, -8, 5, 6, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#111'; ctx.beginPath(); ctx.ellipse(-2, -9, 1.6, 2.2, -0.4, 0, 7); ctx.ellipse(2, -9, 1.6, 2.2, 0.4, 0, 7); ctx.fill();
+      const g = ctx.createLinearGradient(0, -6, 0, 6); g.addColorStop(0, '#d7dbe6'); g.addColorStop(1, '#6b7284');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, 34, 8, 0, 0, 7); ctx.fill();
+      for (let i = -2; i <= 2; i++) { ctx.fillStyle = (i + Math.floor(f.t * 6)) % 2 ? '#ffd84a' : '#ff5a8a'; ctx.beginPath(); ctx.arc(i * 12, 2, 2.2, 0, 7); ctx.fill(); }
+    } else if (f.kind === 'planet') {
+      const g = ctx.createRadialGradient(-20, -20, 8, 0, 0, 70); g.addColorStop(0, '#f2c58a'); g.addColorStop(1, '#8a4f2a');
+      ctx.strokeStyle = 'rgba(240,210,160,.5)'; ctx.lineWidth = 7; ctx.beginPath(); ctx.ellipse(0, 0, 118, 26, -0.35, Math.PI, 2 * Math.PI); ctx.stroke();
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 64, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,70,40,.35)'; ctx.lineWidth = 6; for (const y of [-22, 6, 28]) { ctx.beginPath(); ctx.ellipse(0, y, 60, 6, 0, 0, 7); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(240,210,160,.6)'; ctx.lineWidth = 7; ctx.beginPath(); ctx.ellipse(0, 0, 118, 26, -0.35, 0, Math.PI); ctx.stroke();
+    } else if (f.kind === 'hole') {
+      for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(255,${150 - i * 30},60,${0.5 - i * 0.12})`; ctx.lineWidth = 10 - i * 2; ctx.beginPath(); ctx.ellipse(0, 0, 80 + i * 18, 22 + i * 6, -0.2 + f.t * 0.05, 0, 7); ctx.stroke(); }
+      const g = ctx.createRadialGradient(0, 0, 10, 0, 0, 52); g.addColorStop(0, '#000'); g.addColorStop(0.7, '#000'); g.addColorStop(1, 'rgba(255,170,80,.0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 52, 0, 7); ctx.fill();
+    } else if (f.kind === 'whale') {
+      ctx.fillStyle = '#5a7bd8';
+      ctx.beginPath(); ctx.moveTo(-90, 0); ctx.quadraticCurveTo(-60, -44, 20, -30); ctx.quadraticCurveTo(70, -20, 90, -40); ctx.lineTo(96, -10); ctx.quadraticCurveTo(70, 14, 20, 26); ctx.quadraticCurveTo(-60, 40, -90, 0); ctx.fill();
+      ctx.fillStyle = '#b9cbff'; ctx.beginPath(); ctx.moveTo(-84, 6); ctx.quadraticCurveTo(-30, 34, 20, 22); ctx.quadraticCurveTo(-30, 20, -84, 6); ctx.fill();
+      ctx.fillStyle = '#0b0d18'; ctx.beginPath(); ctx.arc(-62, -6, 3.5, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(200,230,255,.6)'; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(-40 + i * 6, -40 - ((f.t * 30 + i * 12) % 30), 2.5, 0, 7); ctx.fill(); }
+    }
+    ctx.restore();
+  }
+
+  if (import.meta.env.DEV) (window as any).__sight = (k: string, x: number) => { spawnSight(box.w, box.h, k); flybys[flybys.length - 1].x = x; flybys[flybys.length - 1].vx = 0; };
   function draw() {
     const now = performance.now();
     const dt = Math.min(0.05, (now - lastT) / 1000);
@@ -250,6 +335,14 @@
       if (rocks.length < 9 && Math.random() < dt * (share.phase === 'fly' ? 1.6 : 0.35)) spawnRock(W, H);
       for (const k of rocks) { k.x += k.vx * dt * rush; k.y += k.vy * dt * rush; k.a += k.va * dt; drawRock(ctx, k); }
       rocks = rocks.filter((k) => k.x > -60 && k.y < H + 60);
+      // sightings, once per milestone and round (some are only lucky)
+      if (share.phase === 'bet' && sightRound !== share.round) { sightRound = share.round; sightNext = 0; sighting = null; }
+      while (share.phase === 'fly' && sightNext < SIGHTS.length && live >= SIGHTS[sightNext].at) {
+        const sg = SIGHTS[sightNext++];
+        if (Math.random() < sg.p) { spawnSight(W, H, sg.kind); sighting = { label: settings.lang === 'de' ? sg.de : sg.en, id: now }; }
+      }
+      for (const f of flybys) { f.x += f.vx * dt * (share.phase === 'fly' ? 1 : 0.4); f.y += f.vy * dt; f.a += f.va * dt; f.t += dt; drawSight(ctx, f); }
+      flybys = flybys.filter((f) => f.x > -260);
 
       // camera eases towards the needed range and never lets the curve leave the view
       const padL = 46, padB = 34, padT = 26, padR = 22;
@@ -449,6 +542,7 @@
         <div class="bar"><i style="transform: scaleX({left / BET_MS})"></i></div>
       {:else if share.phase === 'fly'}
         <strong class="mono big-m" class:hot={live >= 2}>{live.toFixed(2)}×</strong>
+        {#if sighting}{#key sighting.id}<span class="sight" in:fly={{ y: 8, duration: 300 }}>{sighting.label}</span>{/key}{/if}
       {:else}
         <span class="eyebrow light">{t('rk.crashed')}</span>
         <strong class="mono big-m bad">{share.crash.toFixed(2)}×</strong>
@@ -472,6 +566,8 @@
   .ship { position: absolute; left: 0; top: 0; width: 64px; height: 64px; pointer-events: none; will-change: transform; filter: drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
   .ship.gone { opacity: 0; transition: opacity 0.15s var(--ease-snap); }
   .center { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; pointer-events: none; color: #fff; text-align: center; }
+  .sight { font: 600 0.78rem 'Geist Mono Variable', monospace; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.35); color: #ffe39a; animation: sightOut 3.2s forwards; }
+  @keyframes sightOut { 80% { opacity: 1; } to { opacity: 0; } }
   .center.flying { place-content: start; justify-items: start; padding: clamp(18px, 4vw, 40px) 0 0 clamp(52px, 7vw, 72px); text-align: left; }
   .eyebrow.light { color: rgba(255,255,255,.6); }
   .count { font-size: clamp(2rem, 5vw, 3.4rem); }

@@ -92,7 +92,7 @@
       {@const show = isOpen || (phase === 'over' && (field.has(i) || hit >= 0))}
       <button class="tile" class:open={isOpen} class:hit={hit === i} class:ghost={!isOpen && show} disabled={phase !== 'play' || isOpen} onclick={() => pick(i)} aria-label="Tile {i + 1}">
         {#if show}
-          <span class="ico" in:pop><Sprite kind={field.has(i) ? 'bomb' : 'gem'} /></span>
+          <span class="ico" class:rise={isOpen}><Sprite kind={field.has(i) ? 'bomb' : 'gem'} /></span>
         {/if}
       </button>
     {/each}
@@ -117,16 +117,25 @@
   }
   .tile {
     aspect-ratio: 1; border: 0; border-radius: 16px; background: linear-gradient(180deg, #34496a, #2a3b52); box-shadow: inset 0 -5px 0 rgba(0,0,0,.3);
-    padding: 18%; transition: transform 0.35s var(--ease-snap), background-color 0.25s var(--ease-snap);
+    padding: 18%; position: relative; overflow: hidden; transition: transform 0.35s var(--ease-snap), background-color 0.25s var(--ease-snap);
   }
   .tile:not(:disabled):hover { transform: translateY(-3px); background: linear-gradient(180deg, #3f5880, #31455f); }
   .tile:disabled { cursor: default; }
   .tile:not(:disabled):active { transform: scale(0.97); transition-duration: 0.16s; }
-  .tile.open { background: #13202e; box-shadow: inset 0 0 0 2px rgba(79, 227, 160, .35), 0 0 24px rgba(79, 227, 160, .12); animation: flipIn 0.55s var(--spring-snappy); }
-  @keyframes flipIn { from { transform: perspective(500px) rotateY(90deg); } }
+  /* reveal: the tile dips, a ring of light bursts out, the gem springs up and catches a glint */
+  .tile.open { background: #13202e; box-shadow: inset 0 0 0 2px rgba(79, 227, 160, .35), 0 0 24px rgba(79, 227, 160, .12); animation: dip 0.5s var(--spring-snappy); overflow: visible; }
+  @keyframes dip { 0% { transform: scale(0.88); background: #3f5880; } 100% { transform: none; } }
+  .tile.open::before { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 0 0 rgba(111, 240, 166, .7); animation: ring 0.6s var(--ease-snap) forwards; pointer-events: none; }
+  @keyframes ring { to { box-shadow: 0 0 0 14px rgba(111, 240, 166, 0); } }
+  .ico.rise { animation: gemIn 0.6s var(--spring-snappy) both; }
+  @keyframes gemIn { 0% { transform: translateY(35%) scale(0.2) rotate(-20deg); opacity: 0; } 55% { opacity: 1; } 100% { transform: none; } }
+  .tile.open::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; overflow: hidden;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.35) 50%, transparent 65%) -150% 0 / 250% 100% no-repeat; animation: glint 0.9s 0.25s var(--ease-snap) forwards; }
+  @keyframes glint { to { background-position: 150% 0; } }
   .board.boom { animation: shake 0.45s var(--ease-snap); }
   .tile.hit { background: #5a1a1f; box-shadow: inset 0 0 0 2px #e5484d; animation: shake 0.4s; }
-  .tile.ghost .ico { opacity: 0.4; }
+  .tile.ghost .ico { opacity: 0.4; animation: fadeIn 0.4s var(--ease-snap) both; }
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.7); } }
   .ico { display: block; width: 100%; height: 100%; }
   @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
   .banner {

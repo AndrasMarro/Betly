@@ -25,6 +25,8 @@
     wheel: () => import('./pages/LuckWheel.svelte'),
     scratch: () => import('./pages/Scratch.svelte'),
     cases: () => import('./pages/Cases.svelte'),
+    snake: () => import('./pages/Snake.svelte'),
+    crossy: () => import('./pages/Crossy.svelte'),
     minesweeper: () => import('./pages/Minesweeper.svelte'),
     baccarat: () => import('./pages/Baccarat.svelte'),
     holdem: () => import('./pages/Poker.svelte'),
@@ -87,6 +89,7 @@
         <span class="chip" data-v="1000" style="--size:22px"></span>
         <span class="mono">{fmt(wallet.balance)}</span>
         <span class="plus" class:ready={bonusReady}>+</span>
+        {#if ui.bonus}{#key ui.bonus.id}<span class="dflash mono">+{fmt(ui.bonus.amt)} · Daily</span>{/key}{/if}
       </button>
       <button class="btn icon ghost music" class:off={!settings.music || !settings.sound} onclick={() => (settings.music = !(settings.music && settings.sound)) && (settings.sound = true)} aria-label={t('settings.music')} aria-pressed={settings.music && settings.sound}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l11-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="17" cy="16" r="3" /></svg>
@@ -153,6 +156,9 @@
     display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 6px 0 10px; border-radius: 999px; border: 1px solid var(--line-2);
     background: var(--surface); font-size: 0.9rem; font-weight: 600;
   }
+  .balance { position: relative; }
+  .dflash { position: absolute; right: 8px; top: calc(100% + 6px); padding: 3px 8px; border-radius: 999px; background: var(--gold); color: #1d1505; font-size: 0.72rem; white-space: nowrap; pointer-events: none; animation: dflash 2.4s var(--ease-snap) forwards; }
+  @keyframes dflash { 0% { opacity: 0; transform: translateY(-6px); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(4px); } }
   .plus { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-size: 1.1rem; position: relative; }
   .plus.ready { background: var(--accent); color: var(--accent-ink); }
   .plus.ready::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--accent); animation: ring 1.6s ease-out infinite; }

@@ -3,6 +3,11 @@
   import CardView from './Card.svelte';
   import SlotSymbol from './SlotSymbol.svelte';
   import Sprite from './Sprite.svelte';
+  import golden from '../assets/cases/golden-edge.webp';
+  import voidPulse from '../assets/cases/void-pulse.webp';
+  import deepTide from '../assets/cases/deep-tide.webp';
+  import duck from '../assets/duck/right.webp';
+  const CASE_ART = [[deepTide, '#8847ff'], [golden, '#e4ae39'], [voidPulse, '#eb4b4b']] as const;
   let { id }: { id: string } = $props();
 </script>
 
@@ -52,9 +57,25 @@
       <circle r="15" fill="#141828" />
     </svg>
     <span class="tip"></span>
+  {:else if id === 'snake'}
+    <svg class="snk" viewBox="0 0 200 120" preserveAspectRatio="xMidYMid slice">
+      <defs><pattern id="snkgrid" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#1d3b2a" /><rect width="10" height="10" fill="#21432f" /><rect x="10" y="10" width="10" height="10" fill="#21432f" /></pattern></defs>
+      <rect width="200" height="120" fill="url(#snkgrid)" />
+      <path class="body" d="M30 90 H90 V50 H130 V30" fill="none" stroke="#1f7a45" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" />
+      <path class="body" d="M30 90 H90 V50 H130 V30" fill="none" stroke="#43c46e" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="126" cy="27" r="3" fill="#fff" /><circle cx="134" cy="27" r="3" fill="#fff" /><circle cx="126" cy="26" r="1.5" fill="#111" /><circle cx="134" cy="26" r="1.5" fill="#111" />
+      <g class="apple"><path d="M170 34 c10 -8 14 10 0 16 c-14 -6 -10 -24 0 -16z" fill="#e0262f" /><path d="M170 34 l2 -6" stroke="#5a3a1e" stroke-width="2" /><ellipse cx="175" cy="28" rx="4" ry="2" fill="#3fbf5a" /></g>
+      <g class="apple gold"><path d="M60 40 c8 -6 11 8 0 13 c-11 -5 -8 -19 0 -13z" fill="#f2c046" /></g>
+      <rect x="150" y="80" width="18" height="18" fill="#6b6f7a" /><rect x="150" y="80" width="18" height="4" fill="#8b909c" />
+    </svg>
+  {:else if id === 'crossy'}
+    <div class="cr">
+      <i class="g"></i><i class="r"><b style="--d:0s"></b></i><i class="w"><u></u></i><i class="g"></i>
+      <img src={duck} alt="" class="duck" />
+    </div>
   {:else if id === 'cases'}
-    <div class="crates">
-      {#each ['#4b69ff', '#d32ce6', '#e4ae39'] as c, i}<span class="crate" style="--c:{c}; --i:{i}"><i></i></span>{/each}
+    <div class="drops">
+      {#each CASE_ART as [src, c], i}<span class="drop" style="--c:{c}; --i:{i}"><img {src} alt="" /></span>{/each}
     </div>
     <span class="cmark"></span>
   {:else if id === 'minesweeper'}
@@ -85,12 +106,32 @@
   .art.coinflip { background: radial-gradient(ellipse at 50% 30%, #2b2a46, #101020 70%); }
   .art.plinko { background: radial-gradient(ellipse at 50% 0%, #22305a, #0d1326 75%); }
   .art.wheel { background: radial-gradient(ellipse at 50% 20%, #232a4a, #0d1122 72%); }
+  .art.snake, .art.crossy { padding: 0; }
+  .snk { width: 100%; height: 100%; display: block; }
+  .snk .apple { transform-origin: center; transform-box: fill-box; animation: bob 1.6s ease-in-out infinite; }
+  .snk .gold { animation-delay: -0.8s; }
+  @keyframes bob { 50% { transform: translateY(-3px) scale(1.06); } }
+  .cr { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr 1fr 1fr 1fr; overflow: hidden; }
+  .cr i { position: relative; overflow: hidden; }
+  .cr .g { background: #8bd65a; }
+  .cr .r { background: #4a4e5a; }
+  .cr .r b { position: absolute; top: 18%; left: -30%; width: 22%; height: 64%; border-radius: 4px; background: #ff5a5f; box-shadow: inset 0 -6px 0 rgba(0,0,0,.25); animation: drive 3.2s linear infinite; }
+  .cr .w { background: #3aa7e6; }
+  .cr .w u { position: absolute; top: 22%; right: -40%; width: 38%; height: 56%; border-radius: 4px; background: #a8703f; box-shadow: inset 0 -5px 0 #7a4f2a; animation: drift 5s linear infinite; }
+  @keyframes drive { to { left: 110%; } }
+  @keyframes drift { to { right: 110%; } }
+  .cr .duck { position: absolute; left: 50%; bottom: 14%; height: 58%; translate: -50% 0; filter: drop-shadow(0 6px 4px rgba(0,0,0,.25)); transition: transform 0.4s var(--spring-snappy); }
+  :global(.game:hover) .cr .duck, :global(.dailycard:hover) .cr .duck { transform: translateY(-14%); }
   .art.cases { background: radial-gradient(ellipse at 50% 0%, #22243a, #0e0f18 75%); }
-  .crates { display: flex; gap: 12px; align-items: end; }
-  .crate { position: relative; width: 74px; height: calc(52px + var(--i) * 10px); border-radius: 10px; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 80%, #fff), var(--c) 50%, color-mix(in srgb, var(--c) 55%, #000)); box-shadow: inset 0 -5px 0 rgba(0,0,0,.25), 0 14px 24px rgba(0,0,0,.45); transition: transform 0.45s var(--spring-snappy); transition-delay: calc(var(--i) * 60ms); }
-  .crate::before { content: ''; position: absolute; left: 0; right: 0; top: 16px; height: 4px; background: rgba(0,0,0,.35); }
-  .crate i { position: absolute; left: 50%; top: 12px; width: 16px; height: 13px; margin-left: -8px; border-radius: 3px; background: #f2c046; }
-  :global(.game:hover) .crate { transform: translateY(-10px); }
+  /* the reel in miniature: three real items, the gold one under the marker */
+  .drops { display: flex; gap: 8px; align-items: center; }
+  .drop { position: relative; width: 92px; height: 72px; border-radius: 12px; display: grid; place-items: center; overflow: hidden;
+    background: linear-gradient(180deg, #1d1f2c, color-mix(in srgb, var(--c) 30%, #1d1f2c)); box-shadow: inset 0 -3px 0 var(--c), 0 14px 24px rgba(0,0,0,.45);
+    transform: translateY(calc((var(--i) - 1) * (var(--i) - 1) * 6px)) scale(calc(1 - (var(--i) - 1) * (var(--i) - 1) * 0.12)); transition: transform 0.45s var(--spring-snappy); }
+  .drop:nth-child(2) { box-shadow: inset 0 -3px 0 var(--c), 0 0 26px -4px var(--c), 0 14px 24px rgba(0,0,0,.45); z-index: 1; }
+  .drop img { width: 92%; height: 92%; object-fit: contain;
+    -webkit-mask: radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%); mask: radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%); }
+  :global(.game:hover) .drop { transform: translateY(-6px) scale(1.04); }
   .cmark { position: absolute; left: 50%; top: 10%; bottom: 10%; width: 3px; background: #f2c046; box-shadow: 0 0 12px #f2c046; opacity: .35; }
   .art.minesweeper { background: radial-gradient(ellipse at 50% 0%, #1f2a3d, #0b111b 75%); }
   .msw { display: grid; grid-template-columns: repeat(5, 34px); gap: 4px; }

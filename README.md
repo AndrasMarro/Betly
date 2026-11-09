@@ -24,7 +24,7 @@ Betly ist ein privates Hobbyprojekt: eine Casino-Simulation, die sich wie ein ec
 | **Slots** | Lucky Sevens, Midnight Gems, Cosmic Cash, Lucky Clover (Wilds, Scatter, Freispiele) |
 
 ### Arcade
-Rocket (Crash) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und eigenem Item-Set) · Minen · Minesweeper · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (3D) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
+Rocket (Crash, mit Sichtungen ab gewissen Multiplikatoren) · Retro Crossy Run (endloses Hüpfspiel mit der Gamer-Ente) · Snake (Modifier, Einsatz und tägliche Challenge) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und eigenem Item-Set) · Minen · Minesweeper · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (3D) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
 
 Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno, Limbo, …).
 
@@ -32,6 +32,7 @@ Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno,
 
 - **Mehrspieler ohne Server**: Raum öffnen, Code oder Link teilen. Die Verbindung läuft direkt von Browser zu Browser (WebRTC über PeerJS). Der Browser des Hosts führt den Tisch; beim Poker sieht jeder nur seine eigenen Karten. Ein Heartbeat erkennt Spieler, die verschwinden, und abwesende Plätze werden automatisch weitergespielt.
 - **Bots an/aus** pro Tisch, inklusive Anzahl.
+- **Spiel des Tages**: Jeden Tag zahlt ein anderes Arcade-Spiel +20 % auf jeden Gewinn (auf der Startseite hervorgehoben).
 - **Anleitungen** für jedes Spiel (ausser ganz einfachen wie dem Münzwurf), auf Deutsch und Englisch.
 - **Installierbar (PWA)**: Auf dem Handy «Zum Startbildschirm hinzufügen» liefert das Betly-Icon; die Seite funktioniert danach auch offline (ohne Mehrspieler).
 - **Responsive**: Tische passen sich der Bildschirmhöhe an, vom Handy bis 1440p.
