@@ -110,6 +110,7 @@
   let wrap: HTMLDivElement;
   let size = $state(480);
   let raf = 0, last = performance.now(), acc = 0, clock = 0;
+  let bg: HTMLCanvasElement | null = null, bgKey = '';
   onMount(() => {
     const ro = new ResizeObserver(() => (size = Math.floor(Math.min(wrap.clientWidth, 680))));
     ro.observe(wrap);
@@ -122,9 +123,9 @@
     const dt = Math.min(100, now - last);
     last = now;
     clock += dt / 1000;
+    // a touch faster as the snake grows
+    const tick = TICK_MS[game.mods.speed] * Math.max(0.72, 1 - game.body.length * 0.004);
     if (phase === 'play') {
-      // a touch faster as the snake grows
-      const tick = TICK_MS[game.mods.speed] * Math.max(0.72, 1 - game.body.length * 0.004);
       acc += dt;
       while (acc >= tick && phase === 'play') {
         acc -= tick;
@@ -134,7 +135,7 @@
         if (r === 'dead') die();
       }
     }
-    draw(phase === 'play' ? Math.min(1, acc / (TICK_MS[game.mods.speed] * 0.9)) : 1);
+    draw(phase === 'play' ? Math.min(1, acc / tick) : 1);
     raf = requestAnimationFrame(loop);
   }
 
@@ -176,11 +177,34 @@
   function draw(alpha: number) {
     const ctx = canvas?.getContext('2d');
     if (!ctx) return;
-    const dpr = devicePixelRatio || 1, n = game.n, c = size / n;
+    const dpr = Math.max(2, devicePixelRatio || 1), n = game.n, c = size / n; // render at least 2x for crisp edges
     if (canvas.width !== Math.round(size * dpr)) { canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr); }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // grass checkerboard
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { ctx.fillStyle = (x + y) % 2 ? '#1d3b2a' : '#21432f'; ctx.fillRect(x * c, y * c, c + 0.5, c + 0.5); }
+    // the grass is painted once per size into an offscreen canvas
+    const key = size + 'x' + n + 'x' + dpr;
+    if (bgKey !== key) {
+      bg = document.createElement('canvas');
+      bg.width = canvas.width; bg.height = canvas.height;
+      const g = bg.getContext('2d')!;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        g.fillStyle = (x + y) % 2 ? '#1c3a28' : '#21442f';
+        g.fillRect(x * c, y * c, c + 0.5, c + 0.5);
+        // a few blades of grass per tile
+        g.strokeStyle = 'rgba(120,200,120,.10)'; g.lineWidth = Math.max(1, c * 0.04);
+        for (let k = 0; k < 3; k++) {
+          const gx = x * c + ((x * 7 + y * 13 + k * 5) % 10) / 10 * c, gy = y * c + ((x * 3 + y * 11 + k * 7) % 10) / 10 * c;
+          g.beginPath(); g.moveTo(gx, gy + c * 0.12); g.lineTo(gx + c * 0.04, gy); g.stroke();
+        }
+      }
+      const v = g.createRadialGradient(size / 2, size / 2, size * 0.3, size / 2, size / 2, size * 0.75);
+      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.35)');
+      g.fillStyle = v; g.fillRect(0, 0, size, size);
+      bgKey = key;
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(bg!, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // portals
     if (game.portals) game.portals.forEach((p, i) => {
       const cx = p.x * c + c / 2, cy = p.y * c + c / 2, col = i ? '#ff9a3c' : '#4fb2ff';
@@ -205,27 +229,49 @@
       ctx.beginPath(); ctx.moveTo(x + c / 2, y + c * 0.2); ctx.lineTo(x + c / 2, y + c * 0.5); ctx.moveTo(x + 2, y + c * 0.5); ctx.lineTo(x + c - 2, y + c * 0.5); ctx.moveTo(x + c * 0.3, y + c * 0.5); ctx.lineTo(x + c * 0.3, y + c * 0.82); ctx.stroke();
     }
     for (const a of game.apples) apple(ctx, a.x * c, a.y * c, c, a.kind, a.ttl);
-    // snake: interpolated centre line, drawn as a thick rounded stroke with a highlight
-    const pts = game.body.map((p, i) => {
-      const q = prev[i] ?? prev[prev.length - 1] ?? p;
-      const far = Math.abs(q.x - p.x) + Math.abs(q.y - p.y) > 1;
-      const k = far ? 1 : alpha;
-      return { x: (q.x + (p.x - q.x) * k) * c + c / 2, y: (q.y + (p.y - q.y) * k) * c + c / 2 };
-    });
+    // snake: the head slides to its new cell, the tail slides after it, everything in between sits exactly on
+    // the grid, so corners stay square and nothing cuts diagonally
+    const P = (q: Pt) => ({ x: q.x * c + c / 2, y: q.y * c + c / 2 });
+    const lerp = (a: Pt, b: Pt, k: number) => (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) > 1 ? P(b) : P({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }));
+    const body = game.body, pv = prev.length ? prev : body;
+    const pts = [lerp(pv[0], body[0], alpha), ...body.slice(1).map(P), lerp(pv[pv.length - 1], body[body.length - 1], alpha)];
     const runs: { x: number; y: number }[][] = [[]];
     pts.forEach((p, i) => { if (i && Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y) > c * 1.6) runs.push([]); runs.at(-1)!.push(p); });
     const dead = phase === 'over';
-    for (const [w, col] of [[0.84, dead ? '#6b2a2a' : '#1f7a45'], [0.66, dead ? '#a33a3a' : '#43c46e'], [0.22, dead ? '#d56b6b' : '#8ff0a8']] as const) {
-      ctx.strokeStyle = col; ctx.lineWidth = c * w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const N = pts.length;
+    // width tapers from the head to the tail
+    const wAt = (i: number) => c * (0.82 - 0.3 * (i / Math.max(1, N - 1)));
+    const stroke = (col: string, k: number, dx = 0, dy = 0) => {
+      ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      let i = 0;
       for (const run of runs) {
-        ctx.beginPath();
-        run.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-        if (run.length === 1) ctx.lineTo(run[0].x + 0.1, run[0].y);
-        ctx.stroke();
+        for (let j = 1; j < run.length; j++, i++) {
+          ctx.lineWidth = wAt(i) * k;
+          ctx.beginPath(); ctx.moveTo(run[j - 1].x + dx, run[j - 1].y + dy); ctx.lineTo(run[j].x + dx, run[j].y + dy); ctx.stroke();
+        }
+        if (run.length === 1) { ctx.lineWidth = wAt(i) * k; ctx.beginPath(); ctx.moveTo(run[0].x + dx, run[0].y + dy); ctx.lineTo(run[0].x + dx + 0.1, run[0].y + dy); ctx.stroke(); }
+        i++;
       }
+    };
+    stroke('rgba(0,0,0,.28)', 1, c * 0.08, c * 0.12); // soft shadow on the grass
+    stroke(dead ? '#5e2626' : '#17663a', 1);
+    stroke(dead ? '#a33a3a' : '#3fbf66', 0.78);
+    stroke(dead ? '#d56b6b' : '#7fe39a', 0.3, -c * 0.05, -c * 0.06);
+    // scales: small dots along the back
+    ctx.fillStyle = dead ? 'rgba(255,200,200,.25)' : 'rgba(10,60,30,.35)';
+    for (let i = 2; i < N - 1; i += 1) {
+      const p = pts[i];
+      if (!p) continue;
+      ctx.beginPath(); ctx.arc(p.x + c * 0.12, p.y + c * 0.1, c * 0.07, 0, 7); ctx.fill();
     }
-    // head with eyes looking where it goes
-    const h = pts[0], d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[game.dir];
+    // head: a slightly wider rounded snout
+    const h = pts[0];
+    ctx.fillStyle = dead ? '#a33a3a' : '#46c96d';
+    ctx.beginPath(); ctx.arc(h.x, h.y, c * 0.47, 0, 7); ctx.fill();
+    ctx.fillStyle = dead ? 'rgba(255,220,220,.3)' : 'rgba(180,255,200,.35)';
+    ctx.beginPath(); ctx.arc(h.x - c * 0.1, h.y - c * 0.14, c * 0.2, 0, 7); ctx.fill();
+    // eyes looking where it goes
+    const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[game.dir];
     for (const s of [-1, 1]) {
       const ex = h.x + d[0] * c * 0.12 + d[1] * s * c * 0.18, ey = h.y + d[1] * c * 0.12 + d[0] * s * c * 0.18;
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex, ey, c * 0.13, 0, 7); ctx.fill();
