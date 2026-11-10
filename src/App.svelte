@@ -4,7 +4,7 @@
   import { settings, wallet, ui, fmt, bonusReadyIn, askName } from './lib/state.svelte';
   import { t } from './lib/i18n';
   import { byId } from './lib/games';
-  import { menuMusic } from './lib/sfx';
+  import { menuMusic, setVolumes } from './lib/sfx';
 
   let hash = $state(location.hash);
   const path = $derived(hash.slice(1).split('?')[0] || '/');
@@ -70,6 +70,7 @@
   // lounge music only in the menus
   const inMenu = $derived(!section || section === 'classic' || section === 'arcade');
   $effect(() => menuMusic(inMenu && settings.music && settings.sound));
+  $effect(() => setVolumes(settings.sfxVol, settings.musicVol));
 </script>
 
 <svelte:window onhashchange={onhash} />

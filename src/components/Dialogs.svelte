@@ -77,7 +77,9 @@
     </div>
     <label class="switch"><span>{t('settings.bots')}</span><input type="checkbox" bind:checked={settings.bots} /></label>
     <label class="switch"><span>{t('settings.sound')}</span><input type="checkbox" bind:checked={settings.sound} /></label>
+    <label class="vol" class:off={!settings.sound}><span>{t('settings.sfxVol')}</span><input type="range" min="0" max="1" step="0.05" bind:value={settings.sfxVol} disabled={!settings.sound} onchange={() => sfx('chip')} /><b class="mono">{Math.round(settings.sfxVol * 100)}</b></label>
     <label class="switch"><span>{t('settings.music')}</span><input type="checkbox" bind:checked={settings.music} /></label>
+    <label class="vol" class:off={!settings.music || !settings.sound}><span>{t('settings.musicVol')}</span><input type="range" min="0" max="1" step="0.05" bind:value={settings.musicVol} disabled={!settings.music || !settings.sound} /><b class="mono">{Math.round(settings.musicVol * 100)}</b></label>
   </div>
 </dialog>
 
@@ -108,6 +110,10 @@
 </dialog>
 
 <style>
+  .vol { display: grid; grid-template-columns: 1fr minmax(120px, 1.4fr) 30px; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--muted); padding-left: 12px; }
+  .vol input { accent-color: var(--accent); width: 100%; }
+  .vol b { font-weight: 500; font-size: 0.78rem; text-align: right; }
+  .vol.off { opacity: 0.45; }
   .dlg { display: grid; gap: 16px; padding: 24px; }
   header { display: flex; justify-content: space-between; align-items: center; }
   h2 { margin: 0; font-size: 1.6rem; letter-spacing: -0.03em; }

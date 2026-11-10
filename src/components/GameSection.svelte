@@ -21,7 +21,7 @@
   {/if}
   {#if daily}
     <!-- game of the day: bigger card, pays a bonus on every win -->
-    <a class="dailycard rise" href={href(daily)}>
+    <a class="dailycard" href={href(daily)}>
       <div class="art"><GameArt id={daily.id} /></div>
       <div class="dtxt">
         <span class="badge mono">{t('daily.badge')}</span>
@@ -55,6 +55,9 @@
   .dailycard { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); margin-bottom: 16px; border-radius: 28px; overflow: hidden; text-decoration: none; color: inherit;
     background: var(--surface); border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 10%, transparent), 0 30px 60px -30px rgba(0,0,0,.6); transition: transform 0.45s var(--spring-snappy); }
   .dailycard:hover { transform: translateY(-4px); }
+  /* fades in without moving, so it never slides over the cards below */
+  .dailycard { position: relative; z-index: 1; animation: dfade 0.6s var(--ease-snap) backwards; }
+  @keyframes dfade { from { opacity: 0; } }
   .dailycard .art { min-height: 240px; position: relative; display: grid; }
   .dailycard .art :global(.art) { height: 100%; }
   .dtxt { display: grid; align-content: center; justify-items: start; gap: 8px; padding: clamp(18px, 3vw, 36px); }

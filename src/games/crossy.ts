@@ -3,11 +3,12 @@ export const COLS = 11;
 const SPAN = COLS + 8; // items wrap within [-4, COLS + 4)
 export type Item = { x: number; len: number; c: number; croc?: boolean };
 export type LaneType = 'grass' | 'road' | 'river' | 'rail';
-export type Lane = { type: LaneType; dir: 1 | -1; speed: number; items: Item[]; trees: number[]; t: number; train: Item | null };
-export type World = { lanes: Lane[]; rand: () => number; run: LaneType; left: number; lastRiverDir: 1 | -1 };
+/** trees: blocking cells (trees, rocks, shops via `deco`), flowers: decoration only, coin: column of a collectible coin, pads: a still river with lily pads. */
+export type Lane = { type: LaneType; dir: 1 | -1; speed: number; items: Item[]; trees: number[]; deco: Record<number, 'tree' | 'rock' | 'shop'>; flowers: number[]; coin: number | null; pads?: boolean; t: number; train: Item | null };
+export type World = { lanes: Lane[]; rand: () => number; run: LaneType; left: number; lastRiverDir: 1 | -1; nextCoin: number };
 
 export function newWorld(rand: () => number): World {
-  const w: World = { lanes: [], rand, run: 'grass', left: 4, lastRiverDir: 1 };
+  const w: World = { lanes: [], rand, run: 'grass', left: 4, lastRiverDir: 1, nextCoin: 18 + Math.floor(rand() * 20) };
   ensure(w, 30);
   return w;
 }
@@ -33,14 +34,21 @@ export function ensure(w: World, upTo: number) {
 function makeLane(w: World, r: number): Lane {
   // early rows are calm: slow traffic and wide gaps; it tightens with distance
   const rand = w.rand, diff = 0.7 + Math.min(r, 300) / 160, sparse = Math.max(1, 2.8 - r / 18);
-  const lane: Lane = { type: w.run, dir: rand() < 0.5 ? 1 : -1, speed: 0, items: [], trees: [], t: 0, train: null };
+  const lane: Lane = { type: w.run, dir: rand() < 0.5 ? 1 : -1, speed: 0, items: [], trees: [], deco: {}, flowers: [], coin: null, t: 0, train: null };
   if (lane.type === 'grass') {
     // trees and rocks block cells; the start area stays open
     for (let c = 0; c < COLS; c++) if (rand() < (r < 4 ? 0.08 : 0.2) && !(r < 4 && Math.abs(c - 5) < 2)) lane.trees.push(c);
     if (lane.trees.length > 5) lane.trees.length = 5;
+    for (const c of lane.trees) { const k = rand(); lane.deco[c] = k < 0.08 && r > 8 ? 'shop' : k < 0.3 ? 'rock' : 'tree'; }
+    for (let c = 0; c < COLS; c++) if (!lane.trees.includes(c) && rand() < 0.12) lane.flowers.push(c);
   } else if (lane.type === 'road') {
     lane.speed = (1.1 + rand() * 1.7) * diff;
     fill(lane, rand, () => (rand() < 0.25 ? 2 : 1), () => (2.6 + rand() * 3.4) * sparse);
+  } else if (lane.type === 'river' && r > 12 && rand() < 0.22) {
+    // a still pond: lily pads that do not move, every other cell or so
+    lane.pads = true;
+    for (let c = 0; c < COLS; c++) if (rand() < 0.42) lane.items.push({ x: c, len: 1, c: 0 });
+    if (lane.items.length < 3) for (const c of [1, 5, 9]) if (!lane.items.some((it) => it.x === c)) lane.items.push({ x: c, len: 1, c: 0 });
   } else if (lane.type === 'river') {
     lane.dir = (-w.lastRiverDir) as 1 | -1;
     w.lastRiverDir = lane.dir;
@@ -51,6 +59,11 @@ function makeLane(w: World, r: number): Lane {
     for (const it of lane.items) if (it.len >= 3 && rand() < crocChance) it.croc = true;
   } else {
     lane.t = 2 + rand() * 4;
+  }
+  // a coin every 20-60 rows, on a free grass or road cell
+  if (r >= w.nextCoin && (lane.type === 'grass' || lane.type === 'road')) {
+    const free = Array.from({ length: COLS }, (_, c) => c).filter((c) => !lane.trees.includes(c));
+    if (free.length) { lane.coin = free[Math.floor(rand() * free.length)]; w.nextCoin = r + 20 + Math.floor(rand() * 41); }
   }
   return lane;
 }
@@ -87,8 +100,8 @@ export function update(w: World, dt: number, from: number, to: number, pace = 1)
 }
 
 export const warning = (l: Lane) => l.type === 'rail' && (!!l.train || l.t < WARN);
-// forgiving hitboxes: the duck is the middle half of its cell, vehicles lose a little at both ends
-const overlaps = (it: Item, px: number) => it.x + 0.12 < px + 0.74 && it.x + it.len - 0.12 > px + 0.26;
+// forgiving hitboxes: the duck is the middle 40 % of its cell, vehicles lose a little at both ends
+const overlaps = (it: Item, px: number) => it.x + 0.14 < px + 0.7 && it.x + it.len - 0.14 > px + 0.3;
 /** Is something on this row hitting a player standing at column px? */
 export const hit = (l: Lane, px: number) => (l.type === 'road' && l.items.some((it) => overlaps(it, px))) || (l.type === 'rail' && !!l.train && overlaps(l.train, px));
 /** The log carrying a player at px (centre must be on the log), if any. */
@@ -96,3 +109,16 @@ export const logAt = (l: Lane, px: number) => l.items.find((it) => it.x - 0.15 <
 /** Standing on a crocodile's head (the front cell in its direction of travel)? */
 export const onCrocHead = (l: Lane, it: Item, px: number) => !!it.croc && (l.dir > 0 ? px + 0.5 > it.x + it.len - 1 : px + 0.5 < it.x + 1);
 export const blocked = (l: Lane | undefined, col: number) => !!l && l.type === 'grass' && l.trees.includes(col);
+
+// ---------- stakes ----------
+export const MAX_STAKE = 500;
+export const BONUS_EVERY = 50, BONUS = 1.3, MAX_MULT = 50;
+/** Multiplier when cashing out after `steps` forward steps: break-even at 20, then x1.3 on top at every 50 steps. */
+export function multAt(steps: number) {
+  const base = 0.5 + steps * 0.025;
+  return Math.min(MAX_MULT, Math.round(base * BONUS ** Math.floor(steps / BONUS_EVERY) * 100) / 100);
+}
+/** A coin pays back a share of the stake that grows with distance (5 % early, up to 30 %). */
+export const coinShare = (row: number) => Math.min(0.3, 0.05 + row * 0.0012);
+/** Without a stake a coin is worth some credits, more the further you are. */
+export const coinFree = (row: number) => Math.round(10 + row * 0.5);

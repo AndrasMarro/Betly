@@ -131,3 +131,25 @@ export const MACHINES: Machine[] = [
     bets: [1, 2, 5, 10, 20],
   },
 ];
+
+// ---------- Armory: the case weapons on a 5x3 machine; three sets with the same maths and different stakes ----------
+const ARMORY_LINES = MACHINES[1].lines;
+const armory = (id: string, name: string, syms: [string, string, string, string, string, string], bets: number[]): Machine => {
+  const [a, b, c, d, e, w] = syms;
+  const reel = (wild: number) => ({ [a]: 10, [b]: 9, [c]: 8, [d]: 6, [e]: 4, [w]: wild, star: 1 });
+  return {
+    id, name, rows: 3,
+    weights: [reel(1), reel(2), reel(2), reel(2), reel(1)],
+    lines: ARMORY_LINES,
+    pays: { [a]: { 3: 4, 4: 12, 5: 40 }, [b]: { 3: 5, 4: 15, 5: 60 }, [c]: { 3: 8, 4: 25, 5: 80 }, [d]: { 3: 12, 4: 40, 5: 120 }, [e]: { 3: 20, 4: 80, 5: 400 }, [w]: { 3: 40, 4: 200, 5: 800 } },
+    wild: w,
+    scatter: { sym: 'star', pays: { 3: 2, 4: 10, 5: 50 }, free: 8, mult: 2 },
+    bets,
+  };
+};
+/** The rarest weapon of each set is the wild. */
+export const ARMORY: Machine[] = [
+  armory('arm-field', 'Armory · Field', ['steel-basic', 'veteran', 'old-west', 'longshot', 'tiger-claw', 'silver-wing'], [1, 2, 5, 10, 20]),
+  armory('arm-arsenal', 'Armory · Arsenal', ['field-kit', 'night-ops', 'blackout', 'deep-tide', 'crimson-web', 'golden-edge'], [5, 10, 25, 50, 100]),
+  armory('arm-proto', 'Armory · Prototype', ['rust-tech', 'glitch-trigger', 'night-phantom', 'cyber-sting', 'void-pulse', 'quantum-edge'], [25, 50, 100, 250, 500]),
+];

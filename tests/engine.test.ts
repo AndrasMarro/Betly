@@ -1,7 +1,8 @@
 // One runnable check for the game math: node --experimental-strip-types tests/engine.test.ts
 import assert from 'node:assert/strict';
 import { spotAt, payout, OUTSIDE, ANNOUNCED } from '../src/games/roulette.ts';
-import { MACHINES, strips, spinGrid, evaluate } from '../src/games/slots.ts';
+import { MACHINES as BASE_MACHINES, ARMORY, strips, spinGrid, evaluate } from '../src/games/slots.ts';
+const MACHINES = [...BASE_MACHINES, ...ARMORY];
 import { newTable, start, dealOrder, afterDeal, act, settle, total, dealerNeedsCard, PRESETS } from '../src/games/blackjack.ts';
 
 // Roulette: hotspots
@@ -283,4 +284,16 @@ import { newWorld, ensure as crEnsure, hit as crHit, onCrocHead } from '../src/g
   const croc = { x: 2, len: 3, c: 0, croc: true };
   assert.ok(onCrocHead({ ...road, type: 'river' }, croc, 4) && !onCrocHead({ ...road, type: 'river' }, croc, 2.2), 'croc head');
   console.log('crossy checks passed');
+}
+import { multAt as crMult, coinShare } from '../src/games/crossy.ts';
+{
+  assert.equal(crMult(20), 1, 'break-even at 20 steps');
+  assert.ok(crMult(50) > crMult(49) * 1.25, 'x1.3 at 50');
+  assert.ok(crMult(10000) <= 50 && coinShare(1000) <= 0.3);
+  const w = newWorld(rng(9)); crEnsure(w, 400);
+  const coins = w.lanes.map((l, i) => (l.coin !== null ? i : -1)).filter((i) => i >= 0);
+  for (let i = 1; i < coins.length; i++) assert.ok(coins[i] - coins[i - 1] >= 20, 'coins are spaced');
+  assert.ok(coins.length >= 5 && coins.length <= 20, 'coins: ' + coins.length);
+  assert.ok(w.lanes.some((l) => l.pads) && w.lanes.some((l) => Object.values(l.deco).includes('shop')));
+  console.log('crossy stake checks passed');
 }

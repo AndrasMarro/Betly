@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
-  import { newWorld, ensure, update, hit, logAt, onCrocHead, blocked, warning, COLS, type World, type Lane } from '../games/crossy';
+  import { newWorld, ensure, update, hit, logAt, onCrocHead, blocked, warning, multAt, coinShare, coinFree, COLS, MAX_STAKE, BONUS_EVERY, BONUS, type World, type Lane } from '../games/crossy';
   import HowTo from '../components/HowTo.svelte';
-  import { settle, fmt } from '../lib/state.svelte';
+  import { settle, stake as takeStake, credit, wallet, fmt } from '../lib/state.svelte';
   import { dailyGame } from '../lib/daily';
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
@@ -12,6 +12,12 @@
   import duckDown from '../assets/duck/down.webp';
   import duckLeft from '../assets/duck/left.webp';
   import duckRight from '../assets/duck/right.webp';
+  import coinSrc from '../assets/crossy/coin.webp';
+  import shopSrc from '../assets/crossy/shop.webp';
+  import flowersSrc from '../assets/crossy/flowers.webp';
+  const ART: Record<string, HTMLImageElement> = {};
+  for (const [k, src] of [['coin', coinSrc], ['shop', shopSrc], ['flowers', flowersSrc]]) { const i = new Image(); i.src = src; ART[k] = i; }
+  const ok = (k: string) => ART[k].complete && ART[k].naturalWidth > 0;
 
   type Dir = 'up' | 'down' | 'left' | 'right';
   const SPRITES: Record<Dir, HTMLImageElement> = { up: new Image(), down: new Image(), left: new Image(), right: new Image() };
@@ -20,8 +26,15 @@
   let best = $state(+(localStorage.getItem('betly:crossy') || 0));
   let phase = $state<'ready' | 'play' | 'dead'>('ready');
   let score = $state(0);
-  let cause = $state<'car' | 'water' | 'train' | 'eagle' | 'croc' | ''>('');
+  let cause = $state<'car' | 'water' | 'train' | 'eagle' | 'croc' | 'cash' | ''>('');
   let reward = $state(0);
+  // stake mode: capped bet, multiplier grows with steps (+30 % at every 50), coins pay back part of the stake
+  let useStake = $state(false);
+  let betAmt = $state(50);
+  let staked = $state(0);
+  let coinsGot = $state(0);
+  let flash = $state<{ text: string; id: number } | null>(null);
+  const mult = $derived(multAt(score));
 
   let world: World;
   const P = { x: 5, row: 0, fromX: 5, fromRow: 0, hop: 1, face: 'up' as Dir, onLog: false, deadT: 0 };
@@ -34,13 +47,21 @@
     world = newWorld(Math.random);
     Object.assign(P, { x: 5, row: 2, fromX: 5, fromRow: 2, hop: 1, face: 'up', onLog: false, deadT: 0 });
     cam = 0; camMin = 0; shake = 0; runT = 0; bits = []; queued = null;
-    score = 0; cause = ''; reward = 0;
+    score = 0; cause = ''; reward = 0; staked = 0; coinsGot = 0; flash = null;
   }
   reset();
 
   function move(d: Dir) {
     if (phase === 'dead') return;
-    if (phase === 'ready') phase = 'play';
+    if (phase === 'ready') {
+      if (useStake) {
+        const amt = Math.min(MAX_STAKE, Math.floor(wallet.balance), Math.max(1, Math.round(betAmt)));
+        if (amt < 1) return;
+        staked = amt;
+        takeStake(amt);
+      }
+      phase = 'play';
+    }
     if (P.hop < 1) { queued = d; return; }
     P.face = d;
     let tx = P.x, tr = P.row;
@@ -51,7 +72,7 @@
     ensure(world, tr + 30);
     const target = world.lanes[tr];
     // land on whole cells except on rivers, where you keep riding your offset
-    if ((d === 'up' || d === 'down') && target?.type !== 'river') tx = Math.round(tx);
+    if ((d === 'up' || d === 'down') && (target?.type !== 'river' || target.pads)) tx = Math.round(tx);
     if (tr < 0 || tx < -0.3 || tx > COLS - 0.7 || blocked(target, Math.round(tx)) || tr < Math.floor(cam) - 1) { bump(); return; }
     P.fromX = P.x; P.fromRow = P.row; P.x = tx; P.row = tr; P.hop = 0; P.onLog = false;
     sfx('hop');
@@ -68,10 +89,22 @@
     if (c === 'water') burst('#bfe8ff', 18);
     if (c === 'car' || c === 'train') burst('#ffd23f', 22);
     if (c === 'croc') burst('#3f8f2a', 20);
-    reward = score;
-    if (score > 0) settle(score, score);
+    if (staked) { reward = coinsGot; settle(0, 0); }
+    else { reward = score + coinsGot; if (score > 0) settle(score, score); }
     if (score > best) { best = score; localStorage.setItem('betly:crossy', String(best)); }
   }
+  function cashOut() {
+    if (phase !== 'play' || !staked || P.hop < 1) return;
+    phase = 'dead';
+    cause = 'cash';
+    P.deadT = 0;
+    const win = Math.round(staked * mult * 100) / 100;
+    settle(win, win);
+    reward = win + coinsGot;
+    sfx('cash');
+    if (score > best) { best = score; localStorage.setItem('betly:crossy', String(best)); }
+  }
+  function show(text: string) { flash = { text, id: performance.now() }; }
   function burst(c: string, n: number) {
     for (let i = 0; i < n; i++) bits.push({ x: P.x + 0.5, y: P.row + 0.5, vx: (Math.random() - 0.5) * 6, vy: Math.random() * 6, life: 0.6 + Math.random() * 0.5, c });
   }
@@ -80,6 +113,7 @@
   function key(e: KeyboardEvent) {
     if ((e.target as HTMLElement).closest('input, select, textarea')) return;
     if (KEYS[e.code]) { e.preventDefault(); if (!e.repeat) move(KEYS[e.code]); return; }
+    if (e.code === 'Enter' && phase === 'play' && staked) { e.preventDefault(); cashOut(); return; }
     if ((e.code === 'Space' || e.code === 'Enter') && phase === 'dead' && P.deadT > 0.6) { e.preventDefault(); reset(); phase = 'ready'; }
     else if (e.code === 'Space') e.preventDefault();
   }
@@ -177,7 +211,19 @@
       if (onCrocHead(lane, log, P.x)) { die('croc'); return; }
       P.onLog = true;
     }
-    if (P.row - 2 > score) score = P.row - 2;
+    if (lane.coin !== null && lane.type !== 'river' && Math.round(P.x) === lane.coin) {
+      lane.coin = null;
+      const amt = staked ? Math.round(staked * coinShare(P.row) * 100) / 100 : coinFree(P.row);
+      credit(amt);
+      coinsGot += amt;
+      sfx('cash');
+      show('+' + fmt(amt));
+      for (let i = 0; i < 14; i++) bits.push({ x: P.x + 0.5, y: P.row + 0.5, vx: (Math.random() - 0.5) * 5, vy: 2 + Math.random() * 5, life: 0.5 + Math.random() * 0.4, c: '#ffd23f' });
+    }
+    if (P.row - 2 > score) {
+      score = P.row - 2;
+      if (staked && score % BONUS_EVERY === 0) { show('×' + BONUS + ' Bonus!'); sfx('gem'); }
+    }
   }
 
   // ---------- drawing: oblique voxel look ----------
@@ -232,8 +278,12 @@
       const l = world.lanes[r];
       if (!l) continue;
       const y = Y(r);
-      if (l.type === 'grass') for (const c of l.trees) drawTree(ctx, c * C, y, C, (r * 31 + c * 7) % 4 === 0);
-      if (l.type === 'river') for (const it of l.items) (it.croc ? drawCroc(ctx, it.x * C, y, it.len, C, l.dir) : drawLog(ctx, it.x * C, y, it.len * C, C));
+      if (l.type === 'grass') {
+        for (const c of l.flowers) if (ok('flowers')) ctx.drawImage(ART.flowers, c * C - C * 0.05, y + C * 0.05, C * 1.1, C * 0.7);
+        for (const c of l.trees) l.deco[c] === 'shop' ? drawArt(ctx, 'shop', c * C, y, C, 1.05) : drawTree(ctx, c * C, y, C, l.deco[c] === 'rock');
+      }
+      if (l.type === 'river') for (const it of l.items) (l.pads ? drawPad(ctx, it.x * C, y, C, r) : it.croc ? drawCroc(ctx, it.x * C, y, it.len, C, l.dir) : drawLog(ctx, it.x * C, y, it.len * C, C));
+      if (l.coin !== null && l.type !== 'river') drawCoin(ctx, l.coin * C, y, C);
       if (l.type === 'road') for (const it of l.items) drawCar(ctx, it.x * C, y, it.len, C, CAR[it.c], l.dir);
       if (l.type === 'rail') {
         drawSignal(ctx, 0.25 * C, y, C, warning(l));
@@ -251,6 +301,27 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
+  function drawArt(ctx: CanvasRenderingContext2D, k: string, x: number, y: number, C: number, w: number) {
+    if (!ok(k)) return;
+    const img = ART[k], dw = C * w, dh = (dw * img.naturalHeight) / img.naturalWidth;
+    ctx.drawImage(img, x + (C - dw) / 2, y + C * 0.85 - dh, dw, dh);
+  }
+  function drawCoin(ctx: CanvasRenderingContext2D, x: number, y: number, C: number) {
+    if (!ok('coin')) return;
+    const bob = Math.sin(clock * 3) * C * 0.06, spin = Math.abs(Math.cos(clock * 2.2)) * 0.6 + 0.4;
+    ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x + C / 2, y + C * 0.72, C * 0.22, C * 0.07, 0, 0, 7); ctx.fill();
+    const h = C * 0.72, w = h * 0.76 * spin;
+    ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = C * 0.4;
+    ctx.drawImage(ART.coin, x + C / 2 - w / 2, y + C * 0.62 - h + bob, w, h);
+    ctx.shadowBlur = 0;
+  }
+  function drawPad(ctx: CanvasRenderingContext2D, x: number, y: number, C: number, r: number) {
+    const cx = x + C / 2, cy = y + C * 0.52, a = (r * 1.7 + x) % 6.28;
+    ctx.fillStyle = '#2f8a3a'; ctx.beginPath(); ctx.ellipse(cx, cy + 2, C * 0.42, C * 0.3, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#4fbf55'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.ellipse(cx, cy, C * 0.42, C * 0.3, 0, a + 0.35, a + 6.0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(30,90,40,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a + 3) * C * 0.3, cy + Math.sin(a + 3) * C * 0.2); ctx.stroke();
+    if ((r + Math.round(x / C)) % 3 === 0) { ctx.fillStyle = '#ff8fb8'; ctx.beginPath(); ctx.arc(cx + C * 0.16, cy - C * 0.06, C * 0.08, 0, 7); ctx.fill(); ctx.fillStyle = '#ffe0ec'; ctx.beginPath(); ctx.arc(cx + C * 0.16, cy - C * 0.08, C * 0.04, 0, 7); ctx.fill(); }
+  }
   function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, C: number, rock: boolean) {
     if (rock) { box(ctx, x + C * 0.15, y + C * 0.2, C * 0.7, C * 0.6, C * 0.35, '#b8bcc6', '#8d929e'); return; }
     box(ctx, x + C * 0.38, y + C * 0.45, C * 0.24, C * 0.25, C * 0.35, '#8a5a32', '#6b4426');
@@ -305,16 +376,25 @@
       if (b) { ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = C * 0.03; ctx.stroke(); }
     }
   }
+  // voxel crocodile in the style of the artwork: light green back with ridge blocks, cream jaw, big eyes
   function drawCroc(ctx: CanvasRenderingContext2D, x: number, y: number, len: number, C: number, dir: number) {
-    const w = len * C - 4;
-    box(ctx, x + 2, y + C * 0.22, w, C * 0.56, C * 0.16, '#4f9a3a', '#2f6a24');
-    ctx.fillStyle = '#3b7f2c'; for (let k = C * 0.5; k < w - C * 1.1; k += C * 0.45) ctx.fillRect(x + (dir > 0 ? k : w - k), y + C * 0.16, C * 0.16, C * 0.14);
-    // head at the front, jaws opening and closing
-    const hx = dir > 0 ? x + w - C * 0.95 : x + 2, open = (Math.sin(clock * 4) + 1) * 0.5;
-    box(ctx, hx, y + C * 0.24, C * 0.95, C * 0.5, C * 0.22, '#62b347', '#3b7f2c');
-    ctx.fillStyle = '#c42f2f'; ctx.fillRect(dir > 0 ? hx + C * 0.35 : hx + C * 0.1, y + C * 0.24 - C * 0.22 + C * 0.18, C * 0.5, C * 0.12 * open);
-    ctx.fillStyle = '#fff'; for (let k = 0; k < 4; k++) ctx.fillRect((dir > 0 ? hx + C * 0.38 : hx + C * 0.12) + k * C * 0.12, y + C * 0.2, C * 0.05, C * 0.05 + C * 0.05 * open);
-    ctx.fillStyle = '#ffe14a'; for (const dy of [0.0, 0.3]) ctx.fillRect(dir > 0 ? hx + C * 0.16 : hx + C * 0.72, y + C * (0.06 + dy), C * 0.1, C * 0.1);
+    const w = len * C - 4, x0 = x + 2;
+    ctx.fillStyle = 'rgba(0,40,70,.25)'; ctx.fillRect(x0 + 3, y + C * 0.7, w, C * 0.14);
+    // tail tapers to the back
+    const tail = dir > 0 ? x0 : x0 + w - C * 0.7;
+    box(ctx, tail, y + C * 0.34, C * 0.7, C * 0.34, C * 0.12, '#6cc24a', '#3f8f2a');
+    const bx = dir > 0 ? x0 + C * 0.6 : x0 + C * 0.95, bw = w - C * 1.55;
+    box(ctx, bx, y + C * 0.24, bw, C * 0.52, C * 0.2, '#74c94f', '#3f8f2a');
+    ctx.fillStyle = '#e8e3a0'; ctx.fillRect(bx, y + C * 0.56, bw, C * 0.06);
+    ctx.fillStyle = '#4fa534'; for (let k = C * 0.15; k < bw - C * 0.2; k += C * 0.34) ctx.fillRect(bx + k, y + C * 0.24 - C * 0.2 - C * 0.1, C * 0.18, C * 0.12);
+    ctx.fillStyle = '#3f8f2a'; for (const k of [0.2, 0.75]) ctx.fillRect(bx + bw * k, y + C * 0.7, C * 0.16, C * 0.1);
+    // head with an opening jaw
+    const hx = dir > 0 ? x0 + w - C * 0.95 : x0, open = (Math.sin(clock * 4) + 1) * 0.5;
+    box(ctx, hx, y + C * 0.26, C * 0.95, C * 0.48, C * 0.24 + C * 0.08 * open, '#7fd85a', '#4fa534');
+    ctx.fillStyle = '#e8e3a0'; ctx.fillRect(hx, y + C * 0.26 + C * 0.48 - C * 0.24 - C * 0.08 * open + C * 0.18, C * 0.95, C * 0.06 + C * 0.06 * open);
+    ctx.fillStyle = '#fff'; for (let k = 0; k < 4; k++) ctx.fillRect((dir > 0 ? hx + C * 0.4 : hx + C * 0.1) + k * C * 0.12, y + C * 0.26 + C * 0.2 - C * 0.24, C * 0.05, C * 0.06 + C * 0.06 * open);
+    const ex = dir > 0 ? hx + C * 0.12 : hx + C * 0.66;
+    for (const dy of [0, 0.26]) { ctx.fillStyle = '#fff'; ctx.fillRect(ex, y + C * (0.0 + dy), C * 0.17, C * 0.13); ctx.fillStyle = '#26303f'; ctx.fillRect(ex + (dir > 0 ? C * 0.09 : 0), y + C * (0.02 + dy), C * 0.08, C * 0.1); }
   }
   function drawDuck(ctx: CanvasRenderingContext2D, vx: number, vrow: number, C: number, Y: (r: number) => number) {
     const img = SPRITES[P.face];
@@ -329,9 +409,9 @@
     // a soft contact shadow under the feet that shrinks while airborne
     const air = P.hop < 1 ? Math.sin(P.hop * Math.PI) : 0;
     ctx.fillStyle = `rgba(0,0,0,${0.32 - air * 0.14})`;
-    ctx.beginPath(); ctx.ellipse(cx, base - C * 0.07, C * 0.24 * (1 - air * 0.35), C * 0.085 * (1 - air * 0.35), 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx, base - C * 0.06, C * 0.2 * (1 - air * 0.35), C * 0.07 * (1 - air * 0.35), 0, 0, 7); ctx.fill();
     if (!img.complete || !img.naturalWidth) return;
-    const h = C * 1.32 * syk, w = (img.naturalWidth / img.naturalHeight) * C * 1.32 * sxk;
+    const h = C * 1.08 * syk, w = (img.naturalWidth / img.naturalHeight) * C * 1.08 * sxk;
     ctx.globalAlpha = alpha;
     ctx.drawImage(img, cx - w / 2, base - h - lift, w, h);
     ctx.globalAlpha = 1;
@@ -356,10 +436,32 @@
     </div>
   </header>
 
+  <!-- stake bar: choose before the run, cash out during it -->
+  <div class="bar">
+    {#if phase === 'play' && staked}
+      <span class="m"><span class="eyebrow">×</span><strong class="mono">{mult.toFixed(2)}</strong></span>
+      <span class="m"><span class="eyebrow">{t('cr.next')}</span><strong class="mono">{BONUS_EVERY - (score % BONUS_EVERY)}</strong></span>
+      <button class="btn primary cash" onclick={cashOut}>{t('a.cashout')} <span class="mono">{fmt(Math.round(staked * mult * 100) / 100)}</span>{#if !coarse}<kbd>Enter</kbd>{/if}</button>
+    {:else if phase !== 'play'}
+      <label class="switch"><span>{t('sn.stake')}</span><input type="checkbox" bind:checked={useStake} /></label>
+      {#if useStake}
+        <div class="amts" role="radiogroup">
+          {#each [10, 50, 100, 250, MAX_STAKE] as a}<button class:on={betAmt === a} disabled={a > wallet.balance} onclick={() => (betAmt = a)}>{a}</button>{/each}
+        </div>
+        <span class="hint">{t('cr.stakeHint')}</span>
+      {:else}
+        <span class="hint">{t('cr.freeHint')}</span>
+      {/if}
+    {:else}
+      <span class="hint">{t('cr.freeHint')}</span>
+    {/if}
+  </div>
+
   <div class="stage" bind:this={wrap}>
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="screen" style="width:{W}px; height:{H}px" onpointerdown={pdown} onpointerup={pup}>
       <canvas bind:this={canvas} style="width:{W}px; height:{H}px"></canvas>
+      {#if flash}{#key flash.id}<span class="flash mono" in:fly={{ y: 16, duration: 260 }}>{flash.text}</span>{/key}{/if}
       {#if phase === 'ready'}
         <div class="overlay soft" in:fly={{ y: 10, duration: 250 }}>
           <strong>{t('cr.ready')}</strong>
@@ -369,7 +471,8 @@
         <div class="overlay" in:fly={{ y: 10, duration: 300, delay: 250 }}>
           <span class="eyebrow light">{t(('cr.' + cause) as any)}</span>
           <strong class="mono big">{score}</strong>
-          {#if reward}<span class="mono plus" in:pop={{ delay: 400 }}>+{fmt(reward)} Credits</span>{/if}
+          {#if staked && cause !== 'cash'}<span class="mono minus">−{fmt(staked)}</span>{/if}
+          {#if reward}<span class="mono plus" in:pop={{ delay: 400 }}>+{fmt(reward)} Credits{#if cause === 'cash'} · ×{mult.toFixed(2)}{/if}</span>{/if}
           <span>{coarse ? t('cr.again.touch') : t('cr.again')}</span>
         </div>
       {/if}
@@ -403,6 +506,20 @@
   .overlay span { color: rgba(255,255,255,.85); }
   .eyebrow.light { color: #ffd23f; }
   .plus { color: #8ff0bf !important; font-size: 1.1rem; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px; min-height: 52px; margin: 0 auto 10px; max-width: 760px; }
+  .bar .switch { min-height: 36px; gap: 10px; font-size: 0.88rem; }
+  .amts { display: flex; gap: 4px; padding: 3px; border-radius: 999px; border: 1px solid var(--line-2); }
+  .amts button { border: 0; background: none; min-width: 44px; height: 32px; border-radius: 999px; font: 500 0.8rem 'Geist Mono Variable', monospace; }
+  .amts button.on { background: var(--text); color: var(--bg); }
+  .amts button:disabled { opacity: 0.35; }
+  .hint { font-size: 0.78rem; color: var(--muted); }
+  .m { display: grid; justify-items: center; gap: 2px; }
+  .m strong { font-size: 1.2rem; }
+  .cash { min-height: 46px; background: #2fbf71; color: #062a16; gap: 10px; }
+  .cash kbd { font: 500 0.68rem 'Geist Mono Variable', monospace; opacity: 0.6; border: 1px solid rgba(0,0,0,.25); border-radius: 4px; padding: 0 4px; }
+  .flash { position: absolute; left: 50%; top: 14%; translate: -50% 0; padding: 6px 14px; border-radius: 999px; background: #ffd23f; color: #3a2a06; font-weight: 700; pointer-events: none; animation: fl 1.4s forwards; box-shadow: 0 8px 20px rgba(0,0,0,.3); }
+  @keyframes fl { 70% { opacity: 1; } to { opacity: 0; transform: translateY(-14px); } }
+  .minus { color: #ff9a9d !important; }
   .pad { display: grid; grid-template-columns: repeat(3, 68px); grid-template-rows: repeat(2, 58px); gap: 6px; }
   .pad button { border: 0; border-radius: 16px; background: var(--surface-2); color: var(--text); font-size: 1.2rem; touch-action: manipulation; }
   .pad button:active { background: var(--line-2); }

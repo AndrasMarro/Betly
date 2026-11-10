@@ -113,7 +113,7 @@ dialog[open] { animation: pop 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
 .chip[data-v='5000'] { --c: #2a6fd6; --ink: #fff; }
 
 /* shared arcade entry: panels rise into place */
-.rise { animation: rise 0.55s var(--spring-snappy) both; animation-delay: calc(var(--i, 0) * 90ms); }
+.rise { animation: rise 0.55s var(--spring-snappy) backwards; animation-delay: calc(var(--i, 0) * 90ms); } /* backwards: once done, hover transforms work again */
 @keyframes rise { from { opacity: 0; transform: translateY(24px); } }
 
 @media (prefers-reduced-motion: reduce) {

@@ -18,6 +18,8 @@ export const settings = $state(
     bots: true,
     sound: true,
     music: true,
+    sfxVol: 0.7,
+    musicVol: 0.5,
     name: 'Player-' + Math.floor(1000 + Math.random() * 9000),
     accepted: false,
   }),

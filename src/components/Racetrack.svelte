@@ -20,13 +20,17 @@
     return [CX2 + R * Math.cos(a), CY + R * Math.sin(a)];
   }
   const slots = WHEEL.map((n, i) => ({ n, p: at((i / 37) * per) }));
-  const sections: [string, string, number][] = [['tiers', 'r.tiers', 110], ['orphelins', 'r.orphelins', 190], ['voisins', 'r.voisins', 270], ['zero', 'r.zero', 343]];
+  // the inner field is split into four equal segments that fill it exactly (ends follow the rounded track)
+  const IN = R - 24, X0 = CX1 - IN, X1 = CX2 + IN, B = [X0, CX1 + 75, CX1 + 150, CX1 + 225, X1];
+  const sections: [string, string, number, number][] = [['tiers', 'r.tiers', B[0], B[1]], ['orphelins', 'r.orphelins', B[1], B[2]], ['voisins', 'r.voisins', B[2], B[3]], ['zero', 'r.zero', B[3], B[4]]];
+  const inner = `M${CX1} ${CY - IN} H${CX2} A${IN} ${IN} 0 0 1 ${CX2} ${CY + IN} H${CX1} A${IN} ${IN} 0 0 1 ${CX1} ${CY - IN}Z`;
+  const uid = $props.id();
 </script>
 
 <svg viewBox="-2 -2 {CX2 + R + 16} {2 * CY + 4}" class="track" class:disabled role="group" aria-label={t('r.racetrack')}>
   <path d="M{CX1} {CY - R} H{CX2} A{R} {R} 0 0 1 {CX2} {CY + R} H{CX1} A{R} {R} 0 0 1 {CX1} {CY - R}Z" class="outline" />
-  <path d="M{CX1} {CY - R + 24} H{CX2} A{R - 24} {R - 24} 0 0 1 {CX2} {CY + R - 24} H{CX1} A{R - 24} {R - 24} 0 0 1 {CX1} {CY - R + 24}Z" class="outline inner" />
-  {#each sections as [key, label, x]}
+  <defs><clipPath id="{uid}-in"><path d={inner} /></clipPath></defs>
+  {#each sections as [key, label, a, b]}
     <g
       class="sec"
       role="button"
@@ -35,10 +39,12 @@
       onkeydown={(e) => e.key === 'Enter' && onbet(ANNOUNCED[key])}
       onpointerenter={() => onhover(ANNOUNCED[key].flat())}
       onpointerleave={() => onhover([])}>
-      <rect x={x - 38} y={CY - 18} width="76" height="36" rx="18" />
-      <text {x} y={CY + 1}>{t(label as any)}</text>
+      <rect x={a} y={CY - IN} width={b - a} height={IN * 2} clip-path="url(#{uid}-in)" />
+      <text x={(a + b) / 2} y={CY + 1}>{t(label as any)}</text>
     </g>
   {/each}
+  {#each B.slice(1, -1) as x}<line x1={x} x2={x} y1={CY - IN} y2={CY + IN} class="div" />{/each}
+  <path d={inner} class="outline inner" />
   {#each slots as { n, p }}
     <g
       class="slot {color(n)}"
@@ -64,7 +70,8 @@
   .sec rect { fill: transparent; stroke: transparent; transition: fill 0.2s; }
   .sec text { font: 600 8px 'Geist Mono Variable', monospace; letter-spacing: 0.08em; text-transform: uppercase; fill: rgba(255, 255, 255, 0.85); }
   .sec, .slot { cursor: pointer; outline: none; }
-  .sec:hover rect, .sec:focus-visible rect { fill: rgba(255, 255, 255, 0.1); stroke: var(--felt-line); }
+  .sec:hover rect, .sec:focus-visible rect { fill: rgba(255, 255, 255, 0.12); }
+  .div { stroke: var(--felt-line); stroke-width: 1; opacity: 0.6; }
   .slot circle { stroke: rgba(255, 255, 255, 0.35); stroke-width: 0.8; transition: transform 0.2s; }
   .slot.red circle { fill: var(--pocket-red); }
   .slot.black circle { fill: var(--pocket-black); }

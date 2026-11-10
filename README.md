@@ -24,7 +24,7 @@ Betly ist ein privates Hobbyprojekt: eine Casino-Simulation, die sich wie ein ec
 | **Slots** | Lucky Sevens, Midnight Gems, Cosmic Cash, Lucky Clover (Wilds, Scatter, Freispiele) |
 
 ### Arcade
-Rocket (Crash, mit Sichtungen ab gewissen Multiplikatoren) · Retro Crossy Run (endloses Hüpfspiel mit der Gamer-Ente, Zügen und Krokodilen) · Snake (Modifier, Einsatz und tägliche Challenge) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und drei Kisten zu 10, 25 und 75 Credits mit eigenem Item-Set) · Minen · Minesweeper · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (3D, mit Kanten-Krimi) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
+Rocket (Crash, mit Sichtungen ab gewissen Multiplikatoren) · Retro Crossy Run (endloses Hüpfspiel mit der Gamer-Ente, Zügen und Krokodilen) · Snake (Modifier, Einsatz und tägliche Challenge) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und drei Kisten zu 100, 250 und 750 Credits mit eigenem Item-Set) · Minen · Minesweeper · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (3D, mit Kanten-Krimi) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
 
 Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno, Limbo, …).
 

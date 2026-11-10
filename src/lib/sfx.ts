@@ -5,6 +5,30 @@ import { settings } from './state.svelte';
 let ctx: AudioContext | undefined;
 let noiseBuf: AudioBuffer | undefined;
 let busNode: AudioNode | undefined;
+// separate volume stages: effects, music and recorded samples (set from the settings dialog)
+let fxNode: GainNode | undefined, musicNode: GainNode | undefined, sampleNode: GainNode | undefined;
+const vols = { fx: 0.7, music: 0.5 };
+function outs(c: AudioContext) {
+  if (!fxNode) {
+    fxNode = c.createGain(); musicNode = c.createGain(); sampleNode = c.createGain();
+    fxNode.connect(bus(c)); musicNode.connect(bus(c)); sampleNode.connect(c.destination);
+    applyVolumes();
+  }
+  return { fx: fxNode!, music: musicNode!, sample: sampleNode! };
+}
+function applyVolumes() {
+  if (!ctx || !fxNode) return;
+  const now = ctx.currentTime, curve = (v: number) => v * v; // perceptual: the slider feels linear
+  fxNode.gain.setTargetAtTime(curve(vols.fx), now, 0.03);
+  sampleNode!.gain.setTargetAtTime(curve(vols.fx), now, 0.03);
+  musicNode!.gain.setTargetAtTime(curve(vols.music) * 1.6, now, 0.03);
+}
+/** Effect and music volume, 0..1 each. */
+export function setVolumes(fx: number, music: number) {
+  vols.fx = Math.max(0, Math.min(1, fx));
+  vols.music = Math.max(0, Math.min(1, music));
+  applyVolumes();
+}
 
 function ac() {
   ctx ??= new AudioContext();
@@ -104,9 +128,9 @@ const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
 const recipes = {
   // clay chip: two crisp clacks with a short ceramic ring
   chip: (c: AudioContext, o: AudioNode, t: number) => {
-    burst(c, o, t, 0.025, vary(4200), 6, 0.32);
-    tone(c, o, vary(3150, 0.03), t, 0.06, 'sine', 0.05);
-    burst(c, o, t + 0.045, 0.022, vary(3600), 6, 0.2);
+    burst(c, o, t, 0.025, vary(4200), 6, 0.22);
+    tone(c, o, vary(3150, 0.03), t, 0.06, 'sine', 0.04);
+    burst(c, o, t + 0.045, 0.022, vary(3600), 6, 0.14);
   },
   // card: a snappy flick off the shoe
   card: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.07, vary(3800), 0.9, 0.22, 'highpass'); burst(c, o, t, 0.05, vary(1400), 1.2, 0.12, 'bandpass', 700); },
@@ -133,19 +157,19 @@ const recipes = {
   gem: (c: AudioContext, o: AudioNode, t: number) => { const f = note(PENTA[4 + Math.floor(Math.random() * 5)]); bell(c, o, f, t, 0.7, 0.07); bell(c, o, f * 1.5, t + 0.05, 0.5, 0.04); },
   // punchy explosion: sub drop + noise body + crackle tail
   boom: (c: AudioContext, o: AudioNode, t: number) => {
-    tone(c, o, 120, t, 0.7, 'sine', 0.5, 32);
-    burst(c, o, t, 0.9, 2400, 0.6, 0.55, 'lowpass', 90);
+    tone(c, o, 120, t, 0.7, 'sine', 0.3, 32);
+    burst(c, o, t, 0.9, 2400, 0.6, 0.32, 'lowpass', 90);
     for (let i = 0; i < 14; i++) burst(c, o, t + 0.08 + Math.random() * 0.6, 0.02, 2000 + Math.random() * 3000, 3, 0.12);
   },
   // cartoony boing
   hop: (c: AudioContext, o: AudioNode, t: number) => { tone(c, o, vary(300), t, 0.16, 'sine', 0.12, 720); tone(c, o, vary(600), t, 0.08, 'triangle', 0.04, 1300); },
-  splat: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.3, 1200, 0.7, 0.45, 'lowpass', 120); tone(c, o, 260, t, 0.3, 'triangle', 0.1, 60); },
+  splat: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.3, 1200, 0.7, 0.28, 'lowpass', 120); tone(c, o, 260, t, 0.3, 'triangle', 0.1, 60); },
   flip: (c: AudioContext, o: AudioNode, t: number) => { bell(c, o, 2637, t, 0.5, 0.05, 2.4); burst(c, o, t, 0.12, 6000, 0.8, 0.06, 'highpass'); },
   // plinko: glassy pentatonic pings
   peg: (c: AudioContext, o: AudioNode, t: number) => bell(c, o, note(12 + PENTA[Math.floor(Math.random() * PENTA.length)]), t, 0.18, 0.025, 2),
   scratch: (c: AudioContext, o: AudioNode, t: number) => burst(c, o, t, 0.07, vary(3600, 0.2), 1.1, 0.08, 'bandpass'),
   // case reel: hard, short mechanical click
-  bounce: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.025, vary(4200), 3, 0.3); tone(c, o, vary(3200), t, 0.04, 'sine', 0.05); },
+  bounce: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.025, vary(4200), 3, 0.2); tone(c, o, vary(3200), t, 0.04, 'sine', 0.05); },
   dice: (c: AudioContext, o: AudioNode, t: number) => {
     for (let i = 0; i < 10; i++) { const at = t + i * 0.05 + Math.random() * 0.03; burst(c, o, at, 0.02, 1800 + Math.random() * 2600, 3, 0.26 - i * 0.02); tone(c, o, vary(900, 0.2), at, 0.03, 'sine', 0.04); }
   },
@@ -156,7 +180,7 @@ export function sfx(kind: Sfx) {
   if (!settings.sound) return;
   try {
     const c = ac();
-    recipes[kind](c, bus(c), c.currentTime + 0.005);
+    recipes[kind](c, outs(c).fx, c.currentTime + 0.005);
   } catch {
     /* audio unavailable */
   }
@@ -166,7 +190,7 @@ export function sfx(kind: Sfx) {
 export function reveal(level: number) {
   if (!settings.sound) return;
   try {
-    const c = ac(), t = c.currentTime + 0.01, o = bus(c);
+    const c = ac(), t = c.currentTime + 0.01, o = outs(c).fx;
     const steps = [[0, 7], [0, 4, 7], [0, 4, 7, 12], [0, 4, 7, 12, 16, 19], [0, 4, 7, 12, 16, 19, 24, 28]][level];
     steps.forEach((s, i) => pluck(c, o, note(s), t + i * (0.08 - level * 0.008), 0.5 + level * 0.12, 0.11));
     if (level >= 2) for (let i = 0; i < 6 * level; i++) bell(c, o, note(24 + PENTA[Math.floor(Math.random() * 8)]), t + 0.25 + i * 0.045, 0.45, 0.025);
@@ -190,7 +214,7 @@ export function rolling() {
   lfo.frequency.value = 18;
   lg.gain.value = 0.02;
   lfo.connect(lg).connect(g.gain);
-  s.connect(f).connect(g).connect(bus(c));
+  s.connect(f).connect(g).connect(outs(c).fx);
   s.start();
   lfo.start();
   return {
@@ -219,7 +243,7 @@ export function engine() {
   f.frequency.value = 500;
   g.gain.setValueAtTime(0.0001, c.currentTime);
   g.gain.exponentialRampToValueAtTime(0.035, c.currentTime + 0.4);
-  o.connect(f).connect(g).connect(bus(c));
+  o.connect(f).connect(g).connect(outs(c).fx);
   o.start();
   return {
     set(m: number) {
@@ -254,7 +278,7 @@ function startMusic() {
   lp.frequency.value = 1800;
   master.gain.setValueAtTime(0.0001, c.currentTime);
   master.gain.exponentialRampToValueAtTime(0.5, c.currentTime + 2.5);
-  lp.connect(master).connect(bus(c));
+  lp.connect(master).connect(outs(c).music);
 
   let next = c.currentTime + 0.1, step = 0; // step = eighth notes
   const pad = (f: number, at: number, d: number) => {
@@ -315,7 +339,7 @@ export function sampler(url: string, vol = 1) {
       const c = ac(), src = c.createBufferSource(), g = c.createGain();
       src.buffer = b;
       g.gain.value = vol * gain;
-      src.connect(g).connect(c.destination);
+      src.connect(g).connect(outs(c).sample);
       src.start(c.currentTime, from, dur);
     },
   };

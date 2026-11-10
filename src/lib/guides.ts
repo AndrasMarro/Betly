@@ -70,11 +70,13 @@ export const GUIDES: Record<string, Guide> = {
     de: [
       { h: 'Ziel', p: 'Drei oder mehr gleiche Symbole auf einer Gewinnlinie, von links beginnend, zahlen ein Vielfaches des Linieneinsatzes.' },
       { h: 'Bedienung', li: ['Linieneinsatz und Anzahl Linien wählen; Gesamteinsatz = Linieneinsatz × Linien.', 'Spin (oder Leertaste); Turbo spielt schneller, Auto spielt mehrere Runden.', 'Die Gewinntabelle zeigt, was jedes Symbol zahlt.'] },
+      { h: 'Armory', p: 'Die Waffen aus den Kisten als Slot. Drei Sets mit gleicher Mathematik, aber anderen Einsätzen: Field (10 bis 200 pro Spin), Arsenal (50 bis 1000) und Prototype (250 bis 5000). Die seltenste Waffe des Sets ist das Wild.' },
       { h: 'Sondersymbole', li: ['Wild ersetzt alle normalen Symbole.', 'Scatter zahlt überall auf den Walzen; drei oder mehr starten Freispiele (bei Maschinen mit Freispielen).'] },
     ],
     en: [
       { h: 'Goal', p: 'Three or more matching symbols on a pay line, starting from the left, pay a multiple of the line bet.' },
       { h: 'Controls', li: ['Choose line bet and number of lines; total bet = line bet × lines.', 'Spin (or space bar); Turbo plays faster, Auto plays several rounds.', 'The pay table shows what each symbol pays.'] },
+      { h: 'Armory', p: 'The case weapons as a slot. Three sets with the same maths but different stakes: Field (10 to 200 per spin), Arsenal (50 to 1000) and Prototype (250 to 5000). The rarest weapon of the set is the wild.' },
       { h: 'Special symbols', li: ['Wild substitutes for all regular symbols.', 'Scatter pays anywhere on the reels; three or more start free spins (on machines that have them).'] },
     ],
   },
@@ -93,13 +95,13 @@ export const GUIDES: Record<string, Guide> = {
   cases: {
     de: [
       { h: 'Ziel', p: 'Öffne eine Kiste: Die Walze rollt und bleibt auf einem Item stehen. Sein Wert wird dir gutgeschrieben.' },
-      { h: 'Classic', p: 'Drei Kisten: Field (10), Arsenal (25) und Prototype (75), jede mit eigenen Items und Werten. Alle mit den offiziellen Drop-Raten: Mil-Spec 79,92 %, Restricted 15,98 %, Classified 3,20 %, Covert 0,64 %, Gold 0,26 %. Wie beim Original verlierst du im Schnitt deutlich mehr, als du bekommst; seltene Items sind wirklich selten.' },
+      { h: 'Classic', p: 'Drei Kisten: Field (100), Arsenal (250) und Prototype (750), jede mit eigenen Items und Werten. Alle mit den offiziellen Drop-Raten: Mil-Spec 79,92 %, Restricted 15,98 %, Classified 3,20 %, Covert 0,64 %, Gold 0,26 %. Wie beim Original verlierst du im Schnitt deutlich mehr, als du bekommst; seltene Items sind wirklich selten.' },
       { h: 'Arcade', p: 'Drei Kisten mit Auszahlungsquote 97 %: Starter, Neon und Royal, jeweils mit eigenen Items.' },
       { h: 'Tipps', li: ['Leertaste öffnet die nächste Kiste.', '«Schnell öffnen» verkürzt die Animation.', 'Unter «Inhalt» siehst du Wert und Chance jedes Items.'] },
     ],
     en: [
       { h: 'Goal', p: 'Open a case: the reel spins and stops on one item. Its value is credited to you.' },
-      { h: 'Classic', p: 'Three cases: Field (10), Arsenal (25) and Prototype (75), each with its own items and values. All use the official drop rates: Mil-Spec 79.92 %, Restricted 15.98 %, Classified 3.20 %, Covert 0.64 %, Gold 0.26 %. Like the original you lose a lot more than you get on average; rare items really are rare.' },
+      { h: 'Classic', p: 'Three cases: Field (100), Arsenal (250) and Prototype (750), each with its own items and values. All use the official drop rates: Mil-Spec 79.92 %, Restricted 15.98 %, Classified 3.20 %, Covert 0.64 %, Gold 0.26 %. Like the original you lose a lot more than you get on average; rare items really are rare.' },
       { h: 'Arcade', p: 'Three cases with a 97 % return: Starter, Neon and Royal, each with its own items.' },
       { h: 'Tips', li: ['Space opens the next case.', '"Quick open" shortens the animation.', '"Contents" lists the value and chance of every item.'] },
     ],
@@ -203,13 +205,17 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Ziel', p: 'Komm so weit wie möglich. Jeder Schritt nach vorne ist ein Punkt, am Ende gibt es einen Credit pro Punkt.' },
       { h: 'Steuerung', li: ['WASD oder Pfeiltasten: ein Druck, ein Feld.', 'Handy: tippen hüpft vorwärts, wischen ändert die Richtung.', 'Leertaste oder Enter startet nach dem Game Over neu.'] },
       { h: 'Gefahren', li: ['Autos und Lastwagen: Berührung ist tödlich.', 'Flüsse: nur auf Baumstämmen stehen, sie tragen dich mit. Wasser oder Abdriften aus dem Bild ist das Ende.', 'Bahngleise: leuchten die Lampen rot und blinkt das Gleis, kommt in knapp 2 Sekunden ein sehr schneller Zug.', 'Krokodile (später im Fluss): auf dem Rücken mitfahren geht, der Kopf schnappt zu.', 'Mit der Zeit wird alles schneller.', 'Der Bildschirm schiebt sich langsam nach vorne. Wer hinten trödelt, wird geschnappt.'] },
-      { h: 'Bäume und Steine', p: 'Blockieren den Weg, du musst aussen herum.' },
+      { h: 'Bäume, Steine, Läden', p: 'Blockieren den Weg, du musst aussen herum. Blumen sind nur Deko. Seerosen liegen still im Teich und tragen dich.' },
+      { h: 'Mit Einsatz', li: ['Einsatz bis 500, vor dem Start wählen.', 'Der Multiplikator startet bei ×0.5 und steigt mit jedem Schritt; ab 20 Schritten bist du im Plus.', 'Alle 50 Schritte gibt es ×1.3 obendrauf.', 'Mit Enter oder «Auszahlen» sicherst du Einsatz × Multiplikator. Stirbst du vorher, ist der Einsatz weg.', 'Coins (etwa alle 20 bis 60 Reihen) zahlen sofort 5 bis 30 % des Einsatzes zurück, je weiter du bist, desto mehr. Die bleiben dir auch, wenn du danach stirbst.'] },
+      { h: 'Ohne Einsatz', p: 'Pro Schritt ein Credit, Coins geben zusätzliche Credits.' },
     ],
     en: [
       { h: 'Goal', p: 'Get as far as you can. Every step forward is a point, and at the end you get one credit per point.' },
       { h: 'Controls', li: ['WASD or arrow keys: one press, one tile.', 'Phone: tap to hop forward, swipe to change direction.', 'Space or Enter restarts after game over.'] },
       { h: 'Dangers', li: ['Cars and trucks: touching them is fatal.', 'Rivers: only stand on logs, they carry you along. Water or drifting off screen ends the run.', 'Railways: when the lamps glow red and the track flashes, a very fast train arrives in under 2 seconds.', 'Crocodiles (later in rivers): ride the back, the head snaps.', 'Everything speeds up over time.', 'The screen slowly pushes forward. Dawdle at the bottom and you get snatched.'] },
-      { h: 'Trees and rocks', p: 'They block the way, go around them.' },
+      { h: 'Trees, rocks, stalls', p: 'They block the way, go around them. Flowers are decoration. Lily pads sit still in ponds and carry you.' },
+      { h: 'With a stake', li: ['Stake up to 500, chosen before the start.', 'The multiplier starts at ×0.5 and grows with every step; after 20 steps you are ahead.', 'Every 50 steps there is ×1.3 on top.', 'Enter or "Cash out" locks in stake × multiplier. Die first and the stake is gone.', 'Coins (about every 20 to 60 rows) pay back 5 to 30 % of the stake at once, more the further you are. You keep them even if you die later.'] },
+      { h: 'Without a stake', p: 'One credit per step, coins give extra credits.' },
     ],
   },
   scratch: {

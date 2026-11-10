@@ -203,14 +203,17 @@
     }
     // the croupier's last call: a soft tick for each of the final seconds
     const sec = Math.ceil(left / 1000);
-    if (sec !== lastSec) { if (sec > 0 && sec <= 3) sfx('tick'); lastSec = sec; }
+    if (sec !== lastSec) { if (sec > 0 && sec <= 3 && alive) sfx('tick'); lastSec = sec; }
     raf = requestAnimationFrame(idle);
   }
   onMount(() => {
     raf = requestAnimationFrame(idle);
     openBetting();
   });
-  onDestroy(() => { cancelAnimationFrame(raf); clearTimeout(timer); room.leave(); });
+  // leaving the page stops everything audible at once: the rolling ball, the spin, the ticks
+  let alive = true;
+  let activeRoll: { stop(): void } | null = null;
+  onDestroy(() => { alive = false; activeRoll?.stop(); cancelAnimationFrame(raf); clearTimeout(timer); room.leave(); });
 
   function animate(result: number) {
     return new Promise<void>((done) => {
@@ -228,6 +231,7 @@
       let lastPocket = -1;
       const ease = (x: number) => 1 - Math.pow(1 - x, 3);
       const roll = rolling();
+      activeRoll = roll;
       const clacks = [0.63, 0.67, 0.705, 0.74, 0.775, 0.86];
       let nextClack = 0;
       const frame = (now: number) => {
@@ -244,8 +248,9 @@
         if (k > 0.8 && nextClack >= clacks.length - 1) roll.set(0);
         const pocket = Math.floor((a - rot) / step);
         if (drop > 0 && pocket !== lastPocket && k < 0.9) { lastPocket = pocket; sfx('tick'); }
+        if (!alive) return;
         if (k < 1) requestAnimationFrame(frame);
-        else { roll.stop(); rot %= 360; resting = idx; spinning = false; sfx('stop'); done(); }
+        else { roll.stop(); activeRoll = null; rot %= 360; resting = idx; spinning = false; sfx('stop'); done(); }
       };
       requestAnimationFrame(frame);
     });
@@ -464,7 +469,7 @@
   .rail::before { content: ''; position: absolute; inset: 5px; border-radius: 39px; border: 1px solid rgba(232, 196, 120, 0.35); pointer-events: none; }
   .felt {
     position: relative; border-radius: 32px; padding: clamp(14px, 2.4vw, 32px);
-    display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 2fr); gap: clamp(16px, 3vw, 44px); align-items: center;
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 2fr); gap: clamp(16px, 3vw, 44px); align-items: center;
     background:
       radial-gradient(ellipse at 30% 20%, color-mix(in srgb, var(--felt) 70%, #fff 6%), transparent 60%),
       repeating-conic-gradient(from 45deg, rgba(255,255,255,.018) 0 25%, transparent 0 50%) 0 0 / 28px 28px,
@@ -474,7 +479,7 @@
 
   /* ---------- wheel column ---------- */
   .wheelcol { display: grid; justify-items: center; align-content: center; gap: 14px; min-width: 0; }
-  .wheelbox { position: relative; width: 100%; max-width: 520px; }
+  .wheelbox { position: relative; width: 100%; max-width: 640px; }
   .result {
     position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 25%; aspect-ratio: 1; border-radius: 50%;
     display: grid; place-items: center; font: 400 clamp(1.8rem, 3.2vw, 3rem) 'Instrument Serif', Georgia, serif; color: #fff;
@@ -541,7 +546,7 @@
   .vertical .placed .chip { --size: 28px; }
   .trackwrap { max-width: 640px; }
   .trackwrap.side { display: none; }
-  .trackwrap :global(.outline) { stroke: var(--gold-line); }
+  .trackwrap :global(.outline), .trackwrap :global(.div) { stroke: var(--gold-line); }
   .hint { margin: 0; font-size: 0.76rem; color: rgba(255,255,255,.55); text-align: center; }
 
   /* ---------- dock ---------- */
@@ -564,7 +569,7 @@
     .rt { height: calc(100dvh - var(--nav-h)); min-height: 640px; grid-template-rows: auto minmax(0, 1fr) auto; }
     .rail { min-height: 0; }
     .felt { height: 100%; container-type: size; }
-    .wheelbox { width: min(100%, calc(100cqh - 160px)); }
+    .wheelbox { width: min(100%, calc(100cqh - 90px)); }
     /* layout ≈ 0.39 w, racetrack ≈ 0.17 w, plus banner and hint */
     .tablecol > * { width: min(100%, calc((92cqh - 110px) / 0.57)); }
     .trackwrap { width: min(100%, calc((92cqh - 110px) / 0.57 * 0.66)) !important; }
@@ -574,7 +579,7 @@
   @media (min-width: 1000px) and (max-height: 860px) {
     .trackwrap.main, .hint { display: none; }
     .trackwrap.side { display: block; width: 100%; }
-    .wheelbox { width: min(100%, calc(100cqh - 120px - 9cqw)); }
+    .wheelbox { width: min(100%, calc(100cqh - 80px - 9cqw)); }
     .tablecol > * { width: min(100%, calc((100cqh - 70px) / 0.386)); }
   }
   @media (max-width: 999px) {

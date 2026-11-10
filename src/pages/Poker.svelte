@@ -262,6 +262,9 @@
   const pot = $derived(potTotal(view));
   let raiseTo = $state(0);
   $effect(() => { if (L) raiseTo = L.minTo; });
+  // phones: the raise controls fold away until you tap Raise, so Fold / Call / Raise are three big buttons
+  let raiseOpen = $state(false);
+  $effect(() => { if (!myTurn) raiseOpen = false; });
   const send = (move: Move) => {
     if (room.role === 'guest') room.send({ t: 'act', move });
     else if (act(T, myIndex, move)) { sync(); pump(); }
@@ -324,8 +327,8 @@
   const base = $derived(myIndex >= 0 ? myIndex : 0);
   const posOf = (i: number) => (wide ? POS_WIDE : POS_TALL)[(i - base + SEATS) % SEATS];
   const toward = (i: number, k: number) => { const [x, y] = posOf(i); return [x + (50 - x) * k, y + (46 - y) * k]; };
-  const betPos = (i: number): [number, string] => { if (wide) return BET_WIDE[(i - base + SEATS) % SEATS]; const [x, y] = toward(i, 0.4); return [x, y + 'cqh']; };
-  const btnPos = (i: number): [number, string] => { if (!wide) { const [x, y] = toward(i, 0.2); return [x, y + 'cqh']; } const [x, y] = betPos(i); return [x + (x <= 50 ? 7 : -7), y]; };
+  const betPos = (i: number): [number, string] => { if (wide) return BET_WIDE[(i - base + SEATS) % SEATS]; const [x, y] = toward(i, i === base ? 0.62 : 0.42); return [x, y + 'cqh']; };
+  const btnPos = (i: number): [number, string] => { if (!wide) { const [x, y] = toward(i, i === base ? 0.52 : 0.34); return [x + (i === base ? 14 : 0), y + 'cqh']; } const [x, y] = betPos(i); return [x + (x <= 50 ? 7 : -7), y]; };
   let roomy = $state(true); // enough width for all table options in the header row
   onMount(() => { const mq = matchMedia('(min-width: 1500px)'); roomy = mq.matches; mq.onchange = (e) => (roomy = e.matches); });
 
@@ -457,7 +460,7 @@
       <div class="acts" in:fly={{ y: 12, duration: 250 }}>
         {#if L.fold}<button class="btn act fold" onclick={() => send({ type: 'fold' })}>{t('pk.fold')} <kbd>F</kbd></button>{/if}
         <button class="btn act" onclick={() => send({ type: 'call' })}>{L.check ? t('pk.check') : t('pk.call') + ' ' + fmt(L.call)} <kbd>C</kbd></button>
-        {#if L.canRaise}
+        {#if L.canRaise && (wide || raiseOpen)}
           <div class="raise">
             <div class="presets">
               <button class="btn sm ghost" onclick={() => (raiseTo = L.minTo)}>Min</button>
@@ -468,6 +471,10 @@
             </div>
             <input type="range" min={L.minTo} max={L.maxTo} step={Math.max(1, view.sb)} bind:value={raiseTo} aria-label={t('pk.raise')} />
           </div>
+        {/if}
+        {#if L.canRaise && !wide && !raiseOpen}
+          <button class="btn primary act" onclick={() => (raiseOpen = true)}>{view.currentBet ? t('pk.raise') : t('pk.bet')} …</button>
+        {:else if L.canRaise}
           <button class="btn primary act" onclick={() => send({ type: 'raise', to: raiseTo })}>
             {raiseTo >= L.maxTo ? 'All-in' : view.currentBet ? t('pk.raiseTo') : t('pk.bet')} {fmt(raiseTo)} <kbd>R</kbd>
           </button>
@@ -537,9 +544,11 @@
   .table.wide .seat.me .hole { --cw: var(--hcw); }
   /* actions of top seats and the hero show beside the name plate instead of over the chips */
   .seat.hang .say, .seat.stand .say { top: auto; bottom: 12px; left: calc(100% + 6px); }
-  /* phones: the table, hero seat and action dock fit one screen */
-  .table:not(.wide) { height: clamp(340px, calc(100dvh - var(--nav-h) - 300px), 128vw); min-height: 0; margin-top: 28px; --cw: 40px; }
-  .table:not(.wide) .seat.me .hole { --cw: 54px; }
+  /* phones: header, table and action dock share exactly one screen; the table takes what is left */
+  .table:not(.wide) { height: auto; min-height: 0; margin-top: 22px; --cw: clamp(24px, 7cqh, 40px); }
+  .table:not(.wide) .seat:not(.me) :global(.card) { --cw: clamp(24px, 7cqh, 36px); }
+  .table:not(.wide) .seat.me .hole { --cw: clamp(40px, 14cqh, 64px); }
+  .table:not(.wide) .seat.me .hole .hc + .hc { margin-left: -8px; }
   .felt {
     position: absolute; inset: 9% 4% 12%; border-radius: 999px;
     background: radial-gradient(ellipse at 50% 35%, #1a6b4c, #0b3626 70%); box-shadow: 0 0 0 14px #3a2416, 0 0 0 16px #5a3a22, inset 0 0 80px rgba(0,0,0,.5), 0 40px 80px -30px rgba(0,0,0,.7);
@@ -614,18 +623,26 @@
   .helper strong { font-size: 0.95rem; }
   .eq { font-size: 0.78rem; color: var(--muted); }
   @media (max-width: 759px) {
-    .plate { min-width: 0; grid-template-columns: auto; padding: 4px 8px; justify-items: center; border-radius: 14px; }
-    .av { grid-row: auto; width: 26px; height: 26px; font-size: 0.75rem; }
+    .plate { min-width: 0; grid-template-columns: auto auto; column-gap: 5px; padding: 3px 9px 3px 3px; border-radius: 999px; }
+    .av { grid-row: span 2; width: 24px; height: 24px; font-size: 0.7rem; }
     .nm { max-width: 64px; font-size: 0.7rem; }
     .act { min-width: 0; flex: 1 1 30%; }
     .helper { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; justify-items: start; text-align: left; width: 100%; }
     .helper .eyebrow { display: none; }
     .dock { padding: 10px; gap: 8px; bottom: 8px; }
-    .act { min-height: 44px; font-size: 0.85rem; }
+    .act { min-height: 52px; font-size: 0.95rem; border-radius: 16px; }
+    .acts { gap: 6px; }
     .acts kbd { display: none; }
     .raise { min-width: 100%; order: 3; }
     .presets .btn { min-height: 28px; padding: 0 8px; font-size: 0.72rem; }
     .head { padding-top: 10px; }
+    .pk { width: calc(100% - 20px); height: calc(100dvh - var(--nav-h)); min-height: 520px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 4px; padding-bottom: 8px; }
+    .head { padding: 8px 0 0; gap: 4px; }
+    h1 { font-size: 1.35rem; }
+    .dock { position: relative; bottom: auto; margin: 0; }
+    .say { font-size: 0.6rem; padding: 2px 6px; }
+    .nm { font-size: 0.66rem; }
+    .st { font-size: 0.66rem; }
   }
   @media (max-width: 400px) { h1 { font-size: 1.4rem; } .h1row { gap: 8px; } .blinds { font-size: 0.8rem; } }
 </style>

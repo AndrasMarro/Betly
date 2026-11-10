@@ -156,9 +156,9 @@ const mk = (id: string, name: string, price: number, color: string, list: [strin
   return { id, name, price, color, items };
 };
 export const CASES: CaseDef[] = [
-  mk('starter', 'Starter Case', 10, '#4b69ff', [['cherry', 'Cherry Pop'], ['lemon', 'Sour Drop'], ['plum', 'Plum Wave'], ['horseshoe', 'Iron Luck'], ['bell', 'Bell Ringer'], ['coin', 'Gold Coin'], ['hat', 'Top Hat'], ['clover', 'Four Leaf'], ['bar', 'Bar Chart'], ['crown', 'Crown Jewel'], ['sun', 'Solar Flare'], ['seven', 'Lucky Seven']]),
-  mk('neon', 'Neon Case', 50, '#d32ce6', [['comet', 'Comet Tail'], ['moon', 'Half Moon'], ['amethyst', 'Violet Shard'], ['planet', 'Ring World'], ['ufo', 'Visitor'], ['emerald', 'Green Prism'], ['sapphire', 'Deep Blue'], ['ruby', 'Red Heart'], ['star', 'Super Nova'], ['wild', 'Wildcard'], ['sun', 'Red Giant'], ['crown', 'Neon Crown']]),
-  mk('royal', 'Royal Case', 250, '#e4ae39', [['coin', 'Old Coin'], ['bell', 'Brass Bell'], ['horseshoe', 'Silver Shoe'], ['hat', 'Gentleman'], ['pot', 'Pot of Gold'], ['sapphire', 'Royal Blue'], ['emerald', 'Emerald Ring'], ['ruby', 'Ruby Throne'], ['star', 'Golden Star'], ['seven', 'Seven Seas'], ['wild', 'Jester'], ['crown', 'The Crown']]),
+  mk('starter', 'Starter Case', 100, '#4b69ff', [['cherry', 'Cherry Pop'], ['lemon', 'Sour Drop'], ['plum', 'Plum Wave'], ['horseshoe', 'Iron Luck'], ['bell', 'Bell Ringer'], ['coin', 'Gold Coin'], ['hat', 'Top Hat'], ['clover', 'Four Leaf'], ['bar', 'Bar Chart'], ['crown', 'Crown Jewel'], ['sun', 'Solar Flare'], ['seven', 'Lucky Seven']]),
+  mk('neon', 'Neon Case', 500, '#d32ce6', [['comet', 'Comet Tail'], ['moon', 'Half Moon'], ['amethyst', 'Violet Shard'], ['planet', 'Ring World'], ['ufo', 'Visitor'], ['emerald', 'Green Prism'], ['sapphire', 'Deep Blue'], ['ruby', 'Red Heart'], ['star', 'Super Nova'], ['wild', 'Wildcard'], ['sun', 'Red Giant'], ['crown', 'Neon Crown']]),
+  mk('royal', 'Royal Case', 2500, '#e4ae39', [['coin', 'Old Coin'], ['bell', 'Brass Bell'], ['horseshoe', 'Silver Shoe'], ['hat', 'Gentleman'], ['pot', 'Pot of Gold'], ['sapphire', 'Royal Blue'], ['emerald', 'Emerald Ring'], ['ruby', 'Ruby Throne'], ['star', 'Golden Star'], ['seven', 'Seven Seas'], ['wild', 'Jester'], ['crown', 'The Crown']]),
 ];
 export function pickItem(c: CaseDef, u = Math.random()) {
   let acc = 0;
@@ -200,21 +200,21 @@ const crate = (id: string, name: string, price: number, color: string, tiers: Ti
 });
 /** Three classic crates, all with the official drop rates; pricier crates have rarer art and higher top values. */
 export const CLASSIC_CASES: CaseDef[] = [
-  crate('field', 'Field Case', 10, '#8a9bb5', [
+  crate('field', 'Field Case', 100, '#8a9bb5', [
     [[0.08, 'steel-basic', 'Steel Basic'], [0.12, 'veteran', 'Veteran'], [0.16, 'midnight-op', 'Midnight Op'], [0.2, 'shadow-spray', 'Shadow Spray']],
     [[0.45, 'old-west', 'Old West'], [0.65, 'tide-breaker', 'Tide Breaker'], [0.85, 'desert-whisper', 'Desert Whisper']],
     [[1.8, 'jungle-edge', 'Jungle Edge'], [2.8, 'longshot', 'Longshot']],
-    [[6, 'silver-wing', 'Silver Wing'], [10, 'blood-moon', 'Blood Moon']],
-    [[45, 'tiger-claw', 'Tiger Claw']],
+    [[6, 'blood-moon', 'Blood Moon'], [10, 'tiger-claw', 'Tiger Claw']],
+    [[45, 'silver-wing', 'Silver Wing']],
   ]),
-  crate('arsenal', 'Arsenal Case', 25, '#e4ae39', [
+  crate('arsenal', 'Arsenal Case', 250, '#e4ae39', [
     [[0.06, 'field-kit', 'Field Kit'], [0.1, 'sand-dune', 'Sand Dune'], [0.14, 'night-ops', 'Night Ops'], [0.18, 'iron-rust', 'Iron Rust']],
     [[0.4, 'blackout', 'Blackout'], [0.6, 'old-mint', 'Old Mint'], [0.8, 'gentleman', 'Gentleman']],
     [[1.8, 'brass-echo', 'Brass Echo'], [3, 'deep-tide', 'Deep Tide']],
     [[7, 'jade-fang', 'Jade Fang'], [13, 'crimson-web', 'Crimson Web']],
     [[60, 'golden-edge', 'Golden Edge']],
   ]),
-  crate('prototype', 'Prototype Case', 75, '#d32ce6', [
+  crate('prototype', 'Prototype Case', 750, '#d32ce6', [
     [[0.04, 'rust-tech', 'Rust-Tech'], [0.07, 'dune-scavenger', 'Dune Scavenger'], [0.1, 'glitch-trigger', 'Glitch Trigger'], [0.13, 'neo-vanguard', 'Neo Vanguard']],
     [[0.35, 'acid-bite', 'Acid Bite'], [0.55, 'night-phantom', 'Night Phantom'], [0.75, 'amber-volt', 'Amber Volt']],
     [[1.8, 'cyber-sting', 'Cyber Sting'], [3.4, 'overdrive', 'Overdrive']],

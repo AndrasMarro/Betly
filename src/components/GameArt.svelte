@@ -74,8 +74,8 @@
       <path class="body" d="M30 90 H90 V50 H130 V30" fill="none" stroke="#1f7a45" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" />
       <path class="body" d="M30 90 H90 V50 H130 V30" fill="none" stroke="#43c46e" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" />
       <circle cx="126" cy="27" r="3" fill="#fff" /><circle cx="134" cy="27" r="3" fill="#fff" /><circle cx="126" cy="26" r="1.5" fill="#111" /><circle cx="134" cy="26" r="1.5" fill="#111" />
-      <g class="apple"><path d="M170 34 c10 -8 14 10 0 16 c-14 -6 -10 -24 0 -16z" fill="#e0262f" /><path d="M170 34 l2 -6" stroke="#5a3a1e" stroke-width="2" /><ellipse cx="175" cy="28" rx="4" ry="2" fill="#3fbf5a" /></g>
-      <g class="apple gold"><path d="M60 40 c8 -6 11 8 0 13 c-11 -5 -8 -19 0 -13z" fill="#f2c046" /></g>
+      <g class="apple"><circle cx="166" cy="40" r="7.5" fill="#e0262f" /><circle cx="174" cy="40" r="7.5" fill="#e0262f" /><path d="M170 33 l1.5 -6" stroke="#5a3a1e" stroke-width="2" /><ellipse cx="176" cy="27" rx="4.5" ry="2" fill="#3fbf5a" /><ellipse cx="166" cy="37" rx="2" ry="3" fill="#fff" opacity=".5" /></g>
+      <g class="apple gold"><circle cx="57" cy="46" r="6" fill="#f2c046" /><circle cx="63" cy="46" r="6" fill="#f2c046" /><path d="M60 40 l1 -5" stroke="#5a3a1e" stroke-width="2" /><ellipse cx="57" cy="44" rx="1.6" ry="2.4" fill="#fff" opacity=".6" /></g>
       <rect x="150" y="80" width="18" height="18" fill="#6b6f7a" /><rect x="150" y="80" width="18" height="4" fill="#8b909c" />
     </svg>
   {:else if id === 'crossy'}

@@ -5,12 +5,17 @@
   import { fly, scale } from 'svelte/transition';
   import SlotSymbol from '../components/SlotSymbol.svelte';
   import HowTo from '../components/HowTo.svelte';
-  import { MACHINES, strips, spinGrid, evaluate, type Win } from '../games/slots';
+  import { MACHINES as BASE, ARMORY, strips, spinGrid, evaluate, type Win } from '../games/slots';
+  // weapon art from the cases, shown instead of drawn symbols on the Armory machine
+  const ART = Object.fromEntries(Object.entries(import.meta.glob('../assets/cases/*.webp', { eager: true, import: 'default' })).map(([k, v]) => [k.split('/').pop()!.replace('.webp', ''), v as string]));
+  const MACHINES = [...BASE, ...ARMORY];
+  const TABS = [...BASE.map((m, i) => ({ name: m.name, i })), { name: 'Armory', i: BASE.length }];
   import { wallet, settle, fmt } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
   import { t } from '../lib/i18n';
 
   let mi = $state(0);
+  const armoryOn = $derived(mi >= BASE.length);
   const m = $derived(MACHINES[mi]);
   const reelStrips = $derived(strips(m));
   let betIdx = $state(1);
@@ -98,6 +103,10 @@
 
 <svelte:window onkeydown={key} />
 
+{#snippet symbol(sym: string)}
+  {#if ART[sym]}<img class="weapon" src={ART[sym]} alt={sym} draggable="false" />{:else}<SlotSymbol {sym} />{/if}
+{/snippet}
+
 <section class="wrap page">
   <header class="head">
     <div>
@@ -105,13 +114,27 @@
       <div class="h1row"><h1>Slots</h1><HowTo id="slots" /></div>
     </div>
     <div class="tabs" role="tablist">
-      {#each MACHINES as mm, i}
-        <button role="tab" aria-selected={mi === i} class:on={mi === i} disabled={spinning || freeLeft > 0} onclick={() => (mi = i)}>{mm.name}</button>
+      {#each TABS as tb}
+        {@const on = tb.i === BASE.length ? armoryOn : mi === tb.i}
+        <button role="tab" aria-selected={on} class:on disabled={spinning || freeLeft > 0} onclick={() => { if (!on) mi = tb.i; }}>{tb.name}</button>
       {/each}
     </div>
   </header>
 
-  <div class="cabinet {m.id}">
+  {#if armoryOn}
+    <div class="sets" role="radiogroup" aria-label="Armory" in:fly={{ y: -6, duration: 220 }}>
+      {#each ARMORY as a, k}
+        {@const wild = a.wild!}
+        <button class="set" class:on={mi === BASE.length + k} disabled={spinning || freeLeft > 0} onclick={() => { mi = BASE.length + k; betIdx = 1; sfx('click'); }}>
+          <img src={ART[wild]} alt="" />
+          <span>{a.name.split('· ')[1]}</span>
+          <span class="mono">{fmt(a.bets[0] * a.lines.length)}–{fmt(a.bets.at(-1)! * a.lines.length)}</span>
+        </button>
+      {/each}
+    </div>
+  {/if}
+
+  <div class="cabinet {m.id}" class:armory={armoryOn}>
     <div class="marquee">
       <span class="serif">{m.name}</span>
       {#if freeLeft > 0}<span class="free mono" in:scale>{t('s.free')}: {freeLeft} · ×{m.scatter?.mult}</span>{/if}
@@ -121,8 +144,8 @@
         <div class="reel">
           <div class="strip" class:moving={r.moving} bind:this={stripEls[i]} style="transform: translateY({(-r.k / r.items.length) * 100}%); transition: transform {r.dur}ms cubic-bezier(.25,.9,.35,1.04)">
             {#each r.items as sym, j}
-              <div class="cell" class:lit={!spinning && j < m.rows && lit.has(i + '-' + j)} class:dim={!spinning && wins.length > 0 && j < m.rows && !lit.has(i + '-' + j)}>
-                <SlotSymbol {sym} />
+              <div class="cell" class:lit={!spinning && j < m.rows && lit.has(i + '-' + j)} class:dim={!spinning && wins.length > 0 && j < m.rows && !lit.has(i + '-' + j)} class:wild={sym === m.wild && !!ART[sym]}>
+                {@render symbol(sym)}
               </div>
             {/each}
           </div>
@@ -170,7 +193,7 @@
     <div class="paygrid">
       {#each Object.entries(m.pays).sort((a, b) => Math.max(...Object.values(b[1])) - Math.max(...Object.values(a[1]))) as [sym, p]}
         <div class="payitem">
-          <div class="pi"><SlotSymbol {sym} /></div>
+          <div class="pi" class:wide={!!ART[sym]}>{@render symbol(sym)}</div>
           <div class="mono">
             {#each Object.entries(p).reverse() as [n, x]}<div><span class="muted">{n}×</span> {x * lineBet}</div>{/each}
           </div>
@@ -198,6 +221,23 @@
   .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; border: 1px solid var(--line-2); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .tabs button { flex: none; border: 0; background: none; min-height: 38px; padding: 0 16px; border-radius: 999px; font-size: 0.85rem; transition: background-color 0.3s var(--ease-snap), color 0.3s var(--ease-snap); }
   .tabs button.on { background: var(--text); color: var(--bg); }
+  .sets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 720px; margin: -4px auto 12px; }
+  .set { display: grid; grid-template-columns: 54px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; padding: 5px 10px 5px 5px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--surface); font-size: 0.85rem; font-weight: 600; transition: border-color 0.25s var(--ease-snap), transform 0.3s var(--ease-snap); }
+  .set img { grid-row: span 2; width: 54px; height: 34px; object-fit: contain; }
+  .set .mono { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+  .set.on { border-color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 22%, transparent); }
+  .set:hover:not(:disabled) { transform: translateY(-2px); }
+  .cabinet.armory { --frame: #c9a24a; background: linear-gradient(160deg, #1c1f2b, #0b0d14); }
+  .cabinet.armory .reel { background: linear-gradient(180deg, #151826, #22263a 20%, #22263a 80%, #151826); }
+  .weapon { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+  .armory .cell { padding: 6%; }
+  .cell.wild { background: radial-gradient(circle, rgba(242,192,70,.28), transparent 70%); }
+  .pi.wide { width: 80px; }
+  @media (max-width: 640px) {
+    .set { grid-template-columns: 1fr; grid-template-rows: auto; justify-items: center; text-align: center; padding: 6px 4px; }
+    .set img { grid-row: auto; width: 100%; height: 28px; }
+    .set .mono { font-size: 0.64rem; }
+  }
   .tabs button:disabled:not(.on) { opacity: 0.4; }
 
   .cabinet {

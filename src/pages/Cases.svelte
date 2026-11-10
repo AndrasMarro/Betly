@@ -68,7 +68,7 @@
         offset = target * (1 - Math.pow(1 - k, 3.1));
         fast = k < 0.22;
         const idx = Math.floor((offset + center) / STEP);
-        if (idx !== lastIdx) { lastIdx = idx; rec.play(6.195, 0.07, 2.2); kick = now; }
+        if (idx !== lastIdx) { lastIdx = idx; rec.play(6.195, 0.07, 1.3); kick = now; }
         if (k < 1) raf = requestAnimationFrame(frame);
         else resolve();
       };
@@ -78,7 +78,7 @@
     const value = Math.round(box.price * prize.mult * 100) / 100;
     if (mode === 'classic') { stats.opened++; stats.spent += box.price; stats.back += value; if (prize.rarity === 4) stats.golds++; }
     settle(value, value);
-    rec.play(7.58, undefined, prize.rarity >= 2 ? 1 : 0.7);
+    rec.play(7.58, undefined, prize.rarity >= 2 ? 0.8 : 0.55);
     if (prize.rarity >= 2) reveal(prize.rarity);
     win = { item: prize, value };
     history = [{ item: prize, id: ++n }, ...history].slice(0, 12);
@@ -148,6 +148,19 @@
       <div class="fade l"></div><div class="fade r"></div>
     </div>
 
+    <!-- phones: case choice and the open button right under the reel, no scrolling -->
+    <div class="mbar">
+      <div class="mcases">
+        {#each mode === 'classic' ? CLASSIC_CASES : CASES as c, i}
+          {@const on = mode === 'classic' ? cci === i : ci === i}
+          {@const top = c.items.find((x) => x.rarity === 4)!}
+          <button class="mcase" class:on disabled={spinning} style="--c:{c.color}" onclick={() => { if (mode === 'classic') cci = i; else ci = i; sfx('click'); }}>
+            <span class="mthumb">{@render art(top)}</span><span class="mono">{fmt(c.price)}</span>
+          </button>
+        {/each}
+      </div>
+      <button class="btn primary mopen" disabled={spinning || box.price > wallet.balance} onclick={open}>{t('cs.open')} <span class="mono">{fmt(box.price)}</span></button>
+    </div>
     <div class="result">
       {#if win}
         <div class="prize" style="--c:{RARITIES[win.item.rarity].color}" in:pop>
@@ -307,6 +320,18 @@
   .meta { font-size: 0.66rem; color: rgba(255,255,255,.55); }
   .hist { display: flex; gap: 6px; flex-wrap: wrap; }
   .hist span { width: 34px; height: 34px; padding: 5px; border-radius: 9px; background: #161824; box-shadow: inset 0 -3px 0 var(--c); }
+  .mbar { display: none; }
+  @media (max-width: 860px) {
+    .mbar { display: grid; gap: 10px; }
+    .mcases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .mcase { display: grid; justify-items: center; gap: 4px; padding: 6px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12); background: #161824; color: #f4f2ee; font-size: 0.78rem; }
+    .mcase.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, #161824); }
+    .mthumb { width: 100%; height: 42px; display: grid; place-items: center; }
+    .mthumb :global(img) { width: 100%; height: 100%; object-fit: contain; }
+    .mthumb :global(svg) { width: 34px; height: 34px; }
+    .mopen { min-height: 54px; width: 100%; font-size: 1rem; }
+    .result { min-height: 0; }
+  }
   @media (max-width: 640px) {
     .item { flex-basis: 150px; }
     .geo-body { grid-template-columns: 1fr; }
