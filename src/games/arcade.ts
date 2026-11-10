@@ -5,6 +5,17 @@ const r2 = (x: number) => Math.floor(x * 100) / 100;
 // ---------- Crash ----------
 /** P(crash >= m) = 0.97 / m. About 3 % of rounds bust instantly at 1.00. */
 export const crashPoint = (u = Math.random()) => Math.max(1, r2(EDGE / (1 - u)));
+/**
+ * The crash decided as the flight goes on instead of up front (so it cannot be read from memory):
+ * having survived to `prev`, the rocket survives to `m` with probability prev / m. Returns the crash
+ * multiplier if it explodes in (prev, m], otherwise null. Same distribution as crashPoint().
+ */
+export function crashStep(prev: number, m: number, u = Math.random(), v = Math.random()) {
+  if (u < 1 - prev / m) return Math.max(prev, r2(prev / (1 - v * (1 - prev / m))));
+  return null;
+}
+/** At launch: the house edge is an instant bust at 1.00 with probability 1 - EDGE. */
+export const bustAtStart = (u = Math.random()) => u < 1 - EDGE;
 export const GROWTH = 0.075; // multiplier = e^(GROWTH * seconds)
 export const multAt = (sec: number) => Math.exp(GROWTH * Math.max(0, sec));
 export const secAt = (m: number) => Math.log(m) / GROWTH;
@@ -16,6 +27,18 @@ export function minesMult(mines: number, picks: number) {
   let m = EDGE;
   for (let i = 0; i < picks; i++) m *= (TILES - i) / (TILES - mines - i);
   return r2(m);
+}
+/**
+ * Decide a tile only when it is clicked: with `mines` hidden among `hidden` unopened tiles the chance is
+ * mines / hidden, exactly as if they had been placed beforehand, but there is nothing to read out early.
+ */
+export const lazyMine = (mines: number, hidden: number, u = Math.random()) => u < mines / hidden;
+/** Fill in where the remaining mines were (for the reveal after the round), avoiding `known` tiles. */
+export function placeRest(count: number, avoid: number[], tiles = TILES) {
+  const free = Array.from({ length: tiles }, (_, i) => i).filter((i) => !avoid.includes(i));
+  const out = new Set<number>();
+  while (out.size < Math.min(count, free.length)) out.add(free[Math.floor(Math.random() * free.length)]);
+  return out;
 }
 export function placeMines(mines: number) {
   const idx = Array.from({ length: TILES }, (_, i) => i);

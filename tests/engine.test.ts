@@ -332,3 +332,25 @@ import { multAt as crMult, coinShare } from '../src/games/crossy.ts';
   assert.ok(w.lanes.some((l) => l.pads) && w.lanes.some((l) => Object.values(l.deco).includes('shop')));
   console.log('crossy stake checks passed');
 }
+
+// Security: lazily decided outcomes keep the same odds as pre-placed ones
+import { crashStep, bustAtStart, lazyMine, multAt as rkMult } from '../src/games/arcade.ts';
+{
+  const N = 60000;
+  let over2 = 0, sum = 0;
+  for (let k = 0; k < N; k++) {
+    let crash = 1;
+    if (!bustAtStart()) {
+      let prev = 1;
+      for (let s = 0.05; ; s += 0.05) { const m = rkMult(s); const c = crashStep(prev, m); prev = m; if (c !== null) { crash = c; break; } }
+    }
+    if (crash >= 2) over2++;
+    sum += crash >= 2 ? 2 : 0; // cash-out at 2x
+  }
+  assert.ok(Math.abs(over2 / N - 0.485) < 0.012, 'P(crash >= 2) ~ 0.97/2: ' + over2 / N);
+  console.log('rocket (progressive) cash@2x RTP', (sum / N).toFixed(3));
+  let hits = 0;
+  for (let k = 0; k < 100000; k++) if (lazyMine(3, 25)) hits++;
+  assert.ok(Math.abs(hits / 100000 - 0.12) < 0.006, 'lazy mine odds');
+  console.log('security checks passed');
+}

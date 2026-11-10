@@ -30,7 +30,43 @@ export const BONUS = 1_000;
 export const BONUS_COOLDOWN = 15 * 60_000;
 export const BROKE = 100; // below this the bonus is always claimable
 
-export const wallet = $state(load('betly:wallet', { balance: START, lastBonus: 0, biggestWin: 0, rounds: 0 }));
+// ---------- wallet integrity ----------
+// The wallet lives in localStorage, so it is sealed with a checksum over its values and a per-browser salt.
+// Editing the stored balance by hand breaks the seal and the wallet starts over. (Without a server this
+// cannot be perfect, but casual edits and console tricks no longer work.)
+const SALT_KEY = 'betly:id';
+const salt = (() => {
+  try {
+    let v = localStorage.getItem(SALT_KEY);
+    if (!v) { v = Array.from(crypto.getRandomValues(new Uint32Array(4)), (x) => x.toString(36)).join(''); localStorage.setItem(SALT_KEY, v); }
+    return v;
+  } catch { return 'betly'; }
+})();
+function seal(w: { balance: number; lastBonus: number; biggestWin: number; rounds: number }) {
+  // cyrb53-style hash: small, fast, good enough as a tamper seal
+  const str = `${w.balance}|${w.lastBonus}|${w.biggestWin}|${w.rounds}|${salt}|b3tly`;
+  let h1 = 0xdeadbeef ^ 7, h2 = 0x41c6ce57 ^ 7;
+  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+const FRESH = { balance: START, lastBonus: 0, biggestWin: 0, rounds: 0 };
+export let tampered = false;
+function loadWallet() {
+  try {
+    const raw = localStorage.getItem('betly:wallet');
+    if (!raw) return { ...FRESH };
+    const w = JSON.parse(raw);
+    const ok = [w.balance, w.lastBonus, w.biggestWin, w.rounds].every((x) => typeof x === 'number' && Number.isFinite(x) && x >= 0);
+    // wallets from before the seal existed are accepted once (then marked) and sealed from now on
+    const legacy = w.sig === undefined && !localStorage.getItem('betly:sealed');
+    if (ok && (legacy || w.sig === seal(w))) return { balance: w.balance, lastBonus: w.lastBonus, biggestWin: w.biggestWin, rounds: w.rounds };
+    tampered = true;
+  } catch { tampered = true; }
+  return { ...FRESH };
+}
+export const wallet = $state(loadWallet());
 
 $effect.root(() => {
   $effect(() => {
@@ -38,11 +74,16 @@ $effect.root(() => {
     document.documentElement.dataset.theme = settings.theme;
     document.documentElement.lang = settings.lang;
   });
-  $effect(() => localStorage.setItem('betly:wallet', JSON.stringify(wallet)));
+  $effect(() => {
+    const w = { balance: wallet.balance, lastBonus: wallet.lastBonus, biggestWin: wallet.biggestWin, rounds: wallet.rounds };
+    localStorage.setItem('betly:wallet', JSON.stringify({ ...w, sig: seal(w) }));
+    localStorage.setItem('betly:sealed', '1');
+  });
 });
 
 /** Apply the net result of a finished round (stake already included). The game of the day adds a bonus on payouts. */
 export function settle(net: number, won = 0) {
+  if (!Number.isFinite(net) || !Number.isFinite(won) || won < 0) throw new Error('invalid result');
   if (won > 0 && location.hash.slice(2).split(/[/?]/)[0] === dailyGame()) {
     const extra = Math.round(won * DAILY_BONUS * 100) / 100;
     net += extra;
@@ -56,11 +97,14 @@ export function settle(net: number, won = 0) {
 
 /** Take a stake off the balance up front (arcade games pay back via settle(win, win)). */
 export function stake(amt: number) {
+  // a stake must be a real, positive amount you can afford; anything else stops the round
+  if (!Number.isFinite(amt) || amt <= 0 || amt > wallet.balance + 1e-9) throw new Error('invalid stake');
   wallet.balance = Math.round((wallet.balance - amt) * 100) / 100;
 }
 
 /** Return chips to the balance (e.g. cashing out a poker stack). */
 export function credit(amt: number) {
+  if (!Number.isFinite(amt) || amt < 0) throw new Error('invalid credit');
   wallet.balance = Math.round((wallet.balance + amt) * 100) / 100;
 }
 

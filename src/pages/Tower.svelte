@@ -2,7 +2,7 @@
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
   import Sprite from '../components/Sprite.svelte';
-  import { FLOORS, TOWER, towerBombs, towerMult, type TowerLevel } from '../games/arcade';
+  import { FLOORS, TOWER, towerMult, lazyMine, placeRest, type TowerLevel } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
   import { sfx } from '../lib/sfx';
@@ -25,7 +25,7 @@
     if (bet > wallet.balance || bet <= 0) return;
     stakeNow = bet;
     stake(bet);
-    bombs = towerBombs(level);
+    bombs = []; // traps are rolled floor by floor when you pick a tile, never stored ahead
     picks = [];
     lostAt = null;
     won = 0;
@@ -34,7 +34,11 @@
   }
   function pick(f: number, i: number) {
     if (phase !== 'play' || f !== floor) return;
-    if (bombs[f].has(i)) {
+    const [n, b] = TOWER[level];
+    const trap = lazyMine(b, n);
+    bombs[f] = trap ? new Set([i, ...placeRest(b - 1, [i], n)]) : placeRest(b, [i], n);
+    if (trap) for (let k = f + 1; k < FLOORS; k++) bombs[k] = placeRest(b, [], n);
+    if (trap) {
       lostAt = [f, i];
       phase = 'over';
       settle(0, 0);
@@ -49,6 +53,7 @@
     if (phase !== 'play' || !floor) return;
     won = Math.round(stakeNow * mult * 100) / 100;
     settle(won, won);
+    for (let k = floor; k < FLOORS; k++) bombs[k] = placeRest(TOWER[level][1], [], TOWER[level][0]);
     phase = 'over';
     sfx('cash');
   }

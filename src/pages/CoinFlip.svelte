@@ -131,12 +131,15 @@
   .sides button.on { background: var(--text); color: var(--bg); }
   .sides button:active:not(:disabled) { transform: scale(0.97); }
   .mini { width: 22px; height: 22px; }
+  /* the 3D table fills the stage; the read-outs float on top of it */
   .stage {
-    display: grid; justify-items: center; gap: 10px; padding: 12px 16px 24px; overflow: hidden; border-radius: 28px; color: #f4f2ee; min-height: 440px;
+    position: relative; display: grid; align-content: end; justify-items: center; gap: 10px; padding: 12px 16px 20px; overflow: hidden; border-radius: 28px; color: #f4f2ee; min-height: 520px; height: min(640px, calc(100dvh - var(--nav-h) - 170px));
     background: radial-gradient(ellipse at 50% 30%, #2b2a46, #101020 70%); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); perspective: 1000px;
   }
-  .coinbox { position: relative; display: grid; justify-items: center; }
-  .call { position: absolute; left: 0; right: 0; top: 6%; display: grid; place-items: center; pointer-events: none; min-height: 48px; }
+  .coinbox { position: absolute; inset: 0; }
+  .info, .hist { position: relative; z-index: 1; }
+  .info div { backdrop-filter: blur(6px); }
+  .call { position: absolute; left: 0; right: 0; top: 6%; z-index: 1; display: grid; place-items: center; pointer-events: none; min-height: 48px; }
   .tense { font: 600 0.9rem 'Geist Mono Variable', monospace; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,.75); animation: tense 0.5s ease-in-out infinite alternate; }
   @keyframes tense { to { opacity: 0.35; letter-spacing: 0.3em; } }
   .res { font: 800 clamp(2rem, 6vw, 3.2rem) 'Geist Variable', sans-serif; letter-spacing: -0.03em; padding: 4px 22px; border-radius: 999px; }

@@ -3,7 +3,7 @@
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
   import Sprite from '../components/Sprite.svelte';
-  import { TILES, minesMult, placeMines } from '../games/arcade';
+  import { TILES, minesMult, lazyMine, placeRest } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
@@ -27,7 +27,7 @@
     if (bet > wallet.balance || bet <= 0) return;
     stakeNow = bet;
     stake(bet);
-    field = placeMines(mines);
+    field = new Set(); // nothing is decided yet: every tile is rolled when you click it
     open = [];
     hit = -1;
     won = 0;
@@ -36,7 +36,8 @@
   }
   function pick(i: number) {
     if (phase !== 'play' || open.includes(i)) return;
-    if (field.has(i)) {
+    if (lazyMine(mines, TILES - open.length)) {
+      field = new Set([i, ...placeRest(mines - 1, [...open, i])]);
       hit = i;
       phase = 'over';
       settle(0, 0);
@@ -51,6 +52,7 @@
     if (phase !== 'play' || !picks) return;
     won = Math.round(stakeNow * mult * 100) / 100;
     settle(won, won);
+    field = placeRest(mines, open); // show where the mines would have been
     phase = 'over';
     sfx('cash');
   }

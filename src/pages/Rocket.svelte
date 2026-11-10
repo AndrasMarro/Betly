@@ -5,7 +5,7 @@
   import BetInput from '../components/BetInput.svelte';
   import RoomBar from '../components/RoomBar.svelte';
   import Sprite from '../components/Sprite.svelte';
-  import { crashPoint, multAt, secAt } from '../games/arcade';
+  import { multAt, secAt, crashStep, bustAtStart } from '../games/arcade';
   import { Room } from '../lib/net.svelte';
   import { settings, wallet, settle, fmt } from '../lib/state.svelte';
   import { short } from '../lib/chips';
@@ -27,7 +27,7 @@
   // ---------- shared state (host authoritative) ----------
   const share = $state({ phase: 'bet' as 'bet' | 'fly' | 'boom', round: 0, crash: 0, history: [] as number[], players: [] as P[], left: BET_MS, elapsed: 0 });
   let betEnd = 0, flyStart = 0; // local clocks (performance.now based)
-  let crashAt = 1; // host only, secret until the boom
+  let crashAt = 1; // set only at the moment of the crash: the flight is rolled tick by tick, nothing to read ahead
   let timer: ReturnType<typeof setTimeout> | undefined;
   let ticker: ReturnType<typeof setInterval> | undefined;
 
@@ -89,17 +89,20 @@
     timer = setTimeout(launch, BET_MS);
   }
   function launch() {
-    crashAt = crashPoint();
     share.phase = 'fly';
     flyStart = performance.now();
     push();
     phaseFx('bet');
+    if (bustAtStart()) { crashAt = 1; return boom(); }
+    let prev = 1;
     ticker = setInterval(() => {
       const m = cur();
+      const c = crashStep(prev, m);
+      prev = m;
+      if (c !== null) { crashAt = c; return boom(); }
       let changed = false;
-      for (const p of share.players) if (p.bet && !p.cash && p.auto && p.auto <= Math.min(m, crashAt)) { p.cash = p.auto; changed = true; }
-      if (m >= crashAt) boom();
-      else if (changed) push();
+      for (const p of share.players) if (p.bet && !p.cash && p.auto && p.auto <= m) { p.cash = p.auto; changed = true; }
+      if (changed) push();
     }, 50);
   }
   function boom() {

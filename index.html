@@ -14,6 +14,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <title>Betly · Spielgeld-Casino</title>
     <script>
+      // Fair randomness that page scripts and the console cannot swap out:
+      // Math.random is backed by crypto.getRandomValues and locked (not writable, not configurable),
+      // and so are the Math and crypto globals themselves. "Math.random = () => 0.000001" does nothing.
+      (function () {
+        var c = window.crypto, gv = c.getRandomValues.bind(c), buf = new Uint32Array(256), i = 256;
+        function rnd() { if (i >= 256) { gv(buf); i = 0; } return buf[i++] / 4294967296; }
+        var lock = function (o, k, v) { try { Object.defineProperty(o, k, { value: v, writable: false, configurable: false, enumerable: false }); } catch (e) {} };
+        lock(Math, 'random', rnd);
+        lock(c, 'getRandomValues', c.getRandomValues);
+        lock(window, 'Math', Math);
+        lock(window, 'crypto', c);
+      })();
       try {
         const s = JSON.parse(localStorage.getItem('betly:settings') || '{}');
         document.documentElement.dataset.theme = s.theme || 'noir';

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import Dialogs from './components/Dialogs.svelte';
-  import { settings, wallet, ui, fmt, bonusReadyIn, askName } from './lib/state.svelte';
+  import { settings, wallet, ui, fmt, bonusReadyIn, askName, tampered } from './lib/state.svelte';
+  let tamperNote = $state(tampered);
   import { t } from './lib/i18n';
   import { byId } from './lib/games';
   import { menuMusic, setVolumes } from './lib/sfx';
@@ -135,6 +136,13 @@
 
 <Dialogs />
 
+{#if tamperNote}
+  <div class="tamper" role="alert">
+    <span>{t('tamper')}</span>
+    <button class="btn sm" onclick={() => (tamperNote = false)}>OK</button>
+  </div>
+{/if}
+
 <style>
   :global(:root) { --nav-h: 68px; }
   .nav {
@@ -165,6 +173,7 @@
   .plus.ready::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--accent); animation: ring 1.6s ease-out infinite; }
   @keyframes ring { to { transform: scale(1.5); opacity: 0; } }
   main { min-height: 70dvh; }
+  .tamper { position: fixed; left: 50%; bottom: 20px; translate: -50% 0; z-index: 300; display: flex; gap: 12px; align-items: center; max-width: calc(100% - 32px); padding: 12px 16px; border-radius: 18px; background: var(--surface); box-shadow: 0 0 0 1px var(--accent), 0 20px 50px rgba(0,0,0,.5); font-size: 0.88rem; }
   .foot { border-top: 1px solid var(--line); padding: 40px 0 48px; font-size: 0.85rem; }
   .foot .top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
   .foot nav { display: flex; gap: 18px; flex-wrap: wrap; }
