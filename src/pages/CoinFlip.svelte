@@ -4,6 +4,8 @@
   import BetInput from '../components/BetInput.svelte';
   import SlotSymbol from '../components/SlotSymbol.svelte';
   import Coin3D from '../components/Coin3D.svelte';
+  import CoinGL from '../components/CoinGL.svelte';
+  let gl = $state(true); // the 3D model; falls back to the CSS coin without WebGL
   import { coinMult, flip } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
@@ -100,7 +102,11 @@
 
   <div class="stage">
     <div class="coinbox">
-      <Coin3D {face} tosses={flips} size={coinSize} heads={t('cf.heads')} tails={t('cf.tails')} ondone={() => done()} onphase={(p) => (cphase = p)} />
+      {#if gl}
+        <CoinGL {face} tosses={flips} size={coinSize} ondone={() => done()} onphase={(p) => (cphase = p)} onfail={() => (gl = false)} />
+      {:else}
+        <Coin3D {face} tosses={flips} size={coinSize} heads={t('cf.heads')} tails={t('cf.tails')} ondone={() => done()} onphase={(p) => (cphase = p)} />
+      {/if}
       <div class="call" aria-live="polite">
         {#if cphase === 'edge'}<span class="tense">{t('cf.edge')}</span>
         {:else if cphase === 'rest' && last}{#key flips}<span class="res {last}" class:hit={lastHit} in:scale={{ start: 0.6, duration: 380 }}>{t(last === 'heads' ? 'cf.heads' : 'cf.tails')}!</span>{/key}{/if}

@@ -131,7 +131,7 @@ import { CASES, caseRtp, RARITIES } from '../src/games/arcade.ts';
   console.log('cases RTP', caseRtp(CASES[0]).toFixed(4));
 }
 
-import { newGame, open, flag, chord, neighbours, detect, scan, solvable, tick, hunt } from '../src/games/minesweeper.ts';
+import { newGame, open, flag, chord, neighbours, detect, scan, solvable, tick, hunt, smartAfterFlag } from '../src/games/minesweeper.ts';
 {
   for (let n = 0; n < 200; n++) {
     const ms = newGame(9, 9, 10);
@@ -168,6 +168,11 @@ import { newGame, open, flag, chord, neighbours, detect, scan, solvable, tick, h
   const m2 = a.cells.findIndex((c, i) => c.mine && !c.flag && i !== m1);
   assert.equal(open(a, m2), 'shield'); assert.equal(a.lives, 2);
   const d = detect(a); assert.ok(d >= 0 && a.cells[d].mine && a.cells[d].flag);
+  assert.equal(flag(a, d), false, 'game-placed flags are locked'); assert.equal(flag(a, m1), false);
+  // gentle smart flagging: flagging the only mine next to a "1" opens that number's other neighbours
+  const sm = newGame(9, 9, 10); open(sm, 40);
+  const one = sm.cells.findIndex((c, i) => c.open && c.n === 1 && neighbours(sm, i).some((j) => !sm.cells[j].open && !sm.cells[j].mine));
+  if (one >= 0) { const mine = neighbours(sm, one).find((j) => sm.cells[j].mine)!; flag(sm, mine); smartAfterFlag(sm, mine); assert.ok(neighbours(sm, one).every((j) => sm.cells[j].open || sm.cells[j].flag)); }
   const sc = newGame(9, 9, 10); open(sc, 40); const hid = sc.cells.findIndex((c) => !c.open);
   scan(sc, hid); assert.notEqual(sc.state, 'lost'); assert.ok(sc.cells[hid].open || sc.cells[hid].flag);
   let ng = 0;

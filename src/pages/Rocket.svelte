@@ -247,14 +247,15 @@
     const big = kind === 'planet' || kind === 'hole' || kind === 'whale';
     const k = Math.max(0.7, Math.min(1.3, W / 800));
     // enter from a random edge and drift across at a random angle
-    const fromLeft = Math.random() < 0.5, speed = big ? 10 + Math.random() * 10 : kind === 'force' ? 260 + Math.random() * 120 : 28 + Math.random() * 30;
+    // the roadster always cruises forwards (its booster points backwards), the rest come from either side
+    const fromLeft = kind === 'tesla' || Math.random() < 0.5, speed = big ? 10 + Math.random() * 10 : kind === 'force' ? 260 + Math.random() * 120 : 28 + Math.random() * 30;
     const ang = (Math.random() - 0.5) * (kind === 'force' ? 0.5 : 0.9);
     const dir = fromLeft ? 1 : -1;
     const f: Fly = {
       kind, x: fromLeft ? -120 : W + 120, y: H * (0.08 + Math.random() * (big ? 0.35 : 0.55)),
       vx: dir * speed * Math.cos(ang), vy: speed * Math.sin(ang),
       a: kind === 'force' ? Math.atan2(speed * Math.sin(ang), dir * speed * Math.cos(ang)) + (fromLeft ? 0 : Math.PI) : (Math.random() - 0.5) * 0.4,
-      va: kind === 'sat' ? 0.15 : kind === 'tesla' ? 0.08 * dir : 0,
+      va: kind === 'sat' ? 0.15 : 0,
       s: k * (big ? 0.7 + Math.random() * 0.35 : kind === 'force' ? 0.16 : 0.24 + Math.random() * 0.1),
       t: 0, alpha: big ? 0.6 : 0.55, trail: kind === 'force' ? [] : undefined,
     };
@@ -286,7 +287,7 @@
     ctx.globalAlpha = f.alpha;
     ctx.translate(f.x, f.y + Math.sin(f.t * 1.6) * 2);
     ctx.rotate(f.a);
-    ctx.scale(f.s * (f.vx < 0 && (f.kind === 'tesla' || f.kind === 'whale' || f.kind === 'ufo') ? -1 : 1), f.s);
+    ctx.scale(f.s * (f.vx < 0 && (f.kind === 'whale' || f.kind === 'ufo') ? -1 : 1), f.s);
     const blink = Math.sin(f.t * 8) > 0;
     if (ART_W[f.kind] && ready(f.kind)) {
       const img = IMG[f.kind], w = ART_W[f.kind], h = (w * img.naturalHeight) / img.naturalWidth;

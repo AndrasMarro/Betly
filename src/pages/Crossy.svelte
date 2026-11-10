@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
-  import { newWorld, ensure, update, hit, logAt, blocked, warning, multAt, coinShare, COLS, MIN_STAKE, MAX_STAKE, BONUS_EVERY, BONUS, BREAK, SINK, type World, type Lane, type Item } from '../games/crossy';
+  import { newWorld, ensure, update, hit, logAt, blocked, warning, multAt, coinShare, COLS, MIN_STAKE, MAX_STAKE, BONUS_EVERY, BONUS, HOP_UP, BREAK, SINK, type World, type Lane, type Item } from '../games/crossy';
   import HowTo from '../components/HowTo.svelte';
-  import { settle, stake as takeStake, credit, wallet, fmt } from '../lib/state.svelte';
+  import { settle, stake as takeStake, credit, wallet, settings, fmt } from '../lib/state.svelte';
   import { dailyGame } from '../lib/daily';
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
@@ -28,6 +28,7 @@
   SPRITES.up.src = duckUp; SPRITES.down.src = duckDown; SPRITES.left.src = duckLeft; SPRITES.right.src = duckRight;
 
   let best = $state(+(localStorage.getItem('betly:crossy') || 0));
+  let runBest = 0, recordPaid = false; // the record at the start of this run; its line pays a coin once
   let phase = $state<'ready' | 'play' | 'dead'>('ready');
   let score = $state(0);
   let cause = $state<'car' | 'water' | 'train' | 'eagle' | 'log' | 'cash' | ''>('');
@@ -37,7 +38,7 @@
   let staked = $state(0);
   let coinsGot = $state(0);
   let lastLog: Item | null = null;
-  let flash = $state<{ text: string; id: number } | null>(null);
+  let flash = $state<{ text: string; id: number; big?: boolean } | null>(null);
   const mult = $derived(multAt(score));
 
   let world: World;
@@ -52,6 +53,7 @@
     Object.assign(P, { x: 5, row: 2, fromX: 5, fromRow: 2, hop: 1, face: 'up', onLog: false, deadT: 0 });
     cam = 0; camMin = 0; shake = 0; runT = 0; bits = []; queued = null;
     score = 0; cause = ''; reward = 0; staked = 0; coinsGot = 0; flash = null;
+    runBest = best; recordPaid = false;
   }
   reset();
 
@@ -107,7 +109,8 @@
     sfx('cash');
     if (score > best) { best = score; localStorage.setItem('betly:crossy', String(best)); }
   }
-  function show(text: string) { flash = { text, id: performance.now() }; }
+  function show(text: string, big = false) { flash = { text, id: performance.now(), big }; }
+  const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
   function burst(c: string, n: number) {
     for (let i = 0; i < n; i++) bits.push({ x: P.x + 0.5, y: P.row + 0.5, vx: (Math.random() - 0.5) * 6, vy: Math.random() * 6, life: 0.6 + Math.random() * 0.5, c });
   }
@@ -227,7 +230,21 @@
     }
     if (P.row - 2 > score) {
       score = P.row - 2;
-      if (staked && score % BONUS_EVERY === 0) { show('×' + BONUS + ' Bonus!'); sfx('gem'); }
+      if (score % BONUS_EVERY === 0) {
+        const pct = Math.round((HOP_UP ** (score / BONUS_EVERY) - 1) * 100);
+        show(L('Reihe ' + score + ' · ×' + BONUS + ' · +' + pct + ' % pro Hop', 'Row ' + score + ' · ×' + BONUS + ' · +' + pct + ' % per hop'), true);
+        sfx('big');
+      }
+      // passing the old record pays a record coin (10 % of the stake) once per run
+      if (runBest > 0 && score === runBest + 1 && !recordPaid) {
+        recordPaid = true;
+        const amt = Math.round(staked * 0.1 * 100) / 100;
+        credit(amt);
+        coinsGot += amt;
+        show(L('Neuer Rekord! +', 'New record! +') + fmt(amt), true);
+        sfx('cash');
+        for (let i = 0; i < 20; i++) bits.push({ x: P.x + 0.5, y: P.row + 0.5, vx: (Math.random() - 0.5) * 6, vy: 2 + Math.random() * 6, life: 0.6 + Math.random() * 0.5, c: '#ffd23f' });
+      }
     }
   }
 
@@ -257,6 +274,14 @@
     for (let r = hi; r >= lo; r--) {
       const l = world.lanes[r], y = Y(r);
       if (!l) { ctx.fillStyle = '#6fbf4a'; ctx.fillRect(0, y, W, C + 1); continue; }
+      if (l.checkpoint) {
+        // checkpoint meadow: golden stripes, the row number painted on the grass, flags at both ends
+        ctx.fillStyle = '#9adf62'; ctx.fillRect(0, y, W, C + 1);
+        ctx.fillStyle = 'rgba(255,214,90,.45)'; for (let x = 0; x < W; x += C) ctx.fillRect(x, y + C * 0.12, C * 0.5, C * 0.76);
+        ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.font = `800 ${Math.round(C * 0.5)}px Geist Variable, sans-serif`; ctx.textAlign = 'center';
+        ctx.fillText(String(l.checkpoint), W / 2, y + C * 0.68);
+        continue;
+      }
       if (l.type === 'grass') {
         ctx.fillStyle = r % 2 ? '#8bd65a' : '#80cc50'; ctx.fillRect(0, y, W, C + 1);
         ctx.fillStyle = 'rgba(40,110,30,.18)';
@@ -283,6 +308,9 @@
       const l = world.lanes[r];
       if (!l) continue;
       const y = Y(r);
+      if (l.checkpoint) for (const fx of [0.2, COLS - 0.2]) drawFlag(ctx, fx * C, y, C);
+      // your record from earlier runs: a dashed golden line with a trophy coin
+      if (runBest > 0 && r === runBest + 2) drawRecord(ctx, y, C, recordPaid);
       if (l.type === 'grass') {
         for (const d of l.decor) drawArt(ctx, d.k, d.c * C, y, C, SIZE[d.k] ?? 0.5, (d.c * 37 + r * 11) % 7 / 7);
         for (const c of l.trees) {
@@ -315,7 +343,38 @@
     const img = ART[k], dw = C * w, dh = (dw * img.naturalHeight) / img.naturalWidth;
     // small things sit at a slightly different spot in their cell, so the grass does not look gridded
     const ox = w < 0.7 ? (jitter - 0.5) * C * (1 - w) * 0.8 : 0, oy = w < 0.7 ? (jitter - 0.5) * C * 0.25 : 0;
-    ctx.drawImage(img, x + (C - dw) / 2 + ox, y + C * 0.85 - dh + oy, dw, dh);
+    const cx = x + C / 2 + ox, by = y + C * 0.85 + oy;
+    shadow(ctx, cx + dw * 0.08, by - C * 0.05, dw * 0.46, C * 0.1 + dw * 0.05);
+    ctx.drawImage(img, cx - dw / 2, by - dh, dw, dh);
+  }
+  /** Soft contact shadow, the same for every object so they sit on the grass instead of floating on it. */
+  function shadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number) {
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx);
+    g.addColorStop(0, 'rgba(20,50,10,.38)'); g.addColorStop(0.6, 'rgba(20,50,10,.2)'); g.addColorStop(1, 'rgba(20,50,10,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 7); ctx.fill();
+  }
+  function drawFlag(ctx: CanvasRenderingContext2D, x: number, y: number, C: number) {
+    shadow(ctx, x + C * 0.1, y + C * 0.8, C * 0.25, C * 0.08);
+    ctx.fillStyle = '#e8e8ee'; ctx.fillRect(x - C * 0.03, y - C * 0.55, C * 0.06, C * 1.35);
+    const wave = Math.sin(clock * 5) * C * 0.05;
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath(); ctx.moveTo(x + C * 0.03, y - C * 0.55); ctx.lineTo(x + C * 0.45 + wave, y - C * 0.4); ctx.lineTo(x + C * 0.03, y - C * 0.25); ctx.closePath(); ctx.fill();
+  }
+  function drawRecord(ctx: CanvasRenderingContext2D, y: number, C: number, taken: boolean) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,214,90,.9)'; ctx.lineWidth = Math.max(2, C * 0.06); ctx.setLineDash([C * 0.3, C * 0.2]);
+    ctx.beginPath(); ctx.moveTo(0, y + C); ctx.lineTo(W, y + C); ctx.stroke();
+    ctx.setLineDash([]);
+    const tx = C * 0.15, ty = y + C * 0.55;
+    ctx.fillStyle = 'rgba(20,16,4,.6)'; ctx.beginPath(); ctx.roundRect(tx, ty - C * 0.3, C * 2.4, C * 0.5, C * 0.25); ctx.fill();
+    ctx.fillStyle = '#ffd23f'; ctx.font = `700 ${Math.round(C * 0.28)}px Geist Mono Variable, monospace`; ctx.textAlign = 'left';
+    ctx.fillText(L('Rekord ', 'Best ') + runBest, tx + C * 0.18, ty + C * 0.05);
+    if (!taken && ok('coin')) {
+      const bob = Math.sin(clock * 3) * C * 0.05, h = C * 0.6;
+      ctx.drawImage(ART.coin, W / 2 - h * 0.38, y + C * 0.5 - h + bob, h * 0.76, h);
+    }
+    ctx.restore();
   }
   function drawCoin(ctx: CanvasRenderingContext2D, x: number, y: number, C: number) {
     if (!ok('coin')) return;
@@ -334,6 +393,7 @@
     if ((r + Math.round(x / C)) % 3 === 0) { ctx.fillStyle = '#ff8fb8'; ctx.beginPath(); ctx.arc(cx + C * 0.16, cy - C * 0.06, C * 0.08, 0, 7); ctx.fill(); ctx.fillStyle = '#ffe0ec'; ctx.beginPath(); ctx.arc(cx + C * 0.16, cy - C * 0.08, C * 0.04, 0, 7); ctx.fill(); }
   }
   function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, C: number, rock: boolean) {
+    shadow(ctx, x + C * 0.58, y + C * 0.78, C * 0.45, C * 0.14);
     if (rock) { box(ctx, x + C * 0.15, y + C * 0.2, C * 0.7, C * 0.6, C * 0.35, '#b8bcc6', '#8d929e'); return; }
     box(ctx, x + C * 0.38, y + C * 0.45, C * 0.24, C * 0.25, C * 0.35, '#8a5a32', '#6b4426');
     box(ctx, x + C * 0.1, y + C * 0.15, C * 0.8, C * 0.65, C * 0.65, '#5fbf3e', '#3f8f2a');
@@ -347,28 +407,35 @@
       ctx.fillStyle = 'rgba(0,0,0,.12)'; for (let k = C * 0.6; k < w - C * 0.4; k += C * 0.7) ctx.fillRect(x + k, y + C * 0.1, 2, C * 0.45);
       return;
     }
-    // cracked log: greyish, rotten wood with jagged cracks; once stepped on it shakes, splits and sinks
+    // cracked log: rotten wood with jagged cracks. Once stepped on it shakes, splits in two and both
+    // halves (with their cracks) tilt away and sink.
     const t = it.breakT, k = t === undefined ? 0 : Math.min(1, t / BREAK);
     const sink = t !== undefined && t > BREAK ? (t - BREAK) / (SINK - BREAK) : 0;
     const shakeX = t !== undefined && !sink ? Math.sin(t * 60) * C * 0.04 * (0.4 + k) : 0;
-    ctx.save();
-    ctx.globalAlpha = 1 - sink;
-    const half = (w - 4) / 2, gap = sink ? C * 0.25 * sink + C * 0.06 : k * C * 0.06;
+    const half = (w - 4) / 2, gap = sink ? C * 0.06 + C * 0.3 * sink : k * C * 0.05;
+    const crack = t === undefined ? 'rgba(30,18,10,.85)' : `rgb(${150 + 100 * k},40,30)`;
     for (const side of [0, 1]) {
-      const sx = x + 2 + side * (half + gap) - (side ? 0 : gap * 0) + shakeX, tilt = sink * C * 0.25;
-      box(ctx, sx, y + C * 0.2 + tilt, half - gap / 2, C * 0.6, C * 0.18 - sink * C * 0.15, '#8d6a4a', '#5e4430');
+      ctx.save();
+      ctx.globalAlpha = 1 - sink;
+      // each half pivots on its outer end and drops into the water
+      const hx = x + 2 + side * (half + gap) + shakeX, px = side ? hx + half : hx;
+      ctx.translate(px, y + C * 0.5);
+      ctx.rotate((side ? 1 : -1) * sink * 0.35);
+      ctx.translate(-px, -(y + C * 0.5) + sink * C * 0.35);
+      ctx.beginPath(); ctx.rect(hx - 1, y - C, half + 2, C * 2.2); ctx.clip();
+      box(ctx, hx, y + C * 0.2, half - gap / 2, C * 0.6, C * 0.18, '#8d6a4a', '#5e4430');
+      ctx.fillStyle = '#b08b66';
+      ctx.fillRect(side ? hx + half - gap / 2 - C * 0.16 : hx, y + C * 0.02, C * 0.16, C * 0.6);
+      // the split edge is jagged, plus one crack inside the half
+      ctx.strokeStyle = crack; ctx.lineWidth = Math.max(1.5, C * 0.045);
+      for (const cx0 of [side ? hx + C * 0.06 : hx + half - gap / 2 - C * 0.06, hx + half * 0.5]) {
+        ctx.beginPath(); ctx.moveTo(cx0, y + C * 0.04);
+        for (let i = 1; i <= 4; i++) ctx.lineTo(cx0 + (i % 2 ? C * 0.07 : -C * 0.06), y + C * 0.04 + (i * C * 0.56) / 4);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
-    ctx.fillStyle = '#b08b66'; ctx.fillRect(x + 2 + shakeX, y + C * 0.02, C * 0.16, C * 0.6); ctx.fillRect(x + w - 2 - C * 0.16 + shakeX, y + C * 0.02, C * 0.16, C * 0.6);
-    // jagged cracks, always visible; they glow red while it is breaking
-    ctx.strokeStyle = t === undefined ? 'rgba(30,18,10,.85)' : `rgba(${180 + 75 * k},${40},${30},.95)`;
-    ctx.lineWidth = Math.max(1.5, C * 0.045);
-    for (const cx0 of [x + w * 0.5, x + w * 0.25, x + w * 0.75]) {
-      ctx.beginPath();
-      ctx.moveTo(cx0 + shakeX, y + C * 0.04);
-      for (let i = 1; i <= 4; i++) ctx.lineTo(cx0 + shakeX + (i % 2 ? C * 0.09 : -C * 0.07), y + C * 0.04 + (i * C * 0.56) / 4);
-      ctx.stroke();
-    }
-    ctx.restore();
+    if (sink) { ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - sink)})`; ctx.beginPath(); ctx.ellipse(x + w / 2, y + C * 0.55, w * 0.3 * (0.5 + sink), C * 0.12, 0, 0, 7); ctx.fill(); }
     if (t === undefined) {
       // a little warning mark floats above cracked logs
       ctx.fillStyle = 'rgba(255,214,90,.9)';
@@ -479,7 +546,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="screen" style="width:{W}px; height:{H}px" onpointerdown={pdown} onpointerup={pup}>
       <canvas bind:this={canvas} style="width:{W}px; height:{H}px"></canvas>
-      {#if flash}{#key flash.id}<span class="flash mono" in:fly={{ y: 16, duration: 260 }}>{flash.text}</span>{/key}{/if}
+      {#if flash}{#key flash.id}<span class="flash mono" class:big={flash.big} in:fly={{ y: 16, duration: 260 }}>{flash.text}</span>{/key}{/if}
       {#if phase === 'ready'}
         <div class="overlay soft" in:fly={{ y: 10, duration: 250 }}>
           <strong>{t('cr.ready')}</strong>
@@ -536,6 +603,7 @@
   .cash { min-height: 46px; background: #2fbf71; color: #062a16; gap: 10px; }
   .cash kbd { font: 500 0.68rem 'Geist Mono Variable', monospace; opacity: 0.6; border: 1px solid rgba(0,0,0,.25); border-radius: 4px; padding: 0 4px; }
   .flash { position: absolute; left: 50%; top: 14%; translate: -50% 0; padding: 6px 14px; border-radius: 999px; background: #ffd23f; color: #3a2a06; font-weight: 700; pointer-events: none; animation: fl 1.4s forwards; box-shadow: 0 8px 20px rgba(0,0,0,.3); }
+  .flash.big { top: 30%; font-size: 1.1rem; padding: 10px 20px; animation-duration: 2.6s; box-shadow: 0 0 0 3px rgba(255,255,255,.6), 0 12px 30px rgba(0,0,0,.35); }
   @keyframes fl { 70% { opacity: 1; } to { opacity: 0; transform: translateY(-14px); } }
   .minus { color: #ff9a9d !important; }
   .pad { display: grid; grid-template-columns: repeat(3, 68px); grid-template-rows: repeat(2, 58px); gap: 6px; }

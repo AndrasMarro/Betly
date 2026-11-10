@@ -45,7 +45,7 @@
     <div class="hs">
       <div class="grass"></div>
       <div class="lanes">
-        {#each ['#ff6b6b', '', '#6aa8ff', '#ffc145'] as c, i}
+        {#each ['', '', '#6aa8ff', '#ffc145'] as c, i}
           <div class="ln">
             {#if i === 0}<i class="gate"></i>{/if}
             {#if c}<div class="hcar" style="--d:{i * -0.9}s; --t:{2.2 + i * 0.35}s"><Sprite kind="car" color={c} /></div>{/if}
@@ -232,7 +232,9 @@
   @keyframes drive { to { top: 120%; } }
   .hen { position: absolute; width: 30cqh; height: 30cqh; left: calc(50% - 56cqh - 15cqh); top: 32%; transition: translate 0.5s cubic-bezier(0.16, 1, 0.3, 1); filter: drop-shadow(0 6px 4px rgba(0,0,0,.35)); z-index: 1; }
   .hs { --road: 112cqh; }
-  .hen { left: calc(50% - var(--road) / 2 - 22cqh); }
-  :global(.game:hover) .hen, :global(.dailycard:hover) .hen { translate: 30cqh -6cqh; }
+  .hen { left: calc(50% - var(--road) / 2 + 28cqh * 1.5 - 15cqh); top: 34%; }
+  /* on hover the hen just does a happy little hop where she stands */
+  :global(.game:hover) .hen, :global(.dailycard:hover) .hen { animation: henhop 0.6s var(--ease-snap); }
+  @keyframes henhop { 40% { transform: translateY(-14%) scaleY(1.06); } 70% { transform: translateY(0) scaleY(0.94); } }
   .hm { position: absolute; right: 5%; top: 8%; font-size: 1.1rem; font-weight: 700; color: #fff; padding: 3px 10px; border-radius: 999px; background: rgba(0,0,0,.4); }
 </style>

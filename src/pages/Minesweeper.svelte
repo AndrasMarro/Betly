@@ -6,7 +6,7 @@
   import RoomBar from '../components/RoomBar.svelte';
   import Sprite from '../components/Sprite.svelte';
   import {
-    LEVELS, newGame, open, chord, flag, tick, scan, detect, smart, hunt, deduce, safeMoveIn, cloneMS, neighbours,
+    LEVELS, newGame, open, chord, flag, tick, scan, detect, smartAfterFlag, hunt, deduce, safeMoveIn, cloneMS, neighbours,
     type MS, type MsLevel, type Opts,
   } from '../games/minesweeper';
   import { Room } from '../lib/net.svelte';
@@ -22,14 +22,22 @@
   // ---------- persisted progress ----------
   const saved = (() => { try { return JSON.parse(localStorage.getItem('betly:ms') || '{}'); } catch { return {}; } })();
   let best = $state<Record<string, number>>(saved.best ?? (() => { try { return JSON.parse(localStorage.getItem('betly:ms-best') || '{}'); } catch { return {}; } })());
-  let campaign = $state<number>(saved.campaign ?? 0); // levels beaten
-  $effect(() => { try { localStorage.setItem('betly:ms', JSON.stringify({ best, campaign })); } catch {} });
+  let campaign = $state<number>(saved.campaign ?? 0); // arcade levels beaten
+  let ccamp = $state<number>(saved.ccamp ?? 0); // classic levels beaten
+  $effect(() => { try { localStorage.setItem('betly:ms', JSON.stringify({ best, campaign, ccamp })); } catch {} });
 
   // ---------- classic options ----------
   const PAYS: Record<MsLevel, number> = { easy: 1.3, medium: 3, hard: 10 };
   let level = $state<MsLevel | 'custom'>('easy');
   let cw = $state(20), ch = $state(14), cm = $state(45);
-  const customPay = $derived(Math.max(1.05, Math.round((1 + ((cm / (cw * ch)) * 100) ** 1.6 * (cw * ch) / 900) * 100) / 100));
+  // fitted so the presets come out right (easy 1.3, medium 3, hard 10): density matters most, size a little
+  const customPay = $derived(Math.min(50, Math.max(1.02, Math.round((1 + 2.573 * (Math.min(cm, cw * ch - 10) / (cw * ch)) ** 3.14 * (cw * ch) ** 1.006) * 100) / 100)));
+  let csub = $state<'free' | 'campaign'>('free');
+  let clvl = $state(0);
+  const CLASSIC_CAMPAIGN: { w: number; h: number; m: number; boss?: boolean }[] = [
+    { w: 9, h: 9, m: 10 }, { w: 10, h: 10, m: 14 }, { w: 12, h: 12, m: 22 }, { w: 16, h: 16, m: 40, boss: true }, { w: 16, h: 14, m: 42 },
+    { w: 18, h: 16, m: 56 }, { w: 20, h: 16, m: 66 }, { w: 30, h: 16, m: 99, boss: true }, { w: 24, h: 18, m: 90 }, { w: 30, h: 20, m: 145, boss: true },
+  ];
 
   // ---------- arcade options ----------
   let sub = $state<'free' | 'campaign'>('free');
@@ -81,6 +89,23 @@
   let openedSinceItem = 0;
   let toast = $state<{ text: string; id: number; bad?: boolean } | null>(null);
   let detected = $state(-1);
+  // full screen: the board fills the window and sizes its cells to fit, no scrolling
+  let full = $state(false);
+  function toggleFull() {
+    full = !full;
+    try {
+      if (full) document.documentElement.requestFullscreen?.().catch(() => {});
+      else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    } catch {}
+  }
+  $effect(() => {
+    const sync = () => { if (!document.fullscreenElement && full) full = false; };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && full) full = false; };
+    document.addEventListener('fullscreenchange', sync);
+    addEventListener('keydown', esc);
+    return () => { document.removeEventListener('fullscreenchange', sync); removeEventListener('keydown', esc); };
+  });
+  onDestroy(() => { if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); });
   const say = (text: string, bad = false) => (toast = { text, id: performance.now(), bad });
 
   // replay: a snapshot before every action, plus what was clicked
@@ -112,6 +137,7 @@
   function setup(): [number, number, number, Opts] { return tall(setupRaw()); }
   function setupRaw(): [number, number, number, Opts] {
     if (mode === 'classic') {
+      if (csub === 'campaign') { const c = CLASSIC_CAMPAIGN[clvl]; return [c.w, c.h, c.m, {}]; }
       const [w, h, m] = level === 'custom' ? [cw, ch, Math.min(cm, cw * ch - 10)] : [...LEVELS[level]];
       return [w, h, m, {}];
     }
@@ -135,14 +161,14 @@
     if (mode === 'arcade') for (const [n, k] of BONI) if (campaign >= n) items[k]++;
     if (mode === 'coop') { for (const p of players) p.score = 0; turn = 0; ensureBot(); push(); }
   }
-  $effect(() => { void [mode, level, sub, lvl, asize, hex, doubles, moving, timers, noGuess, coopKind, csize]; untrack(reset); });
+  $effect(() => { void [mode, level, csub, clvl, sub, lvl, asize, hex, doubles, moving, timers, noGuess, coopKind, csize]; untrack(reset); });
   $effect(() => { if (mode !== 'coop' && room.role !== 'solo') untrack(() => room.leave()); });
 
   const flags = $derived(ms.cells.reduce((a, c) => a + (c.open ? 0 : c.flag), 0));
   const mineTotal = $derived(ms.state === 'ready' ? ms.mines + Math.round((ms.opts.doubles ?? 0) * ms.mines) : ms.cells.reduce((a, c) => a + c.mine, 0));
   const done = $derived(ms.state === 'won' || ms.state === 'lost');
   const versus = $derived(mode === 'coop' && coopKind === 'versus');
-  const payNow = $derived(mode === 'classic' ? (level === 'custom' ? customPay : PAYS[level]) : mode === 'arcade' ? (sub === 'campaign' ? 0 : arcadePay) : versus ? 1.9 : 1.5);
+  const payNow = $derived(mode === 'classic' ? (csub === 'campaign' ? 0 : level === 'custom' ? customPay : PAYS[level]) : mode === 'arcade' ? (sub === 'campaign' ? 0 : arcadePay) : versus ? 1.9 : 1.5);
 
   function begin() {
     t0 = performance.now();
@@ -153,9 +179,10 @@
     clearInterval(timerId);
     secs = Math.floor((performance.now() - t0) / 1000);
     if (won) {
-      const key = mode === 'classic' ? (level === 'custom' ? `c${cw}x${ch}x${cm}` : level) : mode === 'arcade' && sub === 'campaign' ? 'lvl' + lvl : '';
+      const key = mode === 'classic' ? (csub === 'campaign' ? 'c-lvl' + clvl : level === 'custom' ? `c${cw}x${ch}x${cm}` : level) : mode === 'arcade' && sub === 'campaign' ? 'lvl' + lvl : '';
       if (key && (!best[key] || secs < best[key])) best = { ...best, [key]: secs };
       if (staked) { const win = Math.round(staked * payNow * 100) / 100; settle(win, win); }
+      if (mode === 'classic' && csub === 'campaign' && clvl + 1 > ccamp) { ccamp = clvl + 1; say(L('Level geschafft!', 'Level cleared!')); }
       if (mode === 'arcade' && sub === 'campaign' && lvl + 1 > campaign) {
         campaign = lvl + 1;
         const bonus = BONI.find(([n]) => n === campaign);
@@ -178,7 +205,15 @@
     const wasReady = ms.state === 'ready';
     ms.note = '';
     frames = [...frames, { ms: cloneMS(ms), i, a, by }];
-    if (a === 'flag') { if (flag(ms, i)) { sfx('chip'); navigator.vibrate?.(18); } frames = frames.slice(0, -1); push(); return; }
+    if (a === 'flag') {
+      if (flag(ms, i)) {
+        sfx('chip'); navigator.vibrate?.(18);
+        // gentle smart flagging: a flag that completes a number opens that number's other neighbours
+        if (smartFlag && mode !== 'classic' && smartAfterFlag(ms, i, by)) { if (done) finish(ms.state === 'won'); }
+        else frames = frames.slice(0, -1);
+      } else frames = frames.slice(0, -1);
+      push(); return;
+    }
     if (a === 'scan') {
       if (!items.scanner) return;
       items.scanner--; tool = 'dig';
@@ -200,7 +235,6 @@
       if (note === 'timer') say(L('Zeitbombe aktiv! Finde und flagge sie', 'Time bomb armed! Find and flag it'), true);
       if (note === 'defused') say(L('Zeitbombe entschärft', 'Time bomb defused'));
       if (note === 'blast') { sfx('boom'); say(L('Die Zeitbombe ist explodiert', 'The time bomb went off'), true); }
-      if (smartFlag) smart(ms, by);
       // power-ups for progress
       if (mode === 'arcade' && openedSinceItem >= 40) {
         openedSinceItem -= 40;
@@ -409,6 +443,21 @@
     <button class="btn primary big" onclick={reset} disabled={isGuest}>{t('ms.new')}</button>
 
     {#if mode === 'classic'}
+      <div class="seg two">
+        <button class:on={csub === 'free'} onclick={() => (csub = 'free')}>{L('Freies Spiel', 'Free play')}</button>
+        <button class:on={csub === 'campaign'} onclick={() => (csub = 'campaign')}>{L('Kampagne', 'Campaign')}</button>
+      </div>
+    {/if}
+    {#if mode === 'classic' && csub === 'campaign'}
+      <div class="map">
+        {#each CLASSIC_CAMPAIGN as c, k}
+          <button class="lv" class:boss={c.boss} class:done={k < ccamp} class:on={clvl === k} disabled={k > ccamp} onclick={() => (clvl = k)} title="{c.w}×{c.h} · {c.m}">
+            {#if c.boss}<span class="crown">♛</span>{/if}<span class="mono">{k + 1}</span>
+          </button>
+        {/each}
+      </div>
+      <p class="small muted">{CLASSIC_CAMPAIGN[clvl].boss ? L('Boss-Ebene · ', 'Boss level · ') : ''}{CLASSIC_CAMPAIGN[clvl].w}×{CLASSIC_CAMPAIGN[clvl].h} · {CLASSIC_CAMPAIGN[clvl].m} {L('Minen · ein Leben, keine Hilfen', 'mines · one life, no aids')}{ccamp >= CLASSIC_CAMPAIGN.length ? ' ♛ ' + L('Klassik-Meister!', 'Classic master!') : ''}</p>
+    {:else if mode === 'classic'}
       <div class="field">{t('tw.level')}
         <div class="seg four">
           {#each [...Object.keys(LEVELS), 'custom'] as l}
@@ -481,7 +530,7 @@
     {/if}
   {/snippet}
 
-  <div class="frame">
+  <div class="frame" class:full>
     <div class="hud">
       <span class="mono chip-stat"><span class="ico"><Sprite kind="bomb" /></span>{versus ? ms.mines - players.reduce((a, p) => a + p.score, 0) : mineTotal - flags}</span>
       {#if ms.lives > 1 || (mode !== 'classic' && !versus)}<span class="lives" aria-label="lives">{#each Array(ms.opts.lives ?? 1) as _, k}<i class:gone={k >= ms.lives}>♥</i>{/each}</span>{/if}
@@ -492,7 +541,13 @@
           <button class:on={tool === 'flag'} onclick={() => (tool = 'flag')}>{t('ms.flag')}</button>
         </div>
       {/if}
-      <span class="mono chip-stat">{mm(secs)}</span>
+      <span class="tr">
+        <span class="mono chip-stat">{mm(secs)}</span>
+        <button class="fs" onclick={toggleFull} aria-label={full ? L('Vollbild beenden', 'Exit full screen') : L('Vollbild', 'Full screen')} title={full ? L('Vollbild beenden (Esc)', 'Exit full screen (Esc)') : L('Vollbild', 'Full screen')}>
+          {#if full}<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></svg>
+          {:else}<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>{/if}
+        </button>
+      </span>
     </div>
 
     {#if mode === 'arcade' && !replay}
@@ -519,7 +574,7 @@
         class:lost={view.state === 'lost'}
         class:won={view.state === 'won'}
         class:scanning={tool === 'scan'}
-        style="--w:{view.w}"
+        style="--w:{view.w}; --rh:{view.hex ? view.h * 0.84 + 0.3 : view.h}"
         onpointerdown={down}
         onpointermove={move}
         onpointerup={up}
@@ -594,9 +649,11 @@
   .switch em { font-style: normal; color: var(--muted); font-size: 0.8rem; }
   .lbl { margin: 4px 0 -6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
   .muted { color: var(--muted); } .small { font-size: 0.8rem; margin: 0; }
-  .custom { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--bg-2); }
-  .custom label { display: grid; grid-template-columns: 60px 1fr 30px; align-items: center; gap: 8px; font-size: 0.82rem; }
-  .custom input { accent-color: var(--accent); }
+  .custom { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--bg-2); min-width: 0; }
+  .custom label { display: grid; grid-template-columns: 54px minmax(0, 1fr) 28px; align-items: center; gap: 8px; font-size: 0.8rem; min-width: 0; }
+  .custom input { accent-color: var(--accent); width: 100%; min-width: 0; margin: 0; }
+  .seg.four button { font-size: 0.74rem; padding: 0 2px; min-width: 0; }
+  .seg button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .custom b { font-weight: 500; text-align: right; }
   .map { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   .lv { position: relative; aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2); font-size: 0.85rem; }
@@ -631,6 +688,12 @@
   .pl b { margin-left: 4px; color: var(--c); }
   .pl.turn { box-shadow: inset 0 0 0 2px var(--c); }
   .scroll { overflow: auto; max-height: 72vh; border-radius: 14px; }
+  .tr { display: flex; gap: 6px; align-items: center; }
+  .fs { width: 36px; height: 36px; border-radius: 50%; border: 0; display: grid; place-items: center; background: rgba(0,0,0,.35); color: #f4f2ee; }
+  .fs:hover { background: rgba(255,255,255,.12); }
+  .frame.full { position: fixed; inset: 0; z-index: 200; border-radius: 0; display: flex; flex-direction: column; padding: 14px 18px; }
+  .frame.full .scroll { flex: 1; max-height: none; display: grid; place-items: center; }
+  .frame.full .board { --cell: max(16px, min(48px, calc((100vw - 44px) / var(--w) - 3px), calc((100dvh - 150px) / var(--rh) - 3px))); }
   .board {
     --cell: clamp(24px, min(calc((100vw - 64px) / var(--w)), 4.2vw), 40px); --gap: 3px;
     display: grid; gap: var(--gap); width: max-content; margin: 0 auto; padding: 2px;

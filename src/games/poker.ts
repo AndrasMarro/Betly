@@ -222,6 +222,8 @@ export function showdown(T: Table): Street {
   const scores = new Map<number, ReturnType<typeof bestHand>>();
   const contested = live(T).length > 1;
   T.seats.forEach((s, i) => { if (s.inHand && !s.folded) { if (contested) { scores.set(i, bestHand([...s.cards, ...T.board])); s.show = true; } } });
+  // won without a showdown: everybody turns their cards over, so you can see what you were up against
+  if (!contested) for (const s of T.seats) if (s.cards.length) s.show = true;
   const order = (i: number) => (i - T.button - 1 + SEATS) % SEATS; // odd chips go left of the button
   for (const pot of T.pots) {
     let winners = pot.eligible;

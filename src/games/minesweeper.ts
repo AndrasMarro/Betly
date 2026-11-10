@@ -3,7 +3,8 @@
 // The first click is always safe: mines are placed afterwards, away from it.
 
 /** mine: 0 = none, 1 = mine, 2 = double mine (counts twice). kind: special mines in arcade mode. */
-export type Cell = { mine: number; n: number; open: boolean; flag: number; d: number; kind?: 'moving' | 'timer'; boom?: boolean; by?: string };
+/** lock: the flag was placed by the game (explosion, shield, scanner, detector) and cannot be removed. */
+export type Cell = { mine: number; n: number; open: boolean; flag: number; d: number; kind?: 'moving' | 'timer'; boom?: boolean; lock?: boolean; by?: string };
 export type Opts = { hex?: boolean; lives?: number; doubles?: number; moving?: number; timers?: number; noGuess?: boolean };
 export type MS = {
   w: number; h: number; mines: number; cells: Cell[]; state: 'ready' | 'play' | 'won' | 'lost'; hit: number;
@@ -91,8 +92,8 @@ export function open(ms: MS, i: number, by?: string): 'none' | 'safe' | 'hit' | 
 /** A mine went off: the shield absorbs it, a spare life marks it, the last life ends the game. */
 function explode(ms: MS, i: number): 'hit' | 'shield' | 'lost' {
   const c = ms.cells[i];
-  if (ms.shield > 0) { ms.shield--; c.flag = c.mine; ms.note = 'shield'; if (ms.timer?.i === i) ms.timer = null; return 'shield'; }
-  if (ms.lives > 1) { ms.lives--; c.flag = c.mine; c.boom = true; ms.note = 'hit'; if (ms.timer?.i === i) ms.timer = null; checkWin(ms); return 'hit'; }
+  if (ms.shield > 0) { ms.shield--; c.flag = c.mine; c.lock = true; ms.note = 'shield'; if (ms.timer?.i === i) ms.timer = null; return 'shield'; }
+  if (ms.lives > 1) { ms.lives--; c.flag = c.mine; c.lock = true; c.boom = true; ms.note = 'hit'; if (ms.timer?.i === i) ms.timer = null; checkWin(ms); return 'hit'; }
   c.open = true;
   ms.hit = i;
   ms.lives = 0;
@@ -123,7 +124,7 @@ export function chord(ms: MS, i: number, by?: string) {
 /** Toggle a flag. With double mines in play the flag cycles none → single → double. */
 export function flag(ms: MS, i: number) {
   const c = ms.cells[i];
-  if (c.open || ms.state === 'won' || ms.state === 'lost') return false;
+  if (c.open || c.lock || ms.state === 'won' || ms.state === 'lost') return false;
   c.flag = ms.opts.doubles ? (c.flag + 1) % 3 : c.flag ? 0 : 1;
   return true;
 }
@@ -172,7 +173,7 @@ export function scan(ms: MS, i: number, by?: string) {
   for (const j of [i, ...neighbours(ms, i)]) {
     const c = ms.cells[j];
     if (c.open) continue;
-    if (c.mine) { c.flag = c.mine; if (ms.timer?.i === j) { ms.timer = null; c.kind = undefined; } }
+    if (c.mine) { c.flag = c.mine; c.lock = true; if (ms.timer?.i === j) { ms.timer = null; c.kind = undefined; } }
     else { c.flag = 0; open(ms, j, by); }
   }
   checkWin(ms);
@@ -186,6 +187,7 @@ export function detect(ms: MS, rand = Math.random) {
   const pool = near.length ? near : hidden;
   const i = pool[Math.floor(rand() * pool.length)];
   ms.cells[i].flag = ms.cells[i].mine;
+  ms.cells[i].lock = true;
   if (ms.timer?.i === i) { ms.timer = null; ms.cells[i].kind = undefined; }
   return i;
 }
@@ -245,6 +247,21 @@ export function solvable(ms: MS, first: number) {
     if ((sim.state as MS['state']) === 'lost') return false;
   }
   return sim.state === 'won';
+}
+
+/**
+ * Smart flagging (gentle): after you place a flag, any number next to it that is now fully flagged
+ * opens its remaining neighbours, like a chord you did not have to click. It never places flags itself.
+ */
+export function smartAfterFlag(ms: MS, i: number, by?: string) {
+  if (ms.state !== 'play' || !ms.cells[i].flag) return 0;
+  let n = 0;
+  for (const j of neighbours(ms, i)) {
+    const c = ms.cells[j];
+    if (!c.open || !c.n || flagSum(ms, j) !== c.n) continue;
+    for (const k of neighbours(ms, j)) if (!ms.cells[k].open && !ms.cells[k].flag) { open(ms, k, by); n++; }
+  }
+  return n;
 }
 
 /** Smart flagging: flag forced mines and open forced safe cells next to visible numbers. Returns how many cells changed. */

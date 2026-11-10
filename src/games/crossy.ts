@@ -1,5 +1,7 @@
 // Retro Crossy Run: endless lane world, pure logic. Rows count forward from 0, columns 0..COLS-1.
 export const COLS = 11;
+export const MIN_STAKE = 10, MAX_STAKE = 500;
+export const BONUS_EVERY = 50, BONUS = 1.3, MAX_MULT = 50;
 const SPAN = COLS + 8; // items wrap within [-4, COLS + 4)
 /** weak: a cracked log that breaks once you step on it (breakT counts up from that moment). */
 export type Item = { x: number; len: number; c: number; weak?: boolean; breakT?: number; gone?: boolean };
@@ -7,7 +9,7 @@ export type Blocker = 'tree' | 'rock' | 'bush' | 'stump' | 'crate' | 'shop' | 'f
 export type Decor = 'flowers' | 'flower1' | 'flowers2' | 'mushroom' | 'tuft' | 'grass' | 'fern' | 'pebble1' | 'pebble2' | 'cone' | 'sign';
 export type LaneType = 'grass' | 'road' | 'river' | 'rail';
 /** trees: blocking cells (trees, rocks, shops via `deco`), flowers: decoration only, coin: column of a collectible coin, pads: a still river with lily pads. */
-export type Lane = { type: LaneType; dir: 1 | -1; speed: number; items: Item[]; trees: number[]; deco: Record<number, Blocker>; decor: { c: number; k: Decor }[]; coin: number | null; pads?: boolean; t: number; train: Item | null };
+export type Lane = { type: LaneType; dir: 1 | -1; speed: number; items: Item[]; trees: number[]; deco: Record<number, Blocker>; decor: { c: number; k: Decor }[]; coin: number | null; checkpoint?: number; pads?: boolean; t: number; train: Item | null };
 export type World = { lanes: Lane[]; rand: () => number; run: LaneType; left: number; lastRiverDir: 1 | -1; nextCoin: number };
 
 export function newWorld(rand: () => number): World {
@@ -30,6 +32,12 @@ export function ensure(w: World, upTo: number) {
       w.left = next === 'grass' ? 1 + Math.floor(rand() * 2) : next === 'road' ? 1 + Math.floor(rand() * 4) : next === 'river' ? 1 + Math.floor(rand() * 3) : 1;
     }
     w.left--;
+    // every BONUS_EVERY steps a clear checkpoint meadow spans the whole width
+    if (r > 2 && (r - 2) % BONUS_EVERY === 0) {
+      w.lanes.push({ type: 'grass', dir: 1, speed: 0, items: [], trees: [], deco: {}, decor: [], coin: null, t: 0, train: null, checkpoint: r - 2 });
+      w.run = 'grass'; w.left = 0;
+      continue;
+    }
     w.lanes.push(makeLane(w, r));
   }
 }
@@ -123,11 +131,13 @@ export const logAt = (l: Lane, px: number) => l.items.find((it) => !it.gone && i
 export const blocked = (l: Lane | undefined, col: number) => !!l && l.type === 'grass' && l.trees.includes(col);
 
 // ---------- stakes ----------
-export const MIN_STAKE = 10, MAX_STAKE = 500;
-export const BONUS_EVERY = 50, BONUS = 1.3, MAX_MULT = 50;
+
 /** Multiplier when cashing out after `steps` forward steps: break-even at 20, then x1.3 on top at every 50 steps. */
+/** Per-hop gain grows by HOP_UP at every checkpoint. */
+export const HOP_UP = 1.1;
 export function multAt(steps: number) {
-  const base = 0.5 + steps * 0.025;
+  let base = 0.5;
+  for (let k = 0; k < steps; k++) base += 0.025 * HOP_UP ** Math.floor(k / BONUS_EVERY);
   return Math.min(MAX_MULT, Math.round(base * BONUS ** Math.floor(steps / BONUS_EVERY) * 100) / 100);
 }
 /** A coin pays back a share of the stake that grows with distance (5 % early, up to 30 %). */
