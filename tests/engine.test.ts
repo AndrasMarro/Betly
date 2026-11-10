@@ -354,3 +354,30 @@ import { crashStep, bustAtStart, lazyMine, multAt as rkMult } from '../src/games
   assert.ok(Math.abs(hits / 100000 - 0.12) < 0.006, 'lazy mine odds');
   console.log('security checks passed');
 }
+
+// Three Card Poker: ranking, dealer qualification, house edges
+import { rank3, qualifies, shouldPlay, settle3, PAIR_PLUS, deal as deal3 } from '../src/games/threecard.ts';
+{
+  const h = (...c: [number, number][]) => c.map(([r, s]) => ({ r, s }));
+  assert.equal(rank3(h([1, 0], [2, 1], [3, 2])).cat, 'straight', 'A-2-3 straight');
+  assert.ok(rank3(h([5, 0], [6, 1], [7, 2])).score > rank3(h([2, 3], [9, 3], [13, 3])).score, 'straight beats flush');
+  assert.ok(rank3(h([1, 0], [2, 1], [3, 2])).score < rank3(h([2, 0], [3, 1], [4, 2])).score, 'A-2-3 is the lowest straight');
+  assert.ok(qualifies(h([12, 0], [3, 1], [2, 2])) && !qualifies(h([11, 0], [10, 1], [8, 2])));
+  assert.ok(shouldPlay(h([12, 0], [6, 1], [4, 2])) && !shouldPlay(h([12, 0], [6, 1], [3, 2])));
+  // Pair Plus exactly, over all 22100 hands: house edge 2.32 %
+  let ret = 0, n = 0;
+  for (let a = 0; a < 52; a++) for (let b = a + 1; b < 52; b++) for (let c = b + 1; c < 52; c++) {
+    const cs = [a, b, c].map((i) => ({ r: (i % 13) + 1, s: Math.floor(i / 13) }));
+    const m = PAIR_PLUS[rank3(cs).cat];
+    ret += m ? m + 1 : 0; n++;
+  }
+  const ppEdge = 1 - ret / n;
+  assert.ok(Math.abs(ppEdge - 0.0232) < 0.0005, 'pair plus edge ' + ppEdge);
+  // Ante/Play with Q-6-4 strategy: house edge per ante about 3.37 %
+  let net = 0;
+  const N = 400000;
+  for (let k = 0; k < N; k++) { const r = deal3(); const play = shouldPlay(r.player); net += settle3(r, 1, 0, play).back - (play ? 2 : 1); }
+  const edge = -net / N;
+  assert.ok(edge > 0.02 && edge < 0.047, 'ante edge ' + edge);
+  console.log('three card: pair plus edge', (ppEdge * 100).toFixed(2) + '%', 'ante edge', (edge * 100).toFixed(2) + '%');
+}

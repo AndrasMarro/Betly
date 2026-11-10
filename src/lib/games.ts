@@ -12,7 +12,7 @@ export const GAMES: Game[] = [
   { id: 'craps', name: 'Craps', cat: 'classic' },
   { id: 'caribbean', name: 'Caribbean Stud', cat: 'classic' },
   { id: 'paigow', name: 'Pai Gow', cat: 'classic' },
-  { id: 'threecard', name: 'Three Card Poker', cat: 'classic' },
+  { id: 'threecard', name: 'Three Card Poker', cat: 'classic', live: true },
   { id: 'videopoker', name: 'Video Poker', cat: 'classic' },
   { id: 'sicbo', name: 'Sic Bo', cat: 'classic' },
 

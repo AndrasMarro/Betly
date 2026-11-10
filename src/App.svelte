@@ -30,6 +30,7 @@
     crossy: () => import('./pages/Crossy.svelte'),
     minesweeper: () => import('./pages/Minesweeper.svelte'),
     baccarat: () => import('./pages/Baccarat.svelte'),
+    threecard: () => import('./pages/ThreeCard.svelte'),
     holdem: () => import('./pages/Poker.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),

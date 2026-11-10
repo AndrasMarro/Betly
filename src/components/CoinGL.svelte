@@ -44,6 +44,7 @@
       scene.fog = new THREE.Fog(0x0e0c12, 24, 46);
       const camera = new THREE.PerspectiveCamera(32, w / h, 0.1, 100);
       const ro = new ResizeObserver(() => {
+        if (!host || !alive) return;
         w = Math.max(200, host.clientWidth); h = Math.max(200, host.clientHeight);
         renderer.setSize(w, h, false);
         camera.aspect = w / h;

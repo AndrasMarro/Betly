@@ -112,7 +112,7 @@
   let raf = 0, last = performance.now(), acc = 0, clock = 0;
   let bg: HTMLCanvasElement | null = null, bgKey = '';
   onMount(() => {
-    const ro = new ResizeObserver(() => (size = Math.floor(Math.min(wrap.clientWidth, 680))));
+    const ro = new ResizeObserver(() => { if (wrap) size = Math.floor(Math.min(wrap.clientWidth, 680)); });
     ro.observe(wrap);
     raf = requestAnimationFrame(loop);
     return () => ro.disconnect();

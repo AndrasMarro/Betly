@@ -20,11 +20,12 @@ Betly ist ein privates Hobbyprojekt: eine Casino-Simulation, die sich wie ein ec
 | **Roulette** | Grosser royaler Tisch, europäisch (eine Null), Auto-Runden mit Setz-Countdown zum jederzeit Einsteigen (abschaltbar), präzises Setzen auf Splits/Carrés/Transversalen, Racetrack mit Nachbar- und Ansagewetten (Voisins, Tiers, Orphelins, Jeu Zéro), La Partage |
 | **Blackjack** | 5 Plätze, Vollbild-Tisch, Regel-Varianten (Vegas, Atlantic City, Europäisch, Single Deck, Downtown) und frei einstellbar, Basic-Strategy-Tipps, Bots |
 | **Texas Hold'em** | No-Limit an 6 Plätzen, Side-Pots, korrekte Mindest-Erhöhungen, Bots mit fünf Spielstilen (Monte-Carlo-Gewinnchancen), Helfer für Hand, Gewinnchance und Pot Odds, Übersicht aller Hände |
+| **Three Card Poker** | Ante/Play gegen den Dealer (spielt ab Dame), Ante Bonus und Pair Plus bis 40:1, Strategie-Tipp (Q-6-4) |
 | **Baccarat** | Punto Banco mit echter Ziehregel, Paar-Wetten, Big-Road-Anzeigetafel |
 | **Slots** | Lucky Sevens, Midnight Gems, Cosmic Cash, Lucky Clover (Wilds, Scatter, Freispiele) |
 
 ### Arcade
-Rocket (Crash, mit seltenen Secrets im Hintergrund) · Retro Crossy Run (endloses Hüpfspiel mit der Gamer-Ente, Zügen und brechenden Baumstämmen; mit Einsatz) · Snake (Modifier, Einsatz und tägliche Challenge) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und drei Kisten zu 100, 250 und 750 Credits mit eigenem Item-Set) · Minen · Minesweeper (Classic, Arcade mit Leben, Power-ups, Hex-Raster und Kampagne, Koop und Minenjagd) · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (3D, mit Kanten-Krimi) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
+Rocket (Crash, mit seltenen Secrets im Hintergrund) · Retro Crossy Run (endloses Hüpfspiel mit der Gamer-Ente, Zügen und brechenden Baumstämmen; mit Einsatz) · Snake (Modifier, Einsatz und tägliche Challenge) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und drei Kisten zu 100, 250 und 750 Credits mit eigenem Item-Set) · Minen · Minesweeper (Classic, Arcade mit Leben, Power-ups, Hex-Raster und Kampagne, Koop und Minenjagd) · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (echte 3D-Münze auf dem Tisch) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
 
 Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno, Limbo, …).
 
@@ -40,6 +41,10 @@ Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno,
 - **Drei Designs**: Noir (Standard), Midnight (blau), Ivory (hell).
 - **Sound**: Effekte und die Lounge-Musik im Menü werden live mit WebAudio erzeugt; einzige Aufnahme ist das Öffnen der Kisten.
 - **Bewegung**: Federnde Animationen, die `prefers-reduced-motion` respektieren.
+
+## Fairness & Sicherheit
+
+Zufall kommt aus `crypto.getRandomValues`; `Math.random` ist daran gebunden und gesperrt, lässt sich also in der Konsole nicht überschreiben. Minen, Turm-Fallen und der Rocket-Crash werden erst im Moment des Spielzugs ausgewürfelt (nichts steht vorher im Speicher). Das Guthaben im Browser ist mit einer Prüfsumme versiegelt; wird es von Hand verändert, startet es neu. Ganz ohne Server ist das kein absoluter Schutz, aber einfache Tricks funktionieren nicht mehr.
 
 ## Fairness & Mathematik
 

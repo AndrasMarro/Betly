@@ -50,6 +50,23 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Helper', p: 'Shows your current hand, the (simulated) win chance and the pot odds. When the win chance is higher than the pot odds, a call usually pays.' },
     ],
   },
+  threecard: {
+    ranks: false,
+    de: [
+      { h: 'Ziel', p: 'Mit drei Karten die bessere Hand als der Dealer haben. Dazu kannst du auf Pair Plus setzen, das nur auf deine eigene Hand schaut.' },
+      { h: 'Ablauf', li: ['Ante setzen (und optional Pair Plus), dann geben.', 'Du siehst deine drei Karten. Spielen kostet nochmals so viel wie die Ante, Passen verliert die Ante.', 'Der Dealer deckt auf. Er spielt nur mit Dame oder besser.'] },
+      { h: 'Auszahlung', li: ['Dealer qualifiziert nicht: Ante 1:1, Play zurück.', 'Deine Hand besser: Ante und Play je 1:1. Schlechter: beide verloren. Gleich: beide zurück.', 'Ante Bonus, wenn du spielst (auch wenn der Dealer gewinnt): Strasse 1:1, Drilling 4:1, Straight Flush 5:1.', 'Pair Plus: Paar 1:1, Flush 4:1, Strasse 6:1, Drilling 30:1, Straight Flush 40:1.'] },
+      { h: 'Hände (beste zuerst)', p: 'Straight Flush, Drilling, Strasse, Flush, Paar, höchste Karte. Achtung: Mit drei Karten ist die Strasse mehr wert als der Flush. A-2-3 ist die tiefste Strasse.' },
+      { h: 'Strategie', p: 'Spiele mit Dame-6-4 oder besser, passe darunter. Der Tipp-Schalter zeigt dir das an.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Beat the dealer with three cards. You can also bet Pair Plus, which only looks at your own hand.' },
+      { h: 'Flow', li: ['Place the ante (and optionally Pair Plus), then deal.', 'You see your three cards. Playing costs the ante again, folding loses the ante.', 'The dealer reveals. The dealer only plays with queen high or better.'] },
+      { h: 'Payouts', li: ['Dealer does not qualify: ante 1:1, play returned.', 'Your hand is better: ante and play 1:1 each. Worse: both lost. Equal: both returned.', 'Ante bonus whenever you play (even if the dealer wins): straight 1:1, three of a kind 4:1, straight flush 5:1.', 'Pair Plus: pair 1:1, flush 4:1, straight 6:1, three of a kind 30:1, straight flush 40:1.'] },
+      { h: 'Hands (best first)', p: 'Straight flush, three of a kind, straight, flush, pair, high card. Note: with three cards a straight beats a flush. A-2-3 is the lowest straight.' },
+      { h: 'Strategy', p: 'Play with queen-6-4 or better, fold below. The hint switch shows you.' },
+    ],
+  },
   baccarat: {
     de: [
       { h: 'Ziel', p: 'Tippe, welche Hand näher an 9 kommt: Spieler (Punto) oder Bank (Banco). Du spielst keine Hand selbst.' },
