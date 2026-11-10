@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
-  import { newWorld, ensure, update, hit, logAt, onCrocHead, blocked, warning, multAt, coinShare, coinFree, COLS, MAX_STAKE, BONUS_EVERY, BONUS, type World, type Lane } from '../games/crossy';
+  import { newWorld, ensure, update, hit, logAt, blocked, warning, multAt, coinShare, COLS, MIN_STAKE, MAX_STAKE, BONUS_EVERY, BONUS, BREAK, SINK, type World, type Lane, type Item } from '../games/crossy';
   import HowTo from '../components/HowTo.svelte';
   import { settle, stake as takeStake, credit, wallet, fmt } from '../lib/state.svelte';
   import { dailyGame } from '../lib/daily';
@@ -15,8 +15,12 @@
   import coinSrc from '../assets/crossy/coin.webp';
   import shopSrc from '../assets/crossy/shop.webp';
   import flowersSrc from '../assets/crossy/flowers.webp';
+  // every other asset in the folder (bush, stump, crate, fence, barrier, cone, sign, plants, pebbles ...)
+  const MORE = import.meta.glob('../assets/crossy/*.webp', { eager: true, import: 'default' }) as Record<string, string>;
   const ART: Record<string, HTMLImageElement> = {};
-  for (const [k, src] of [['coin', coinSrc], ['shop', shopSrc], ['flowers', flowersSrc]]) { const i = new Image(); i.src = src; ART[k] = i; }
+  for (const [k, src] of [['coin', coinSrc], ['shop', shopSrc], ['flowers', flowersSrc], ...Object.entries(MORE).map(([p, u]) => [p.split('/').pop()!.replace('.webp', ''), u])]) { if (ART[k]) continue; const i = new Image(); i.src = src; ART[k] = i; }
+  // drawn width (in cells) of each asset; blockers fill their cell, decoration stays small
+  const SIZE: Record<string, number> = { bush: 0.95, rock: 0.78, stump: 0.9, crate: 0.8, shop: 1.05, fence: 1.15, barrier: 1.15, flowers: 0.9, flower1: 0.3, flowers2: 0.5, mushroom: 0.42, tuft: 0.48, grass: 0.5, fern: 0.68, pebble1: 0.36, pebble2: 0.26, cone: 0.42, sign: 0.32 };
   const ok = (k: string) => ART[k].complete && ART[k].naturalWidth > 0;
 
   type Dir = 'up' | 'down' | 'left' | 'right';
@@ -26,13 +30,13 @@
   let best = $state(+(localStorage.getItem('betly:crossy') || 0));
   let phase = $state<'ready' | 'play' | 'dead'>('ready');
   let score = $state(0);
-  let cause = $state<'car' | 'water' | 'train' | 'eagle' | 'croc' | 'cash' | ''>('');
+  let cause = $state<'car' | 'water' | 'train' | 'eagle' | 'log' | 'cash' | ''>('');
   let reward = $state(0);
   // stake mode: capped bet, multiplier grows with steps (+30 % at every 50), coins pay back part of the stake
-  let useStake = $state(false);
   let betAmt = $state(50);
   let staked = $state(0);
   let coinsGot = $state(0);
+  let lastLog: Item | null = null;
   let flash = $state<{ text: string; id: number } | null>(null);
   const mult = $derived(multAt(score));
 
@@ -54,12 +58,11 @@
   function move(d: Dir) {
     if (phase === 'dead') return;
     if (phase === 'ready') {
-      if (useStake) {
-        const amt = Math.min(MAX_STAKE, Math.floor(wallet.balance), Math.max(1, Math.round(betAmt)));
-        if (amt < 1) return;
-        staked = amt;
-        takeStake(amt);
-      }
+      // every run is played for credits: no stake, no reward
+      const amt = Math.min(MAX_STAKE, Math.floor(wallet.balance), Math.max(MIN_STAKE, Math.round(betAmt)));
+      if (amt < MIN_STAKE) { bump(); return; }
+      staked = amt;
+      takeStake(amt);
       phase = 'play';
     }
     if (P.hop < 1) { queued = d; return; }
@@ -88,9 +91,9 @@
     sfx(c === 'water' ? 'bounce' : c === 'train' ? 'boom' : 'splat');
     if (c === 'water') burst('#bfe8ff', 18);
     if (c === 'car' || c === 'train') burst('#ffd23f', 22);
-    if (c === 'croc') burst('#3f8f2a', 20);
-    if (staked) { reward = coinsGot; settle(0, 0); }
-    else { reward = score + coinsGot; if (score > 0) settle(score, score); }
+    if (c === 'log') burst('#a8703f', 18);
+    reward = coinsGot;
+    settle(0, 0);
     if (score > best) { best = score; localStorage.setItem('betly:crossy', String(best)); }
   }
   function cashOut() {
@@ -171,8 +174,9 @@
         P.x += lane.dir * lane.speed * pace * dt;
         P.fromX = P.x;
         const it = logAt(lane, P.x);
-        if (P.x < -0.45 || P.x > COLS - 0.55 || !it) die('water');
-        else if (onCrocHead(lane, it, P.x)) die('croc');
+        if (P.x < -0.45 || P.x > COLS - 0.55) die('water');
+        else if (!it) die(lastLog?.gone ? 'log' : 'water');
+        else { if (it.weak && it.breakT === undefined) { it.breakT = 0; sfx('tick'); } lastLog = it; }
       }
       // collisions use where the duck visibly is, not where it is heading
       const vx = P.fromX + (P.x - P.fromX) * P.hop;
@@ -208,12 +212,13 @@
     if (lane.type === 'river') {
       const log = logAt(lane, P.x);
       if (!log) { die('water'); return; }
-      if (onCrocHead(lane, log, P.x)) { die('croc'); return; }
+      if (log.weak && log.breakT === undefined) { log.breakT = 0; sfx('tick'); }
+      lastLog = log;
       P.onLog = true;
     }
     if (lane.coin !== null && lane.type !== 'river' && Math.round(P.x) === lane.coin) {
       lane.coin = null;
-      const amt = staked ? Math.round(staked * coinShare(P.row) * 100) / 100 : coinFree(P.row);
+      const amt = Math.round(staked * coinShare(P.row) * 100) / 100;
       credit(amt);
       coinsGot += amt;
       sfx('cash');
@@ -279,10 +284,14 @@
       if (!l) continue;
       const y = Y(r);
       if (l.type === 'grass') {
-        for (const c of l.flowers) if (ok('flowers')) ctx.drawImage(ART.flowers, c * C - C * 0.05, y + C * 0.05, C * 1.1, C * 0.7);
-        for (const c of l.trees) l.deco[c] === 'shop' ? drawArt(ctx, 'shop', c * C, y, C, 1.05) : drawTree(ctx, c * C, y, C, l.deco[c] === 'rock');
+        for (const d of l.decor) drawArt(ctx, d.k, d.c * C, y, C, SIZE[d.k] ?? 0.5, (d.c * 37 + r * 11) % 7 / 7);
+        for (const c of l.trees) {
+          const k = l.deco[c];
+          if (k === 'tree') drawTree(ctx, c * C, y, C, false);
+          else drawArt(ctx, k === 'rock' ? ((r + c) % 2 ? 'stone1' : 'stone2') : k, c * C, y, C, SIZE[k] ?? 0.9);
+        }
       }
-      if (l.type === 'river') for (const it of l.items) (l.pads ? drawPad(ctx, it.x * C, y, C, r) : it.croc ? drawCroc(ctx, it.x * C, y, it.len, C, l.dir) : drawLog(ctx, it.x * C, y, it.len * C, C));
+      if (l.type === 'river') for (const it of l.items) (l.pads ? drawPad(ctx, it.x * C, y, C, r) : drawLog(ctx, it, y, C));
       if (l.coin !== null && l.type !== 'river') drawCoin(ctx, l.coin * C, y, C);
       if (l.type === 'road') for (const it of l.items) drawCar(ctx, it.x * C, y, it.len, C, CAR[it.c], l.dir);
       if (l.type === 'rail') {
@@ -301,10 +310,12 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  function drawArt(ctx: CanvasRenderingContext2D, k: string, x: number, y: number, C: number, w: number) {
-    if (!ok(k)) return;
+  function drawArt(ctx: CanvasRenderingContext2D, k: string, x: number, y: number, C: number, w: number, jitter = 0.5) {
+    if (!ART[k] || !ok(k)) return;
     const img = ART[k], dw = C * w, dh = (dw * img.naturalHeight) / img.naturalWidth;
-    ctx.drawImage(img, x + (C - dw) / 2, y + C * 0.85 - dh, dw, dh);
+    // small things sit at a slightly different spot in their cell, so the grass does not look gridded
+    const ox = w < 0.7 ? (jitter - 0.5) * C * (1 - w) * 0.8 : 0, oy = w < 0.7 ? (jitter - 0.5) * C * 0.25 : 0;
+    ctx.drawImage(img, x + (C - dw) / 2 + ox, y + C * 0.85 - dh + oy, dw, dh);
   }
   function drawCoin(ctx: CanvasRenderingContext2D, x: number, y: number, C: number) {
     if (!ok('coin')) return;
@@ -328,10 +339,43 @@
     box(ctx, x + C * 0.1, y + C * 0.15, C * 0.8, C * 0.65, C * 0.65, '#5fbf3e', '#3f8f2a');
     box(ctx, x + C * 0.25, y + C * 0.2, C * 0.5, C * 0.45, C * 1.0, '#7fd85a', '#4fa534');
   }
-  function drawLog(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, C: number) {
-    box(ctx, x + 2, y + C * 0.2, w - 4, C * 0.6, C * 0.18, '#a8703f', '#7a4f2a');
-    ctx.fillStyle = '#c99764'; ctx.fillRect(x + 2, y + C * 0.02, C * 0.18, C * 0.6); ctx.fillRect(x + w - 2 - C * 0.18, y + C * 0.02, C * 0.18, C * 0.6);
-    ctx.fillStyle = 'rgba(0,0,0,.12)'; for (let k = C * 0.6; k < w - C * 0.4; k += C * 0.7) ctx.fillRect(x + k, y + C * 0.1, 2, C * 0.45);
+  function drawLog(ctx: CanvasRenderingContext2D, it: Item, y: number, C: number) {
+    const x = it.x * C, w = it.len * C;
+    if (!it.weak) {
+      box(ctx, x + 2, y + C * 0.2, w - 4, C * 0.6, C * 0.18, '#a8703f', '#7a4f2a');
+      ctx.fillStyle = '#c99764'; ctx.fillRect(x + 2, y + C * 0.02, C * 0.18, C * 0.6); ctx.fillRect(x + w - 2 - C * 0.18, y + C * 0.02, C * 0.18, C * 0.6);
+      ctx.fillStyle = 'rgba(0,0,0,.12)'; for (let k = C * 0.6; k < w - C * 0.4; k += C * 0.7) ctx.fillRect(x + k, y + C * 0.1, 2, C * 0.45);
+      return;
+    }
+    // cracked log: greyish, rotten wood with jagged cracks; once stepped on it shakes, splits and sinks
+    const t = it.breakT, k = t === undefined ? 0 : Math.min(1, t / BREAK);
+    const sink = t !== undefined && t > BREAK ? (t - BREAK) / (SINK - BREAK) : 0;
+    const shakeX = t !== undefined && !sink ? Math.sin(t * 60) * C * 0.04 * (0.4 + k) : 0;
+    ctx.save();
+    ctx.globalAlpha = 1 - sink;
+    const half = (w - 4) / 2, gap = sink ? C * 0.25 * sink + C * 0.06 : k * C * 0.06;
+    for (const side of [0, 1]) {
+      const sx = x + 2 + side * (half + gap) - (side ? 0 : gap * 0) + shakeX, tilt = sink * C * 0.25;
+      box(ctx, sx, y + C * 0.2 + tilt, half - gap / 2, C * 0.6, C * 0.18 - sink * C * 0.15, '#8d6a4a', '#5e4430');
+    }
+    ctx.fillStyle = '#b08b66'; ctx.fillRect(x + 2 + shakeX, y + C * 0.02, C * 0.16, C * 0.6); ctx.fillRect(x + w - 2 - C * 0.16 + shakeX, y + C * 0.02, C * 0.16, C * 0.6);
+    // jagged cracks, always visible; they glow red while it is breaking
+    ctx.strokeStyle = t === undefined ? 'rgba(30,18,10,.85)' : `rgba(${180 + 75 * k},${40},${30},.95)`;
+    ctx.lineWidth = Math.max(1.5, C * 0.045);
+    for (const cx0 of [x + w * 0.5, x + w * 0.25, x + w * 0.75]) {
+      ctx.beginPath();
+      ctx.moveTo(cx0 + shakeX, y + C * 0.04);
+      for (let i = 1; i <= 4; i++) ctx.lineTo(cx0 + shakeX + (i % 2 ? C * 0.09 : -C * 0.07), y + C * 0.04 + (i * C * 0.56) / 4);
+      ctx.stroke();
+    }
+    ctx.restore();
+    if (t === undefined) {
+      // a little warning mark floats above cracked logs
+      ctx.fillStyle = 'rgba(255,214,90,.9)';
+      ctx.font = `700 ${Math.round(C * 0.32)}px Geist Variable, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('!', x + w / 2, y - C * 0.02 + Math.sin(clock * 4) * 2);
+    }
   }
   function drawCar(ctx: CanvasRenderingContext2D, x: number, y: number, len: number, C: number, col: string, dir: number) {
     const w = len * C - C * 0.12;
@@ -375,26 +419,6 @@
       ctx.beginPath(); ctx.arc(lx, ly, C * 0.075, 0, 7); ctx.fill();
       if (b) { ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = C * 0.03; ctx.stroke(); }
     }
-  }
-  // voxel crocodile in the style of the artwork: light green back with ridge blocks, cream jaw, big eyes
-  function drawCroc(ctx: CanvasRenderingContext2D, x: number, y: number, len: number, C: number, dir: number) {
-    const w = len * C - 4, x0 = x + 2;
-    ctx.fillStyle = 'rgba(0,40,70,.25)'; ctx.fillRect(x0 + 3, y + C * 0.7, w, C * 0.14);
-    // tail tapers to the back
-    const tail = dir > 0 ? x0 : x0 + w - C * 0.7;
-    box(ctx, tail, y + C * 0.34, C * 0.7, C * 0.34, C * 0.12, '#6cc24a', '#3f8f2a');
-    const bx = dir > 0 ? x0 + C * 0.6 : x0 + C * 0.95, bw = w - C * 1.55;
-    box(ctx, bx, y + C * 0.24, bw, C * 0.52, C * 0.2, '#74c94f', '#3f8f2a');
-    ctx.fillStyle = '#e8e3a0'; ctx.fillRect(bx, y + C * 0.56, bw, C * 0.06);
-    ctx.fillStyle = '#4fa534'; for (let k = C * 0.15; k < bw - C * 0.2; k += C * 0.34) ctx.fillRect(bx + k, y + C * 0.24 - C * 0.2 - C * 0.1, C * 0.18, C * 0.12);
-    ctx.fillStyle = '#3f8f2a'; for (const k of [0.2, 0.75]) ctx.fillRect(bx + bw * k, y + C * 0.7, C * 0.16, C * 0.1);
-    // head with an opening jaw
-    const hx = dir > 0 ? x0 + w - C * 0.95 : x0, open = (Math.sin(clock * 4) + 1) * 0.5;
-    box(ctx, hx, y + C * 0.26, C * 0.95, C * 0.48, C * 0.24 + C * 0.08 * open, '#7fd85a', '#4fa534');
-    ctx.fillStyle = '#e8e3a0'; ctx.fillRect(hx, y + C * 0.26 + C * 0.48 - C * 0.24 - C * 0.08 * open + C * 0.18, C * 0.95, C * 0.06 + C * 0.06 * open);
-    ctx.fillStyle = '#fff'; for (let k = 0; k < 4; k++) ctx.fillRect((dir > 0 ? hx + C * 0.4 : hx + C * 0.1) + k * C * 0.12, y + C * 0.26 + C * 0.2 - C * 0.24, C * 0.05, C * 0.06 + C * 0.06 * open);
-    const ex = dir > 0 ? hx + C * 0.12 : hx + C * 0.66;
-    for (const dy of [0, 0.26]) { ctx.fillStyle = '#fff'; ctx.fillRect(ex, y + C * (0.0 + dy), C * 0.17, C * 0.13); ctx.fillStyle = '#26303f'; ctx.fillRect(ex + (dir > 0 ? C * 0.09 : 0), y + C * (0.02 + dy), C * 0.08, C * 0.1); }
   }
   function drawDuck(ctx: CanvasRenderingContext2D, vx: number, vrow: number, C: number, Y: (r: number) => number) {
     const img = SPRITES[P.face];
@@ -443,17 +467,11 @@
       <span class="m"><span class="eyebrow">{t('cr.next')}</span><strong class="mono">{BONUS_EVERY - (score % BONUS_EVERY)}</strong></span>
       <button class="btn primary cash" onclick={cashOut}>{t('a.cashout')} <span class="mono">{fmt(Math.round(staked * mult * 100) / 100)}</span>{#if !coarse}<kbd>Enter</kbd>{/if}</button>
     {:else if phase !== 'play'}
-      <label class="switch"><span>{t('sn.stake')}</span><input type="checkbox" bind:checked={useStake} /></label>
-      {#if useStake}
-        <div class="amts" role="radiogroup">
-          {#each [10, 50, 100, 250, MAX_STAKE] as a}<button class:on={betAmt === a} disabled={a > wallet.balance} onclick={() => (betAmt = a)}>{a}</button>{/each}
-        </div>
-        <span class="hint">{t('cr.stakeHint')}</span>
-      {:else}
-        <span class="hint">{t('cr.freeHint')}</span>
-      {/if}
-    {:else}
-      <span class="hint">{t('cr.freeHint')}</span>
+      <span class="lbl">{t('a.bet')}</span>
+      <div class="amts" role="radiogroup">
+        {#each [MIN_STAKE, 50, 100, 250, MAX_STAKE] as a}<button class:on={betAmt === a} disabled={a > wallet.balance} onclick={() => (betAmt = a)}>{a}</button>{/each}
+      </div>
+      <span class="hint">{wallet.balance < MIN_STAKE ? t('notEnough') : t('cr.stakeHint')}</span>
     {/if}
   </div>
 
@@ -507,12 +525,12 @@
   .eyebrow.light { color: #ffd23f; }
   .plus { color: #8ff0bf !important; font-size: 1.1rem; }
   .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px; min-height: 52px; margin: 0 auto 10px; max-width: 760px; }
-  .bar .switch { min-height: 36px; gap: 10px; font-size: 0.88rem; }
   .amts { display: flex; gap: 4px; padding: 3px; border-radius: 999px; border: 1px solid var(--line-2); }
   .amts button { border: 0; background: none; min-width: 44px; height: 32px; border-radius: 999px; font: 500 0.8rem 'Geist Mono Variable', monospace; }
   .amts button.on { background: var(--text); color: var(--bg); }
   .amts button:disabled { opacity: 0.35; }
   .hint { font-size: 0.78rem; color: var(--muted); }
+  .lbl { font-size: 0.88rem; }
   .m { display: grid; justify-items: center; gap: 2px; }
   .m strong { font-size: 1.2rem; }
   .cash { min-height: 46px; background: #2fbf71; color: #062a16; gap: 10px; }

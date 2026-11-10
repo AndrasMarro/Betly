@@ -131,7 +131,7 @@ import { CASES, caseRtp, RARITIES } from '../src/games/arcade.ts';
   console.log('cases RTP', caseRtp(CASES[0]).toFixed(4));
 }
 
-import { newGame, open, flag, chord } from '../src/games/minesweeper.ts';
+import { newGame, open, flag, chord, neighbours, detect, scan, solvable, tick, hunt } from '../src/games/minesweeper.ts';
 {
   for (let n = 0; n < 200; n++) {
     const ms = newGame(9, 9, 10);
@@ -154,6 +154,32 @@ import { newGame, open, flag, chord } from '../src/games/minesweeper.ts';
   nb.forEach((j) => g.cells[j].mine && flag(g, j));
   assert.ok(chord(g, num));
   assert.notEqual(g.state, 'lost');
+  // arcade: hex neighbours, lives, shield, double mines, scanner, detector, no-guess, versus
+  assert.equal(neighbours({ w: 5, h: 5, hex: true }, 12).length, 6);
+  assert.equal(neighbours({ w: 5, h: 5 }, 12).length, 8);
+  const a = newGame(10, 10, 15, { lives: 3, doubles: 0.3 });
+  open(a, 0);
+  assert.ok(a.cells.some((c) => c.mine === 2), 'double mines placed');
+  const nsum = a.cells.reduce((x, c) => x + c.mine, 0);
+  assert.ok(nsum > 15, 'doubles weigh 2');
+  const m1 = a.cells.findIndex((c) => c.mine);
+  assert.equal(open(a, m1), 'hit'); assert.equal(a.lives, 2); assert.ok(a.cells[m1].flag);
+  a.shield = 1;
+  const m2 = a.cells.findIndex((c, i) => c.mine && !c.flag && i !== m1);
+  assert.equal(open(a, m2), 'shield'); assert.equal(a.lives, 2);
+  const d = detect(a); assert.ok(d >= 0 && a.cells[d].mine && a.cells[d].flag);
+  const sc = newGame(9, 9, 10); open(sc, 40); const hid = sc.cells.findIndex((c) => !c.open);
+  scan(sc, hid); assert.notEqual(sc.state, 'lost'); assert.ok(sc.cells[hid].open || sc.cells[hid].flag);
+  let ng = 0;
+  for (let k = 0; k < 20; k++) { const b = newGame(9, 9, 10, { noGuess: true }); open(b, 40); if (solvable(b, 40)) ng++; }
+  assert.ok(ng >= 18, 'no-guess boards are solvable: ' + ng);
+  const t = newGame(9, 9, 10, { timers: 1, moving: 2, lives: 3 }); open(t, 40);
+  for (let k = 0; k < 30 && t.state === 'play'; k++) tick(t);
+  assert.ok(t.state === 'play' || t.state === 'lost');
+  const v = newGame(9, 9, 11);
+  const mines0 = () => v.cells.findIndex((c) => c.mine && !c.open);
+  assert.equal(hunt(v, 0, 'p1') === 'none', false);
+  const mi = mines0(); assert.equal(hunt(v, mi, 'p1'), 'mine'); assert.equal(v.cells[mi].by, 'p1');
   console.log('minesweeper checks passed');
 }
 
@@ -271,18 +297,22 @@ import { rng, dailyGame } from '../src/lib/daily.ts';
 }
 
 // Crossy: calm start, crocodiles only later, forgiving hitboxes
-import { newWorld, ensure as crEnsure, hit as crHit, onCrocHead } from '../src/games/crossy.ts';
+import { newWorld, ensure as crEnsure, hit as crHit, update as crUpdate, logAt as crLogAt } from '../src/games/crossy.ts';
 {
   const w = newWorld(rng(42));
   crEnsure(w, 200);
   const cars = (from: number, to: number) => { const ls = w.lanes.slice(from, to).filter((l) => l.type === 'road'); return ls.reduce((a, l) => a + l.items.length, 0) / Math.max(1, ls.length); };
   assert.ok(cars(0, 25) < cars(60, 200), 'fewer cars per road early on');
-  assert.ok(w.lanes.slice(0, 30).every((l) => l.items.every((it) => !it.croc)), 'no crocodiles early');
-  assert.ok(w.lanes.slice(60).some((l) => l.items.some((it) => it.croc)), 'crocodiles later');
+  assert.ok(w.lanes.slice(0, 15).every((l) => l.items.every((it) => !it.weak)), 'no cracked logs early');
+  assert.ok(w.lanes.slice(60).some((l) => l.items.some((it) => it.weak)), 'cracked logs later');
+  assert.ok(w.lanes.every((l) => l.type !== 'river' || l.pads || l.items.some((it) => !it.weak)), 'every river keeps a solid log');
   const road = { type: 'road' as const, dir: 1 as const, speed: 1, items: [{ x: 3, len: 1, c: 0 }], trees: [], t: 0, train: null };
   assert.ok(crHit(road, 3) && !crHit(road, 3.95) && !crHit(road, 2.1), 'hitbox');
-  const croc = { x: 2, len: 3, c: 0, croc: true };
-  assert.ok(onCrocHead({ ...road, type: 'river' }, croc, 4) && !onCrocHead({ ...road, type: 'river' }, croc, 2.2), 'croc head');
+  const river = { ...road, type: 'river' as const, speed: 0, items: [{ x: 2, len: 3, c: 0, weak: true, breakT: 0 }] };
+  const rw = { lanes: [river], rand: Math.random } as any;
+  assert.ok(crLogAt(river, 3));
+  crUpdate(rw, 1, 0, 0);
+  assert.ok(!crLogAt(river, 3), 'a cracked log breaks under you');
   console.log('crossy checks passed');
 }
 import { multAt as crMult, coinShare } from '../src/games/crossy.ts';

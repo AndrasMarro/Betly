@@ -234,29 +234,59 @@
     ctx.restore();
   }
 
-  // ---------- sightings: the higher you fly, the stranger the neighbourhood ----------
-  type Fly = { kind: string; x: number; y: number; vx: number; vy: number; a: number; va: number; s: number; t: number };
-  const SIGHTS: { at: number; kind: string; p: number; de: string; en: string }[] = [
-    { at: 1.4, kind: 'sat', p: 1, de: 'Satellit', en: 'Satellite' },
-    { at: 2.2, kind: 'force', p: 1, de: 'Space Force', en: 'Space Force' },
-    { at: 3.5, kind: 'tesla', p: 0.6, de: 'Starman im Roadster', en: 'Starman in a roadster' },
-    { at: 5, kind: 'ufo', p: 1, de: 'Aliens!', en: 'Aliens!' },
-    { at: 10, kind: 'planet', p: 1, de: 'Ringplanet', en: 'Ringed planet' },
-    { at: 25, kind: 'hole', p: 1, de: 'Schwarzes Loch', en: 'Black hole' },
-    { at: 60, kind: 'whale', p: 1, de: 'Weltraumwal?!', en: 'Space whale?!' },
+  // ---------- secrets: rare, random things far away in the background, never in the rocket's way ----------
+  type Fly = { kind: string; x: number; y: number; vx: number; vy: number; a: number; va: number; s: number; t: number; alpha: number; trail?: [number, number][] };
+  // weight = how often it shows up; minM = only above this altitude (the deep-space ones)
+  const SECRETS: { kind: string; w: number; minM: number }[] = [
+    { kind: 'sat', w: 5, minM: 1 }, { kind: 'force', w: 4, minM: 1.2 }, { kind: 'tesla', w: 2, minM: 1.5 },
+    { kind: 'ufo', w: 2, minM: 2 }, { kind: 'planet', w: 2, minM: 3 }, { kind: 'hole', w: 1, minM: 6 }, { kind: 'whale', w: 0.6, minM: 10 },
   ];
   let flybys: Fly[] = [];
-  let sightRound = -1, sightNext = 0;
-  let sighting = $state<{ label: string; id: number } | null>(null);
+  let nextSecret = 4 + Math.random() * 8; // seconds until the next chance
   function spawnSight(W: number, H: number, kind: string) {
     const big = kind === 'planet' || kind === 'hole' || kind === 'whale';
-    flybys.push({ kind, x: W + (big ? 160 : 80), y: H * (big ? 0.22 : 0.15 + Math.random() * 0.35), vx: -(W + 320) / (big ? 11 : 6.5), vy: big ? 4 : 8, a: kind === 'tesla' ? -0.1 : 0, va: kind === 'tesla' ? 0.04 : kind === 'sat' ? 0.25 : 0, s: Math.max(0.7, Math.min(1.3, W / 800)), t: 0 });
+    const k = Math.max(0.7, Math.min(1.3, W / 800));
+    // enter from a random edge and drift across at a random angle
+    const fromLeft = Math.random() < 0.5, speed = big ? 10 + Math.random() * 10 : kind === 'force' ? 260 + Math.random() * 120 : 28 + Math.random() * 30;
+    const ang = (Math.random() - 0.5) * (kind === 'force' ? 0.5 : 0.9);
+    const dir = fromLeft ? 1 : -1;
+    const f: Fly = {
+      kind, x: fromLeft ? -120 : W + 120, y: H * (0.08 + Math.random() * (big ? 0.35 : 0.55)),
+      vx: dir * speed * Math.cos(ang), vy: speed * Math.sin(ang),
+      a: kind === 'force' ? Math.atan2(speed * Math.sin(ang), dir * speed * Math.cos(ang)) + (fromLeft ? 0 : Math.PI) : (Math.random() - 0.5) * 0.4,
+      va: kind === 'sat' ? 0.15 : kind === 'tesla' ? 0.08 * dir : 0,
+      s: k * (big ? 0.7 + Math.random() * 0.35 : kind === 'force' ? 0.16 : 0.24 + Math.random() * 0.1),
+      t: 0, alpha: big ? 0.6 : 0.55, trail: kind === 'force' ? [] : undefined,
+    };
+    // big ones start partly on screen so they are seen, then crawl
+    if (big) f.x = fromLeft ? -60 : W + 60;
+    flybys.push(f);
+  }
+  function maybeSecret(dt: number, W: number, H: number) {
+    nextSecret -= dt * (share.phase === 'fly' ? 1 : 0.3);
+    if (nextSecret > 0 || flybys.length >= 2) return;
+    nextSecret = 6 + Math.random() * 14;
+    if (Math.random() < 0.45) return; // most chances pass empty: it stays a surprise
+    const pool = SECRETS.filter((x) => live >= x.minM && !flybys.some((f) => f.kind === x.kind));
+    let r = Math.random() * pool.reduce((a, x) => a + x.w, 0);
+    const pick = pool.find((x) => (r -= x.w) < 0);
+    if (pick) spawnSight(W, H, pick.kind);
   }
   function drawSight(ctx: CanvasRenderingContext2D, f: Fly) {
+    if (f.trail && f.trail.length > 1) {
+      // contrail like a jet high up: a thin line that widens and fades
+      for (let i = 1; i < f.trail.length; i++) {
+        const k = i / f.trail.length;
+        ctx.strokeStyle = `rgba(220,230,255,${0.32 * k})`;
+        ctx.lineWidth = 0.6 + (1 - k) * 2.2;
+        ctx.beginPath(); ctx.moveTo(f.trail[i - 1][0], f.trail[i - 1][1]); ctx.lineTo(f.trail[i][0], f.trail[i][1]); ctx.stroke();
+      }
+    }
     ctx.save();
-    ctx.translate(f.x, f.y + Math.sin(f.t * 1.6) * 5);
+    ctx.globalAlpha = f.alpha;
+    ctx.translate(f.x, f.y + Math.sin(f.t * 1.6) * 2);
     ctx.rotate(f.a);
-    ctx.scale(f.s, f.s);
+    ctx.scale(f.s * (f.vx < 0 && (f.kind === 'tesla' || f.kind === 'whale' || f.kind === 'ufo') ? -1 : 1), f.s);
     const blink = Math.sin(f.t * 8) > 0;
     if (ART_W[f.kind] && ready(f.kind)) {
       const img = IMG[f.kind], w = ART_W[f.kind], h = (w * img.naturalHeight) / img.naturalWidth;
@@ -325,7 +355,7 @@
     ctx.restore();
   }
 
-  if (import.meta.env.DEV) (window as any).__sight = (k: string, x: number) => { spawnSight(box.w, box.h, k); flybys[flybys.length - 1].x = x; flybys[flybys.length - 1].vx = 0; };
+  if (import.meta.env.DEV) (window as any).__sight = (k: string, x: number) => { spawnSight(box.w, box.h, k); const f = flybys[flybys.length - 1]; f.x = x; if (k !== 'force') { f.vx = 0; f.vy = 0; } };
   function draw() {
     const now = performance.now();
     const dt = Math.min(0.05, (now - lastT) / 1000);
@@ -355,20 +385,21 @@
         ctx.fillRect(st.x * W, st.y * H, 0.6 + st.z * 1.5, 0.6 + st.z * 1.5);
       }
       ctx.globalAlpha = 1;
+      // secrets live behind everything else
+      maybeSecret(dt, W, H);
+      for (const f of flybys) {
+        f.x += f.vx * dt; f.y += f.vy * dt; f.a += f.va * dt; f.t += dt;
+        drawSight(ctx, f);
+        if (f.trail) { f.trail.push([f.x - Math.cos(f.a) * 18 * f.s * 4, f.y - Math.sin(f.a) * 18 * f.s * 4]); if (f.trail.length > 70) f.trail.shift(); }
+      }
+      flybys = flybys.filter((f) => f.x > -400 && f.x < W + 400 && f.y > -300 && f.y < H + 300);
       // asteroids drift past, faster the higher we fly
       if (!rocks.length) for (let i = 0; i < 5; i++) spawnRock(W, H, true);
       const rush = share.phase === 'fly' ? 1 + Math.log(live) * 2.2 : 0.35;
       if (rocks.length < 9 && Math.random() < dt * (share.phase === 'fly' ? 1.6 : 0.35)) spawnRock(W, H);
       for (const k of rocks) { k.x += k.vx * dt * rush; k.y += k.vy * dt * rush; k.a += k.va * dt; drawRock(ctx, k); }
       rocks = rocks.filter((k) => k.x > -60 && k.y < H + 60);
-      // sightings, once per milestone and round (some are only lucky)
-      if (share.phase === 'bet' && sightRound !== share.round) { sightRound = share.round; sightNext = 0; sighting = null; }
-      while (share.phase === 'fly' && sightNext < SIGHTS.length && live >= SIGHTS[sightNext].at) {
-        const sg = SIGHTS[sightNext++];
-        if (Math.random() < sg.p) { spawnSight(W, H, sg.kind); sighting = { label: settings.lang === 'de' ? sg.de : sg.en, id: now }; }
-      }
-      for (const f of flybys) { f.x += f.vx * dt * (share.phase === 'fly' ? 1 : 0.4); f.y += f.vy * dt; f.a += f.va * dt; f.t += dt; drawSight(ctx, f); }
-      flybys = flybys.filter((f) => f.x > -260);
+
 
       // camera eases towards the needed range and never lets the curve leave the view
       const padL = 46, padB = 34, padT = 26, padR = 22;
@@ -568,7 +599,6 @@
         <div class="bar"><i style="transform: scaleX({left / BET_MS})"></i></div>
       {:else if share.phase === 'fly'}
         <strong class="mono big-m" class:hot={live >= 2}>{live.toFixed(2)}×</strong>
-        {#if sighting}{#key sighting.id}<span class="sight" in:fly={{ y: 8, duration: 300 }}>{sighting.label}</span>{/key}{/if}
       {:else}
         <span class="eyebrow light">{t('rk.crashed')}</span>
         <strong class="mono big-m bad">{share.crash.toFixed(2)}×</strong>
@@ -592,8 +622,6 @@
   .ship { position: absolute; left: 0; top: 0; width: 64px; height: 64px; pointer-events: none; will-change: transform; filter: drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
   .ship.gone { opacity: 0; transition: opacity 0.15s var(--ease-snap); }
   .center { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; pointer-events: none; color: #fff; text-align: center; }
-  .sight { font: 600 0.78rem 'Geist Mono Variable', monospace; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.35); color: #ffe39a; animation: sightOut 3.2s forwards; }
-  @keyframes sightOut { 80% { opacity: 1; } to { opacity: 0; } }
   .center.flying { place-content: start; justify-items: start; padding: clamp(18px, 4vw, 40px) 0 0 clamp(52px, 7vw, 72px); text-align: left; }
   .eyebrow.light { color: rgba(255,255,255,.6); }
   .count { font-size: clamp(2rem, 5vw, 3.4rem); }

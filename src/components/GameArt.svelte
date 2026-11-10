@@ -41,9 +41,21 @@
   {:else if id === 'dice'}
     <div class="pair"><div class="d1"><Sprite kind="die" n={5} /></div><div class="d2"><Sprite kind="die" n={2} /></div></div>
   {:else if id === 'hop'}
-    <div class="road">{#each [0, 1, 2, 3] as l}<div class="lane"></div>{/each}</div>
-    <div class="car"><Sprite kind="car" color="#6aa8ff" /></div>
-    <div class="hen"><Sprite kind="chicken" /></div>
+    <!-- road with a fixed lane width, so the card looks right at any width -->
+    <div class="hs">
+      <div class="grass"></div>
+      <div class="lanes">
+        {#each ['#ff6b6b', '', '#6aa8ff', '#ffc145'] as c, i}
+          <div class="ln">
+            {#if i === 0}<i class="gate"></i>{/if}
+            {#if c}<div class="hcar" style="--d:{i * -0.9}s; --t:{2.2 + i * 0.35}s"><Sprite kind="car" color={c} /></div>{/if}
+          </div>
+        {/each}
+      </div>
+      <div class="grass r"></div>
+      <div class="hen"><Sprite kind="chicken" /></div>
+      <span class="hm mono">×2.31</span>
+    </div>
   {:else if id === 'tower'}
     <div class="tw">{#each [0, 1, 2, 3, 4] as r}<div>{#each [0, 1, 2] as c}<i class:g={(r + c) % 3 === 0}>{#if (r + c) % 3 === 0}<Sprite kind="gem" />{/if}</i>{/each}</div>{/each}</div>
   {:else if id === 'coinflip'}
@@ -207,11 +219,20 @@
   .pair div { width: 84px; height: 84px; transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); filter: drop-shadow(0 12px 16px rgba(0,0,0,.5)); }
   .d1 { transform: rotate(-14deg); } .d2 { transform: rotate(12deg) translateY(16px); }
   :global(.game:hover) .d1 { transform: rotate(-200deg); } :global(.game:hover) .d2 { transform: rotate(190deg) translateY(16px); }
-  .road { position: absolute; inset: 0; display: flex; }
-  .lane { flex: 1; border-right: 3px dashed rgba(255,255,255,.35); }
-  .lane:first-child { background: #3d4a3a; }
-  .car { position: absolute; width: 56px; height: 90px; left: 54%; top: -10%; animation: drive 2.6s linear infinite; }
-  @keyframes drive { to { top: 110%; } }
-  .hen { position: absolute; width: 70px; height: 70px; left: 8%; top: 38%; transition: translate 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-  :global(.game:hover) .hen { translate: 60px -10px; }
+  .art.hop { container-type: size; }
+  .hs { position: absolute; inset: 0; display: flex; }
+  .grass { flex: 1; min-width: 18cqh; background: repeating-linear-gradient(90deg, #4c7a3c 0 14px, #52823f 14px 28px); box-shadow: inset -6px 0 0 #c9c3b5; }
+  .grass.r { box-shadow: inset 6px 0 0 #c9c3b5; }
+  .lanes { display: flex; flex: none; background: #34373f; }
+  .ln { position: relative; width: 28cqh; overflow: hidden; }
+  .ln + .ln { background-image: linear-gradient(rgba(255,255,255,.55) 50%, transparent 50%); background-size: 3px 22px; background-repeat: repeat-y; background-position: left top; }
+  .gate { position: absolute; left: 6%; right: 6%; top: 44%; height: 9%; border-radius: 4px; background: repeating-linear-gradient(45deg, #fff 0 8px, #e5484d 8px 16px); box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  .hcar { position: absolute; left: 50%; top: -40%; width: 22cqh; aspect-ratio: 0.62; translate: -50% 0; animation: drive var(--t) linear infinite; animation-delay: var(--d); filter: drop-shadow(0 6px 6px rgba(0,0,0,.4)); }
+  .hcar :global(svg) { width: 100%; height: 100%; }
+  @keyframes drive { to { top: 120%; } }
+  .hen { position: absolute; width: 30cqh; height: 30cqh; left: calc(50% - 56cqh - 15cqh); top: 32%; transition: translate 0.5s cubic-bezier(0.16, 1, 0.3, 1); filter: drop-shadow(0 6px 4px rgba(0,0,0,.35)); z-index: 1; }
+  .hs { --road: 112cqh; }
+  .hen { left: calc(50% - var(--road) / 2 - 22cqh); }
+  :global(.game:hover) .hen, :global(.dailycard:hover) .hen { translate: 30cqh -6cqh; }
+  .hm { position: absolute; right: 5%; top: 8%; font-size: 1.1rem; font-weight: 700; color: #fff; padding: 3px 10px; border-radius: 999px; background: rgba(0,0,0,.4); }
 </style>
