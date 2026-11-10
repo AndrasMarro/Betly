@@ -5,7 +5,7 @@
   import BetInput from '../components/BetInput.svelte';
   import Sprite from '../components/Sprite.svelte';
   import { LANES, LEVELS, hopMult, survives, type Level } from '../games/arcade';
-  import { wallet, settle, stake, fmt } from '../lib/state.svelte';
+  import { wallet, settle, stake, settings, fmt } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
   import { t, type Key } from '../lib/i18n';
 
@@ -19,6 +19,12 @@
   let busy = $state(false);
   let won = $state(0);
   let stakeNow = $state(0);
+  // themes: same game, different street
+  const THEMES = ['country', 'city', 'desert', 'snow', 'night'] as const;
+  type Theme = (typeof THEMES)[number];
+  let theme = $state<Theme>((() => { try { return (localStorage.getItem('betly:hop-theme') as Theme) || 'country'; } catch { return 'country'; } })());
+  $effect(() => { try { localStorage.setItem('betly:hop-theme', theme); } catch {} });
+  const TNAME: Record<Theme, [string, string]> = { country: ['Land', 'Country'], city: ['Stadt', 'City'], desert: ['Wüste', 'Desert'], snow: ['Schnee', 'Snow'], night: ['Nacht', 'Night'] };
   let road: HTMLDivElement;
   let roadH = $state(420);
 
@@ -105,6 +111,11 @@
       <button class="btn primary big" disabled={bet > wallet.balance} onclick={start}>{phase === 'over' ? t('a.next') : t('hp.go')}</button>
     {/if}
     <BetInput bind:value={bet} disabled={phase === 'play'} />
+    <div class="field">Theme
+      <div class="themes">
+        {#each THEMES as th}<button class="th {th}" class:on={theme === th} onclick={() => (theme = th)} title={TNAME[th][settings.lang === 'de' ? 0 : 1]}><i></i><span>{TNAME[th][settings.lang === 'de' ? 0 : 1]}</span></button>{/each}
+      </div>
+    </div>
     <div class="field">{t('hp.level')}
       <div class="seg4">
         {#each Object.keys(LEVELS) as l}
@@ -114,7 +125,7 @@
     </div>
   {/snippet}
 
-  <div class="frame">
+  <div class="frame t-{theme}">
     <div class="hud">
       <div><span class="eyebrow">×</span><strong class="mono">{mult.toFixed(2)}</strong></div>
       <div><span class="eyebrow">{t('mn.next')}</span><strong class="mono">×{next.toFixed(2)}</strong></div>
@@ -160,27 +171,47 @@
   .seg4 button.on { background: var(--text); color: var(--bg); }
   .seg4 button:disabled:not(.on) { opacity: 0.45; }
 
-  .frame { position: relative; border-radius: 28px; overflow: hidden; background: #23262d; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
+  .frame {
+    --side: repeating-linear-gradient(0deg, #3b3f48 0 38px, #343841 38px 40px), #3b3f48; --kerb: #8a8f99;
+    --asphalt: #2a2d34; --asphalt-next: #30343c; --asphalt-ok: #262f2b; --mark: rgba(255,255,255,.22);
+    --hole: #3a3e47; --hole2: #31353d; --hole-ring: #4a4f5a; --hud: #1b1d23;
+    position: relative; border-radius: 28px; overflow: hidden; background: #23262d; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6);
+  }
+  .t-country { --side: repeating-linear-gradient(90deg, #4c7a3c 0 14px, #52823f 14px 28px); --kerb: #c9c3b5; --asphalt: #34373f; --asphalt-next: #3b3f48; --asphalt-ok: #2f3a33; --mark: rgba(255,255,255,.5); }
+  .t-desert { --side: repeating-linear-gradient(20deg, #d9b26f 0 18px, #d2a961 18px 36px); --kerb: #efe0bd; --asphalt: #5a5048; --asphalt-next: #655a51; --asphalt-ok: #4f5546; --mark: rgba(255,240,200,.55); --hole: #6a5f55; --hole2: #5f544b; --hole-ring: #7d7064; --hud: #2a231c; }
+  .t-snow { --side: radial-gradient(circle at 30% 30%, #fff 0 2px, transparent 3px) 0 0 / 22px 22px, linear-gradient(#eef3f8, #dfe8f1); --kerb: #a9b6c4; --asphalt: #4a5560; --asphalt-next: #55616d; --asphalt-ok: #40555a; --mark: rgba(255,255,255,.7); --hole: #5b6874; --hole2: #515d69; --hole-ring: #8796a6; --hud: #1c232b; }
+  .t-night { --side: repeating-linear-gradient(0deg, #15171f 0 38px, #1a1d27 38px 40px), #15171f; --kerb: #6a5cff; --asphalt: #12141b; --asphalt-next: #191c26; --asphalt-ok: #122019; --mark: rgba(120,200,255,.45); --hole: #1d2130; --hole2: #171a26; --hole-ring: #3b3f6a; --hud: #0d0f15; }
+  .t-night .lane::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, rgba(255,214,120,.08), transparent 60%); pointer-events: none; }
+  .t-snow .hen :global(svg) { filter: drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+  .themes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .th { display: grid; justify-items: center; gap: 4px; padding: 6px 2px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2); font-size: 0.68rem; }
+  .th i { width: 100%; height: 22px; border-radius: 6px; }
+  .th.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--text) inset; }
+  .th.country i { background: linear-gradient(90deg, #52823f 0 30%, #34373f 30% 70%, #52823f 70%); }
+  .th.city i { background: linear-gradient(90deg, #3b3f48 0 30%, #2a2d34 30% 70%, #3b3f48 70%); }
+  .th.desert i { background: linear-gradient(90deg, #d9b26f 0 30%, #5a5048 30% 70%, #d9b26f 70%); }
+  .th.snow i { background: linear-gradient(90deg, #eef3f8 0 30%, #4a5560 30% 70%, #eef3f8 70%); }
+  .th.night i { background: linear-gradient(90deg, #15171f 0 30%, #12141b 30% 70%, #15171f 70%); box-shadow: inset 0 0 0 1px #6a5cff; }
   .hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(255,255,255,.06); }
-  .hud div { background: #1b1d23; padding: 12px 16px; display: grid; gap: 4px; color: #f4f2ee; }
+  .hud div { background: var(--hud); padding: 12px 16px; display: grid; gap: 4px; color: #f4f2ee; }
   .hud .eyebrow { color: rgba(255,255,255,.45); }
   .hud strong { font-size: 1.1rem; }
   .road { position: relative; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; height: clamp(340px, 52vh, 480px); }
   .strip { position: relative; display: flex; height: 100%; width: calc((var(--lanes) + 2) * var(--lw)); }
   .curb { flex: 0 0 var(--lw); position: relative; }
-  .curb.start { background: repeating-linear-gradient(0deg, #3b3f48 0 38px, #343841 38px 40px), #3b3f48; box-shadow: inset -6px 0 0 #8a8f99; }
-  .curb.end { background: repeating-conic-gradient(#f4f2ee 0 25%, #1d1d22 0 50%) 0 0 / 30px 30px; box-shadow: inset 6px 0 0 #8a8f99; }
+  .curb.start { background: var(--side); box-shadow: inset -6px 0 0 var(--kerb); }
+  .curb.end { background: repeating-conic-gradient(#f4f2ee 0 25%, #1d1d22 0 50%) 0 0 / 30px 30px; box-shadow: inset 6px 0 0 var(--kerb); }
   .flag { position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: #1b1d23; color: var(--gold); padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; letter-spacing: 0.15em; }
   .lane {
     position: relative; flex: 0 0 var(--lw); transition: background-color 0.4s var(--ease-snap);
-    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.025), transparent 60%), #2a2d34;
-    border-right: 2px dashed rgba(255,255,255,.22);
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.025), transparent 60%), var(--asphalt);
+    border-right: 2px dashed var(--mark);
   }
-  .lane.next { background-color: #30343c; }
-  .lane.passed { background-color: #262f2b; }
+  .lane.next { background-color: var(--asphalt-next); }
+  .lane.passed { background-color: var(--asphalt-ok); }
   .hole {
     position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 86px; height: 86px; border-radius: 50%; display: grid; place-items: center;
-    background: radial-gradient(circle, #3a3e47 0 55%, #31353d 56%); box-shadow: inset 0 0 0 3px #4a4f5a, 0 2px 0 rgba(0,0,0,.35);
+    background: radial-gradient(circle, var(--hole) 0 55%, var(--hole2) 56%); box-shadow: inset 0 0 0 3px var(--hole-ring), 0 2px 0 rgba(0,0,0,.35);
     color: rgba(255,255,255,.75); font-size: 0.82rem; font-weight: 700; transition: box-shadow 0.4s var(--ease-snap), color 0.4s var(--ease-snap);
   }
   .lane.next .hole { color: #fff; box-shadow: inset 0 0 0 3px rgba(255,255,255,.55), 0 0 24px rgba(255,255,255,.12); }

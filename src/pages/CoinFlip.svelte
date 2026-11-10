@@ -5,7 +5,10 @@
   import SlotSymbol from '../components/SlotSymbol.svelte';
   import Coin3D from '../components/Coin3D.svelte';
   import CoinGL from '../components/CoinGL.svelte';
-  let gl = $state(true); // the 3D model; falls back to the CSS coin without WebGL
+  let gl = $state(true);
+  import { coinFace } from '../lib/coinface';
+  const faces: Record<string, string> = {};
+  const face2 = (side: 'heads' | 'tails') => (faces[side] ??= coinFace(side, 128).toDataURL()); // the 3D model; falls back to the CSS coin without WebGL
   import { coinMult, flip } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
@@ -93,7 +96,7 @@
       <div class="sides">
         {#each ['heads', 'tails'] as const as s}
           <button class:on={side === s} disabled={busy} onclick={() => { side = s; sfx('click'); }}>
-            <span class="mini"><SlotSymbol sym={s === 'heads' ? 'crown' : 'star'} /></span>{t(s === 'heads' ? 'cf.heads' : 'cf.tails')}
+            <img class="mini" src={face2(s)} alt="" />{t(s === 'heads' ? 'cf.heads' : 'cf.tails')}
           </button>
         {/each}
       </div>
@@ -130,7 +133,7 @@
   .sides button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--bg-2); transition: background-color 0.25s var(--ease-snap), color 0.25s var(--ease-snap), transform 0.16s var(--ease-snap); }
   .sides button.on { background: var(--text); color: var(--bg); }
   .sides button:active:not(:disabled) { transform: scale(0.97); }
-  .mini { width: 22px; height: 22px; }
+  .mini { width: 26px; height: 26px; border-radius: 50%; box-shadow: 0 0 0 2px #b77a18; }
   /* the 3D table fills the stage; the read-outs float on top of it */
   .stage {
     position: relative; display: grid; align-content: end; justify-items: center; gap: 10px; padding: 12px 16px 20px; overflow: hidden; border-radius: 28px; color: #f4f2ee; min-height: 520px; height: min(640px, calc(100dvh - var(--nav-h) - 170px));

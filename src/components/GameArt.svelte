@@ -9,6 +9,9 @@
   import duck from '../assets/duck/right.webp';
   import planet from '../assets/space/planet.webp';
   import rock from '../assets/space/rock.webp';
+  import { coinFace } from '../lib/coinface';
+  const coinCache: Record<string, string> = {};
+  const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 256).toDataURL('image/png'));
   const CASE_ART = [[deepTide, '#8847ff'], [golden, '#e4ae39'], [voidPulse, '#eb4b4b']] as const;
   let { id }: { id: string } = $props();
 </script>
@@ -47,7 +50,7 @@
       <div class="lanes">
         {#each ['', '', '#6aa8ff', '#ffc145'] as c, i}
           <div class="ln">
-            {#if i === 0}<i class="gate"></i>{/if}
+            {#if i < 2}<i class="gate"></i>{/if}
             {#if c}<div class="hcar" style="--d:{i * -0.9}s; --t:{2.2 + i * 0.35}s"><Sprite kind="car" color={c} /></div>{/if}
           </div>
         {/each}
@@ -59,7 +62,13 @@
   {:else if id === 'tower'}
     <div class="tw">{#each [0, 1, 2, 3, 4] as r}<div>{#each [0, 1, 2] as c}<i class:g={(r + c) % 3 === 0}>{#if (r + c) % 3 === 0}<Sprite kind="gem" />{/if}</i>{/each}</div>{/each}</div>
   {:else if id === 'coinflip'}
-    <div class="coin"><SlotSymbol sym="crown" /></div>
+    <!-- the same struck coin as in the game, lying on the felt; it flips over to the star on hover -->
+    <div class="cfelt"></div>
+    <div class="coin3">
+      <img class="cf front" src={coinImg('heads')} alt="" />
+      <img class="cf back" src={coinImg('tails')} alt="" />
+    </div>
+    <div class="cshadow"></div>
   {:else if id === 'hilo'}
     <div class="fan hl">
       <div class="c1"><CardView card={{ r: 5, s: 2 }} /></div>
@@ -72,13 +81,18 @@
       <b></b>
     </div>
   {:else if id === 'wheel'}
-    <svg class="lw" viewBox="-50 -50 100 100">
-      {#each ['#2fbf71', '#2a2f45', '#4f8dff', '#2a2f45', '#9b6bff', '#2a2f45', '#f2c046', '#2a2f45', '#2fa3a0', '#2a2f45'] as c, i}
-        <path d="M0 0 L{(48 * Math.sin((i * 36 - 18) * Math.PI / 180)).toFixed(2)} {(-48 * Math.cos((i * 36 - 18) * Math.PI / 180)).toFixed(2)} A48 48 0 0 1 {(48 * Math.sin((i * 36 + 18) * Math.PI / 180)).toFixed(2)} {(-48 * Math.cos((i * 36 + 18) * Math.PI / 180)).toFixed(2)} Z" fill={c} stroke="#141828" />
-      {/each}
-      <circle r="15" fill="#141828" />
-    </svg>
-    <span class="tip"></span>
+    <!-- a small copy of the game wheel: purple stage, sunburst, gold rim with bulbs, SPIN hub, pin -->
+    <div class="wrays"></div>
+    <div class="wbox">
+      <svg class="lw" viewBox="-50 -50 100 100">
+        {#each ['#2fd17a', '#30355a', '#3d8bff', '#30355a', '#9b5cff', '#30355a', '#ffbe2e', '#30355a', '#00d1c1', '#30355a', '#ff3d6e', '#30355a'] as c, i}
+          <path d="M0 0 L{(46 * Math.sin((i * 30 - 15) * Math.PI / 180)).toFixed(2)} {(-46 * Math.cos((i * 30 - 15) * Math.PI / 180)).toFixed(2)} A46 46 0 0 1 {(46 * Math.sin((i * 30 + 15) * Math.PI / 180)).toFixed(2)} {(-46 * Math.cos((i * 30 + 15) * Math.PI / 180)).toFixed(2)} Z" fill={c} stroke="rgba(0,0,0,.25)" stroke-width=".6" />
+        {/each}
+      </svg>
+      <div class="wrim">{#each Array(16) as _, i}<i style="--a:{i * 22.5}deg; --i:{i}"></i>{/each}</div>
+      <div class="whub">SPIN</div>
+      <svg class="wpin" viewBox="0 0 20 28"><path d="M10 27 L2 9 A8 8 0 1 1 18 9 Z" fill="#e5484d" stroke="#fff" stroke-width="2" /><circle cx="10" cy="9" r="3" fill="#fff" /></svg>
+    </div>
   {:else if id === 'snake'}
     <svg class="snk" viewBox="0 0 200 120" preserveAspectRatio="xMidYMid slice">
       <defs><pattern id="snkgrid" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#1d3b2a" /><rect width="10" height="10" fill="#21432f" /><rect x="10" y="10" width="10" height="10" fill="#21432f" /></pattern></defs>
@@ -125,9 +139,25 @@
   .art.dice { background: radial-gradient(ellipse at 50% 20%, #4a1d24, #1a080b); }
   .art.hop { background: #2c2f36; }
   .art.tower { background: linear-gradient(180deg, #1d1838, #0f1424); }
-  .art.coinflip { background: radial-gradient(ellipse at 50% 30%, #2b2a46, #101020 70%); }
+  .art.coinflip { background: repeating-linear-gradient(90deg, #6b4126 0 54px, #5e3820 54px 56px, #744830 56px 110px, #5e3820 110px 112px); perspective: 700px; }
+  .cfelt { position: absolute; left: 50%; top: 58%; width: 120%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; transform: rotateX(62deg); background: radial-gradient(circle, #155c3e, #0a3423 70%); box-shadow: inset 0 0 0 10px #0a3423, inset 0 0 0 13px rgba(232,196,120,.6), 0 20px 40px rgba(0,0,0,.5); }
+  .coin3 { position: relative; width: 120px; height: 120px; transform-style: preserve-3d; transform: rotateX(50deg); transition: transform 0.9s var(--spring-smooth); z-index: 1; margin-top: 10px; }
+  .cf { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; backface-visibility: hidden; box-shadow: 0 0 0 4px #b77a18, 0 6px 0 #8a5a10; }
+  .cf.back { transform: rotateY(180deg); }
+  .cshadow { position: absolute; left: 50%; top: 66%; width: 130px; height: 36px; translate: -50% 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent); transition: transform 0.9s var(--spring-smooth); }
+  :global(.game:hover) .coin3, :global(.dailycard:hover) .coin3 { transform: rotateX(50deg) rotateY(180deg) translateZ(30px); }
+  :global(.game:hover) .cshadow, :global(.dailycard:hover) .cshadow { transform: scale(0.75); }
   .art.plinko { background: radial-gradient(ellipse at 50% 0%, #22305a, #0d1326 75%); }
-  .art.wheel { background: radial-gradient(ellipse at 50% 20%, #232a4a, #0d1122 72%); }
+  .art.wheel { background: radial-gradient(ellipse at 50% 45%, #3a1d6e, #140a2e 72%); }
+  .wrays { position: absolute; left: 50%; top: 50%; width: 170%; aspect-ratio: 1; translate: -50% -50%; background: repeating-conic-gradient(rgba(255,255,255,.07) 0 6deg, transparent 6deg 18deg); mask-image: radial-gradient(closest-side, #000 30%, transparent); animation: wspin 40s linear infinite; }
+  .wbox { position: relative; width: 168px; aspect-ratio: 1; }
+  .wbox .lw { position: absolute; inset: 6%; width: 88%; height: 88%; }
+  .wrim { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(closest-side, transparent 88%, #d39a2c 89%, #f7d77a 93%, #a8741a 97%, transparent 98%); }
+  .wrim i { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: #fff4c2; box-shadow: 0 0 6px #ffd34d; transform: rotate(var(--a)) translateY(-78px); animation: wbulb 1.2s steps(1) infinite; animation-delay: calc(var(--i) * -0.15s); }
+  @keyframes wbulb { 50% { background: #7a5a1a; box-shadow: none; } }
+  .whub { position: absolute; left: 50%; top: 50%; width: 30%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 38% 30%, #fff, #e9e3ff 25%, #8f7bd9 70%, #4b3a8f); box-shadow: 0 0 0 3px #f2c046, 0 0 0 5px #8a5d12; color: #2a1a5e; font: 800 0.6rem 'Geist Variable', sans-serif; letter-spacing: 0.08em; }
+  .wpin { position: absolute; left: 50%; top: -6px; width: 20px; translate: -50% 0; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
+  @keyframes wspin { to { rotate: 360deg; } }
   .art.snake, .art.crossy { padding: 0; }
   .snk { width: 100%; height: 100%; display: block; }
   .snk .apple { transform-origin: center; transform-box: fill-box; animation: bob 1.6s ease-in-out infinite; }
@@ -174,8 +204,6 @@
   .tw div { display: flex; gap: 6px; }
   .tw i { width: 46px; height: 24px; border-radius: 6px; background: #34406a; display: grid; place-items: center; padding: 2px; }
   .tw i.g { background: #141a2b; box-shadow: inset 0 0 0 2px rgba(79,227,160,.4); }
-  .coin { width: 130px; height: 130px; border-radius: 50%; padding: 30px; background: radial-gradient(circle at 35% 30%, #fff2b8, #f2c046 40%, #b9821f 100%); box-shadow: inset 0 0 0 5px #d9a536, inset 0 0 0 8px #f7d77a, 0 20px 30px rgba(0,0,0,.45); transition: transform 0.8s var(--spring-smooth); }
-  :global(.game:hover) .coin { transform: rotateY(180deg) translateY(-8px); }
   .hl .c1 { transform: rotate(-8deg) translateX(-22px); } .hl .c2 { transform: rotate(8deg) translateX(22px) translateY(-14px); }
   .up { position: absolute; right: 24%; top: 18%; color: #2fbf71; font-size: 1.6rem; }
   .pk { position: relative; display: grid; gap: 14px; justify-items: center; }
@@ -183,9 +211,8 @@
   .pk i { width: 6px; height: 6px; border-radius: 50%; background: #e8ecf8; box-shadow: 0 0 6px rgba(160,190,255,.5); }
   .pk b { position: absolute; left: 50%; top: -14px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #ff6b6f 45%, #b3202a); animation: plk 2.4s var(--ease-snap) infinite; }
   @keyframes plk { 0% { transform: translate(0, 0); } 30% { transform: translate(11px, 40px); } 55% { transform: translate(0, 80px); } 80% { transform: translate(11px, 120px); opacity: 1; } 100% { transform: translate(11px, 140px); opacity: 0; } }
-  .lw { width: 170px; height: 170px; transition: transform 1.2s var(--ease-snap); filter: drop-shadow(0 16px 24px rgba(0,0,0,.5)); }
-  :global(.game:hover) .lw { transform: rotate(144deg); }
-  .tip { position: absolute; left: 50%; top: 14px; translate: -50% 0; border: 10px solid transparent; border-top: 16px solid #f4f2ee; }
+  .lw { transition: transform 1.6s var(--ease-snap); filter: drop-shadow(0 12px 20px rgba(0,0,0,.5)); }
+  :global(.game:hover) .lw, :global(.dailycard:hover) .lw { transform: rotate(390deg); }
   .tk { display: flex; gap: 8px; padding: 16px; border-radius: 18px; background: linear-gradient(150deg, #ffe39a, #f2c046 45%, #d99a2b); box-shadow: 0 20px 30px rgba(0,0,0,.45); }
   .tk i { width: 56px; height: 56px; border-radius: 12px; background: #fffaf0; padding: 8px; position: relative; overflow: hidden; }
   .tk i.foil::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, #c9ccd6, #f1f2f6 45%, #b7bac6 55%, #e3e5ec); clip-path: polygon(40% 0, 100% 0, 100% 100%, 10% 100%); transition: clip-path 0.6s var(--ease-snap); }
@@ -226,13 +253,13 @@
   .lanes { display: flex; flex: none; background: #34373f; }
   .ln { position: relative; width: 28cqh; overflow: hidden; }
   .ln + .ln { background-image: linear-gradient(rgba(255,255,255,.55) 50%, transparent 50%); background-size: 3px 22px; background-repeat: repeat-y; background-position: left top; }
-  .gate { position: absolute; left: 6%; right: 6%; top: 44%; height: 9%; border-radius: 4px; background: repeating-linear-gradient(45deg, #fff 0 8px, #e5484d 8px 16px); box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  .gate { position: absolute; left: 6%; right: 6%; top: 34%; height: 9%; border-radius: 4px; background: repeating-linear-gradient(45deg, #fff 0 8px, #e5484d 8px 16px); box-shadow: 0 4px 0 rgba(0,0,0,.3); }
   .hcar { position: absolute; left: 50%; top: -40%; width: 22cqh; aspect-ratio: 0.62; translate: -50% 0; animation: drive var(--t) linear infinite; animation-delay: var(--d); filter: drop-shadow(0 6px 6px rgba(0,0,0,.4)); }
   .hcar :global(svg) { width: 100%; height: 100%; }
   @keyframes drive { to { top: 120%; } }
   .hen { position: absolute; width: 30cqh; height: 30cqh; left: calc(50% - 56cqh - 15cqh); top: 32%; transition: translate 0.5s cubic-bezier(0.16, 1, 0.3, 1); filter: drop-shadow(0 6px 4px rgba(0,0,0,.35)); z-index: 1; }
   .hs { --road: 112cqh; }
-  .hen { left: calc(50% - var(--road) / 2 + 28cqh * 1.5 - 15cqh); top: 34%; }
+  .hen { left: calc(50% - var(--road) / 2 + 28cqh * 1.5 - 15cqh); top: 48%; }
   /* on hover the hen just does a happy little hop where she stands */
   :global(.game:hover) .hen, :global(.dailycard:hover) .hen { animation: henhop 0.6s var(--ease-snap); }
   @keyframes henhop { 40% { transform: translateY(-14%) scaleY(1.06); } 70% { transform: translateY(0) scaleY(0.94); } }
