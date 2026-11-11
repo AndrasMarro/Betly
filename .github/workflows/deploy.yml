@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/affectionate-mayer-j3btrx]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
