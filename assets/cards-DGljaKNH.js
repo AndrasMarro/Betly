@@ -1,0 +1,1 @@
+function e(e){for(let t=e.length-1;t>0;t--){let n=Math.floor(Math.random()*(t+1));[e[t],e[n]]=[e[n],e[t]]}return e}var t=t=>e(Array.from({length:t*52},(e,t)=>({r:t%13+1,s:Math.floor(t/13)%4}))),n=[``,`A`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`J`,`Q`,`K`],r=[`♠`,`♥`,`♦`,`♣`];export{e as i,r as n,t as r,n as t};

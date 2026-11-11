@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="de" data-theme="noir">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Betly: Roulette, Blackjack, Poker, Slots und Arcade-Games mit simuliertem Spielgeld. Kein Echtgeld." />
+    <meta name="theme-color" content="#0b0b0c" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Betly" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <title>Betly · Spielgeld-Casino</title>
+    <script>
+      // Fair randomness that page scripts and the console cannot swap out:
+      // Math.random is backed by crypto.getRandomValues and locked (not writable, not configurable),
+      // and so are the Math and crypto globals themselves. "Math.random = () => 0.000001" does nothing.
+      (function () {
+        var c = window.crypto, gv = c.getRandomValues.bind(c), buf = new Uint32Array(256), i = 256;
+        function rnd() { if (i >= 256) { gv(buf); i = 0; } return buf[i++] / 4294967296; }
+        var lock = function (o, k, v) { try { Object.defineProperty(o, k, { value: v, writable: false, configurable: false, enumerable: false }); } catch (e) {} };
+        lock(Math, 'random', rnd);
+        lock(c, 'getRandomValues', c.getRandomValues);
+        lock(window, 'Math', Math);
+        lock(window, 'crypto', c);
+      })();
+      try {
+        const s = JSON.parse(localStorage.getItem('betly:settings') || '{}');
+        document.documentElement.dataset.theme = s.theme || 'noir';
+      } catch {}
+    </script>
+    <script type="module" crossorigin src="./assets/index-B7BQA0F5.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/state.svelte-HTmQ2z_R.js">
+    <link rel="modulepreload" crossorigin href="./assets/cards-DGljaKNH.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-_FTd2W17.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

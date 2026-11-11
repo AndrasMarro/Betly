@@ -1,0 +1,1 @@
+var e=[1,5,25,100,500,1e3,5e3],t=t=>[...e].reverse().find(e=>e<=t)??1,n=e=>e>=1e6?+(e/1e6).toFixed(1)+`M`:e>=1e3?+(e/1e3).toFixed(1)+`K`:String(+e.toFixed(2));export{t as n,n as r,e as t};
