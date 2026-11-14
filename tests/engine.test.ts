@@ -381,3 +381,49 @@ import { rank3, qualifies, shouldPlay, settle3, PAIR_PLUS, deal as deal3 } from 
   assert.ok(edge > 0.02 && edge < 0.047, 'ante edge ' + edge);
   console.log('three card: pair plus edge', (ppEdge * 100).toFixed(2) + '%', 'ante edge', (edge * 100).toFixed(2) + '%');
 }
+
+// Jass (Schieber): points, follow/undertrump rules, Weis, and full bot rounds that only make legal moves
+import * as J from '../src/games/jass.ts';
+{
+  const all = Array.from({ length: 36 }, (_, i) => ({ s: Math.floor(i / 9), r: 6 + (i % 9) }));
+  for (const m of J.MODES) assert.equal(all.reduce((a, c) => a + J.points(c, m), 0), 152, 'jass points ' + m);
+  const c = (s: number, r: number) => ({ s, r });
+  // trump Bauer beats Nell beats Ass; in Undenufe the six is highest
+  assert.equal(J.trickWinner([{ p: 0, c: c(0, 14) }, { p: 1, c: c(1, 9) }, { p: 2, c: c(1, 11) }, { p: 3, c: c(0, 13) }], 1), 2);
+  assert.equal(J.trickWinner([{ p: 0, c: c(0, 14) }, { p: 1, c: c(0, 6) }], 'unde'), 1);
+  // must follow suit, but may trump instead
+  const hand = [c(0, 7), c(1, 6), c(2, 14)];
+  assert.deepEqual(J.legal(hand, [{ p: 3, c: c(0, 10) }], 1), [c(0, 7), c(1, 6)]);
+  // no undertrumping when another card is possible
+  assert.deepEqual(J.legal([c(1, 6), c(2, 14)], [{ p: 2, c: c(0, 10) }, { p: 3, c: c(1, 14) }], 1), [c(2, 14)]);
+  // trump led and only the Bauer in hand: free choice
+  assert.equal(J.legal([c(1, 11), c(2, 14)], [{ p: 3, c: c(1, 6) }], 1).length, 2);
+  // Weis: Vierblatt beats Dreiblatt, four Bauern 200
+  const w = J.weisOf([c(0, 6), c(0, 7), c(0, 8), c(0, 9), c(2, 11), c(1, 11), c(3, 11), c(0, 11), c(2, 12)], 0);
+  assert.deepEqual(w.map((x) => x.pts), [200, 50], 'weis ' + JSON.stringify(w));
+  const r = J.weisWinner([[{ pts: 20, n: 3, top: 9, s: 0, four: false }], [{ pts: 50, n: 4, top: 9, s: 0, four: false }], [], [{ pts: 20, n: 3, top: 14, s: 1, four: false }]], 2, 0);
+  assert.deepEqual(r, { team: 1, pts: 70 });
+  // bots play 300 rounds: always legal, 157 points per round (257 with a Match)
+  for (let k = 0; k < 300; k++) {
+    const hands = J.deal();
+    const ch = J.chooseMode(hands[k % 4], true);
+    const m = ch === 'push' ? (J.chooseMode(hands[(k + 2) % 4], false) as J.Mode) : ch;
+    const played: J.JCard[] = [], tricks: { winner: number; cards: J.JCard[] }[] = [];
+    let turn = k % 4;
+    for (let n = 0; n < 9; n++) {
+      const t: J.Play[] = [];
+      for (let i = 0; i < 4; i++) {
+        const cc = J.botPlay(hands[turn], t, m, turn, played);
+        assert.ok(J.legal(hands[turn], t, m).some((x) => J.same(x, cc)), 'bot plays legal');
+        hands[turn] = hands[turn].filter((x) => !J.same(x, cc));
+        t.push({ p: turn, c: cc }); played.push(cc);
+        turn = (turn + 1) % 4;
+      }
+      turn = J.trickWinner(t, m);
+      tricks.push({ winner: turn, cards: t.map((x) => x.c) });
+    }
+    const pts = J.roundPoints(tricks, m);
+    assert.ok(pts[0] + pts[1] === 157 || pts[0] + pts[1] === 257, 'round total ' + pts);
+  }
+  console.log('jass checks passed');
+}

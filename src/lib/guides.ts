@@ -50,6 +50,30 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Helper', p: 'Shows your current hand, the (simulated) win chance and the pot odds. When the win chance is higher than the pot odds, a call usually pays.' },
     ],
   },
+  jass: {
+    de: [
+      { h: 'Ziel', p: 'Schieber: Du spielst mit Ueli (oben) gegen Vreni und Sepp. Pro Runde gibt es 157 Punkte. Das Team, das zuerst das Ziel (z. B. 1000) erreicht, gewinnt das Spiel. Ein Sieg zahlt deinen Einsatz ×1,9.' },
+      { h: 'Karten', li: ['36 Karten: 4 Farben mit je 6, 7, 8, 9, Banner (10), Under/Bauer, Ober/Dame, König und Ass. Jeder bekommt 9 Karten.', 'Deutsches Blatt: Rosen, Schilten, Eicheln, Schellen. Französisches Blatt: Herz, Schaufel, Kreuz, Ecken. Umschalten oben rechts.'] },
+      { h: 'Trumpf bestimmen', li: ['Die Vorhand (gelbes V) bestimmt: eine Trumpffarbe, Obenabe oder Undenufe.', 'Oder sie schiebt: Dann muss der Partner bestimmen. Die Vorhand spielt trotzdem die erste Karte aus.', 'Die Vorhand wechselt jede Runde im Gegenuhrzeigersinn.'] },
+      { h: 'Trumpf (Rangfolge und Punkte)', li: ['Bauer 20 · Nell (9) 14 · Ass 11 · König 4 · Ober 3 · Banner 10 · 8, 7, 6 je 0', 'Reihenfolge von stark nach schwach: Bauer, Nell, Ass, König, Ober, Banner, 8, 7, 6.', 'Nebenfarben: Ass 11, König 4, Ober 3, Under 2, Banner 10, 9 bis 6 je 0 (Rangfolge Ass hoch).'] },
+      { h: 'Obenabe und Undenufe', li: ['Kein Trumpf. Obenabe: Ass ist die höchste Karte. Undenufe: die 6 ist die höchste, das Ass die tiefste.', 'Die Achter zählen je 8 Punkte. Obenabe: Ass 11. Undenufe: 6 zählt 11, Ass 0. So bleibt es bei 157 Punkten.'] },
+      { h: 'Spielregeln', li: ['Farbe angeben: Wer die ausgespielte Farbe hat, muss sie spielen oder darf stattdessen trumpfen.', 'Wer die Farbe nicht hat, darf jede Karte spielen.', 'Untertrumpfen ist verboten: Liegt schon ein Trumpf im Stich, darfst du keinen tieferen Trumpf spielen (ausser du hast nur noch Trümpfe).', 'Der Bauer muss nie zugegeben werden: Wird Trumpf ausgespielt und du hast nur noch den Bauer als Trumpf, darfst du eine andere Karte spielen.', 'Den Stich gewinnt der höchste Trumpf, sonst die höchste Karte der ausgespielten Farbe. Wer sticht, spielt aus.'] },
+      { h: 'Weis', li: ['Im ersten Stich zeigt jeder seinen Weis: Dreiblatt 20, Vierblatt 50, Fünfblatt 100 (je weitere Karte +50).', 'Vier Gleiche: vier Bauern 200, vier Nell 150, vier Asse, Könige, Ober oder Banner je 100.', 'Nur das Team mit dem höchsten Weis bekommt Punkte, dann aber für alle seine Weise. Gleich hoch: mehr Karten, dann höhere Karte, dann Trumpf, dann wer früher spielt.'] },
+      { h: 'Stöck, letzter Stich, Match', li: ['Stöck: König und Ober im Trumpf in einer Hand zählen 20 Punkte.', 'Der letzte Stich gibt 5 Punkte extra.', 'Match: Ein Team macht alle 9 Stiche und bekommt 257 statt 157 Punkte.'] },
+      { h: 'Andere Jassarten', p: 'Differenzler: Jeder spielt allein und schätzt vorher seine Punkte; gezählt wird die Abweichung. Coiffeur: Jedes Team muss alle Spielarten (jede Trumpffarbe, Obenabe, Undenufe) einmal spielen, mit Multiplikatoren. Hier spielst du den Schieber, die beliebteste Variante.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Schieber: you play with Ueli (top) against Vreni and Sepp. Each round is worth 157 points. The first team to reach the target (e.g. 1000) wins the match. A win pays your stake ×1.9.' },
+      { h: 'Cards', li: ['36 cards: 4 suits with 6, 7, 8, 9, Banner (10), Under/Jack, Ober/Queen, King and Ace. Everyone gets 9 cards.', 'Swiss German deck: Roses, Shields, Acorns, Bells. French deck: Hearts, Spades, Clubs, Diamonds. Switch at the top right.'] },
+      { h: 'Choosing trump', li: ['The forehand (yellow V) chooses: a trump suit, Obenabe (top-down) or Undenufe (bottom-up).', 'Or pushes: then the partner has to choose. The forehand still leads the first card.', 'The forehand moves on counterclockwise every round.'] },
+      { h: 'Trump (order and points)', li: ['Jack (Bauer) 20 · Nine (Nell) 14 · Ace 11 · King 4 · Queen 3 · Ten 10 · 8, 7, 6 zero', 'Order from strong to weak: Jack, Nine, Ace, King, Queen, Ten, 8, 7, 6.', 'Side suits: Ace 11, King 4, Queen 3, Jack 2, Ten 10, 9 to 6 zero (ace high).'] },
+      { h: 'Obenabe and Undenufe', li: ['No trump. Obenabe: the ace is highest. Undenufe: the 6 is highest, the ace lowest.', 'Eights count 8 each. Obenabe: ace 11. Undenufe: the 6 counts 11, the ace 0. That keeps the total at 157.'] },
+      { h: 'Rules of play', li: ['Follow suit: if you have the suit led you must play it, or you may trump instead.', 'Without the suit you may play any card.', 'No undertrumping: if a trump is already in the trick you may not play a lower trump (unless you only have trumps left).', 'The trump Jack never has to be played: if trump is led and the Jack is your only trump, you may play another card.', 'The highest trump wins the trick, otherwise the highest card of the suit led. The winner leads next.'] },
+      { h: 'Melds (Weis)', li: ['In the first trick everybody shows their meld: 3 in a row 20, 4 in a row 50, 5 in a row 100 (+50 per extra card).', 'Four of a kind: four Jacks 200, four Nines 150, four Aces, Kings, Queens or Tens 100 each.', 'Only the team with the best single meld scores, but then for all its melds. Equal: more cards, then higher card, then trump, then whoever plays first.'] },
+      { h: 'Stöck, last trick, Match', li: ['Stöck: King and Queen of trump in one hand count 20 points.', 'The last trick is worth 5 extra points.', 'Match: one team takes all 9 tricks and scores 257 instead of 157.'] },
+      { h: 'Other Jass games', p: 'Differenzler: everyone plays alone and predicts their points; the difference counts. Coiffeur: every team has to play every mode (each trump suit, Obenabe, Undenufe) once, with multipliers. Here you play Schieber, the most popular variant.' },
+    ],
+  },
   threecard: {
     ranks: false,
     de: [

@@ -10,6 +10,7 @@
   import planet from '../assets/space/planet.webp';
   import rock from '../assets/space/rock.webp';
   import { coinFace } from '../lib/coinface';
+  import JassCard from './JassCard.svelte';
   const coinCache: Record<string, string> = {};
   const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 512).toDataURL('image/png'));
   const CASE_ART = [[deepTide, '#8847ff'], [golden, '#e4ae39'], [voidPulse, '#eb4b4b']] as const;
@@ -123,6 +124,11 @@
       {#each [{ r: 12, s: 1 }, { r: 13, s: 1 }, { r: 1, s: 1 }] as c, i}<div class="tcc" style="--i:{i}"><CardView card={c} /></div>{/each}
     </div>
     <span class="tcpp mono">PAIR PLUS 40:1</span>
+  {:else if id === 'jass'}
+    <div class="js">
+      {#each [{ s: 1, r: 11 }, { s: 1, r: 9 }, { s: 0, r: 14 }, { s: 3, r: 13 }] as c, i}<div class="jsc" style="--i:{i}; --y:{[8, 1, 1, 8][i]}px"><JassCard card={c} /></div>{/each}
+    </div>
+    <span class="tcpp mono">STÖCK · WEIS · STICH</span>
   {:else if id === 'baccarat'}
     <div class="fan">
       <div class="c1"><CardView card={{ r: 9, s: 1 }} /></div>
@@ -179,11 +185,16 @@
   @keyframes drift { to { right: 110%; } }
   .cr .duck { position: absolute; left: 50%; bottom: 14%; height: 58%; translate: -50% 0; filter: drop-shadow(0 6px 4px rgba(0,0,0,.25)); transition: transform 0.4s var(--spring-snappy); }
   :global(.game:hover) .cr .duck, :global(.dailycard:hover) .cr .duck { transform: translateY(-14%); }
+  .art.jass { background: radial-gradient(ellipse at 50% 30%, #1d6b48, #0c3a26 75%); }
+  .js { position: relative; display: flex; --cw: 64px; margin-bottom: 18px; }
+  .jsc { margin-left: -26px; transform: rotate(calc((var(--i) - 1.5) * 9deg)) translateY(var(--y)); transform-origin: 50% 120%; transition: transform .5s var(--spring-smooth); }
+  .jsc:first-child { margin-left: 0; }
+  :global(.game:hover) .jsc { transform: rotate(calc((var(--i) - 1.5) * 14deg)) translateY(calc(var(--y) * 1.4 - 6px)); }
   .art.threecard { background: radial-gradient(ellipse at 50% 20%, #6b1f2c, #33101a 75%); }
   .tc { display: flex; --cw: 74px; }
   .tcc { transform: rotate(calc((var(--i) - 1) * 12deg)) translateY(calc((var(--i) - 1) * (var(--i) - 1) * 8px)); margin: 0 -10px; transition: transform 0.5s var(--spring-snappy); filter: drop-shadow(0 10px 14px rgba(0,0,0,.5)); }
   :global(.game:hover) .tcc { transform: rotate(calc((var(--i) - 1) * 20deg)) translateY(calc((var(--i) - 1) * (var(--i) - 1) * 14px - 8px)); }
-  .tcpp { position: absolute; bottom: 12px; left: 50%; translate: -50% 0; font-size: 0.7rem; letter-spacing: 0.16em; color: #f2c046; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(242,192,70,.5); }
+  .tcpp { white-space: nowrap; position: absolute; bottom: 12px; left: 50%; translate: -50% 0; font-size: 0.7rem; letter-spacing: 0.16em; color: #f2c046; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(242,192,70,.5); }
   .art.cases { background: radial-gradient(ellipse at 50% 0%, #22243a, #0e0f18 75%); }
   /* the reel in miniature: three real items, the gold one under the marker */
   .drops { display: flex; gap: 8px; align-items: center; }

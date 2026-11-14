@@ -31,6 +31,7 @@
     minesweeper: () => import('./pages/Minesweeper.svelte'),
     baccarat: () => import('./pages/Baccarat.svelte'),
     threecard: () => import('./pages/ThreeCard.svelte'),
+    jass: () => import('./pages/Jass.svelte'),
     holdem: () => import('./pages/Poker.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),
