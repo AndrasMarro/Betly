@@ -49,8 +49,13 @@
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
         // narrow screens: step back so the coin and its toss stay in view
-        const k = 1.35 * Math.max(1, 1.1 / camera.aspect);
-        camera.position.set(0, 14 * k, 17 * k);
+        const k = 1.35 * Math.max(1, 0.8 / camera.aspect);
+        // portrait screens: look down more steeply so the table fills the view instead of the dark room
+        const tilt = Math.min(1, Math.max(0, (1 - camera.aspect) / 0.5));
+        camera.position.set(0, (14 + 5 * tilt) * k, (17 - 6 * tilt) * k);
+        // the fog follows the camera distance, otherwise a far camera (phones) sees only darkness
+        const dist = 22 * k;
+        Object.assign(scene.fog!, { near: dist * 0.95, far: dist * 2.1 });
         camera.lookAt(0, 2.2, 0);
         camera.updateProjectionMatrix();
       });

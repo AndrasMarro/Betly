@@ -11,7 +11,7 @@
   import rock from '../assets/space/rock.webp';
   import { coinFace } from '../lib/coinface';
   const coinCache: Record<string, string> = {};
-  const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 256).toDataURL('image/png'));
+  const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 512).toDataURL('image/png'));
   const CASE_ART = [[deepTide, '#8847ff'], [golden, '#e4ae39'], [voidPulse, '#eb4b4b']] as const;
   let { id }: { id: string } = $props();
 </script>
@@ -145,12 +145,12 @@
   .art.hop { background: #2c2f36; }
   .art.tower { background: linear-gradient(180deg, #1d1838, #0f1424); }
   .art.coinflip { background: repeating-linear-gradient(90deg, #6b4126 0 54px, #5e3820 54px 56px, #744830 56px 110px, #5e3820 110px 112px); perspective: 700px; }
-  .cfelt { position: absolute; left: 50%; top: 58%; width: 120%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; transform: rotateX(62deg); background: radial-gradient(circle, #155c3e, #0a3423 70%); box-shadow: inset 0 0 0 10px #0a3423, inset 0 0 0 13px rgba(232,196,120,.6), 0 20px 40px rgba(0,0,0,.5); }
-  .coin3 { position: relative; width: 120px; height: 120px; transform-style: preserve-3d; transform: rotateX(50deg); transition: transform 0.9s var(--spring-smooth); z-index: 1; margin-top: 10px; }
+  .cfelt { position: absolute; left: 50%; top: 56%; width: 92%; height: 74%; translate: -50% -50%; border-radius: 50%; background: radial-gradient(circle, #155c3e, #0a3423 70%); box-shadow: inset 0 0 0 10px #0a3423, inset 0 0 0 13px rgba(232,196,120,.6), 0 20px 40px rgba(0,0,0,.5); }
+  .coin3 { position: relative; width: 120px; height: 120px; transform-style: preserve-3d; transform: rotateX(28deg); transition: transform 0.9s var(--spring-smooth); z-index: 1; margin-top: 6px; }
   .cf { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; backface-visibility: hidden; box-shadow: 0 0 0 4px #b77a18, 0 6px 0 #8a5a10; }
   .cf.back { transform: rotateY(180deg); }
-  .cshadow { position: absolute; left: 50%; top: 66%; width: 130px; height: 36px; translate: -50% 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent); transition: transform 0.9s var(--spring-smooth); }
-  :global(.game:hover) .coin3, :global(.dailycard:hover) .coin3 { transform: rotateX(50deg) rotateY(180deg) translateZ(30px); }
+  .cshadow { position: absolute; left: 50%; top: 70%; width: 130px; height: 30px; translate: -50% 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent); transition: transform 0.9s var(--spring-smooth); }
+  :global(.game:hover) .coin3, :global(.dailycard:hover) .coin3 { transform: rotateX(28deg) rotateY(180deg) translateZ(30px); }
   :global(.game:hover) .cshadow, :global(.dailycard:hover) .cshadow { transform: scale(0.75); }
   .art.plinko { background: radial-gradient(ellipse at 50% 0%, #22305a, #0d1326 75%); }
   .art.wheel { background: radial-gradient(ellipse at 50% 45%, #3a1d6e, #140a2e 72%); }

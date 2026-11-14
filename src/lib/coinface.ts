@@ -47,10 +47,13 @@ function base(ctx: CanvasRenderingContext2D, S: number) {
   }
 }
 
-export function coinFace(side: 'heads' | 'tails', S = 1024) {
+export function coinFace(side: 'heads' | 'tails', size = 1024) {
   const cv = document.createElement('canvas');
-  cv.width = cv.height = S;
+  cv.width = cv.height = size;
   const ctx = cv.getContext('2d')!;
+  // the design is laid out on a 1024 grid (fonts, beads, line widths) and scaled to the requested size
+  const S = 1024;
+  ctx.scale(size / S, size / S);
   base(ctx, S);
   const c = S / 2;
   const metal = gold(ctx, c, c, c * 0.6, '#fff8d6', '#f4c24a', '#c4841a');
