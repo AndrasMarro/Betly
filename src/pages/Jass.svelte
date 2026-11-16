@@ -1,7 +1,11 @@
 <script lang="ts">
   // Schieber Jass: you and your partner (top) against two bots. Trump, Obenabe or Undenufe, or push the
   // choice to your partner. Weis and Stöck count, first team to the target wins the match.
-  import { onDestroy } from 'svelte';
+  // Multiplayer: the host's browser runs the game (seat 0); guests take over bot seats, the partner seat first.
+  // Seats are absolute (0-3); every screen is turned so that its own seat sits at the bottom.
+  import { onDestroy, untrack } from 'svelte';
+  import RoomBar from '../components/RoomBar.svelte';
+  import { Room } from '../lib/net.svelte';
   import { fly } from 'svelte/transition';
   import JassCard from '../components/JassCard.svelte';
   import obeIcon from '../assets/jass/icons/obe.webp';
@@ -27,7 +31,93 @@
 
   const SUIT_NAMES = $derived(deck === 'de' ? L('Rosen Schilten Eicheln Schellen', 'Roses Shields Acorns Bells').split(' ') : L('Herz Schaufel Kreuz Ecken', 'Hearts Spades Clubs Diamonds').split(' '));
   const modeName = (m: Mode) => (m === 'obe' ? 'Obenabe' : m === 'unde' ? 'Undenufe' : SUIT_NAMES[m]);
-  const names = $derived([settings.name || L('Du', 'You'), 'Vreni', 'Ueli', 'Sepp']);
+  // ---------- multiplayer ----------
+  const BOT_NAMES = ['', 'Vreni', 'Ueli', 'Sepp'];
+  let seats = $state<Record<number, { id: string; name: string }>>({}); // host: guest per seat
+  let remoteNames = $state<string[]>(['', '', '', '']);
+  let me = $state(0); // my seat
+  let match = $state(0); // counts matches, so guests know when to stake and settle
+  const room = new Room('jass', onMsg, (id) => {
+    const seat = +Object.keys(seats).find((k) => seats[+k].id === id)!;
+    if (Number.isNaN(seat)) return;
+    delete seats[seat];
+    say(seat, L('hat den Tisch verlassen', 'left the table'));
+    // a bot takes over where the guest left off
+    if (phase === 'choose' && chooser === seat) botChoose(gen, seat, !pushed);
+    else if (phase === 'play' && turn === seat) run(gen);
+  });
+  const isGuest = $derived(room.role === 'guest');
+  const human = (p: number) => p === 0 || !!seats[p];
+  const names = $derived(isGuest ? remoteNames : [0, 1, 2, 3].map((p) => (p === 0 ? settings.name || L('Du', 'You') : seats[p]?.name ?? BOT_NAMES[p])));
+  const myTeam = $derived(me % 2);
+  const us = $derived(myTeam), them = $derived(1 - myTeam); // team indexes from my side of the table
+  const view = (s: number) => (s + me) % 4; // screen position (0 bottom, 1 right, 2 top, 3 left) -> seat
+  const pos = (p: number) => (p - me + 4) % 4; // seat -> screen position
+
+  function onMsg(m: any, from: string) {
+    if (m.t === 'state') {
+      if (!isGuest) return;
+      const was = { phase, n: trick.length };
+      ({ phase, hands, mode, vorhand, chooser, pushed, turn, trick, collect, tricksWon, live, total, summary, winner, bubbles, target, match } = m.s);
+      remoteNames = m.s.names; me = m.s.seat;
+      if (trick.length > was.n) sfx('card');
+      if (was.phase !== phase) guestPhase();
+      return;
+    }
+    if (isGuest) return;
+    if (m.t === 'join') {
+      if (Object.values(seats).some((x) => x.id === from)) return push();
+      const seat = [2, 1, 3].find((p) => !seats[p]);
+      if (seat === undefined) return room.sendTo(from, { t: 'full' });
+      seats[seat] = { id: from, name: String(m.name ?? '').slice(0, 20) || 'Gast' };
+      say(seat, L('ist dabei!', 'joined!'));
+      // if the game was waiting on the bot in that seat, it now waits for the player
+      return push();
+    }
+    const seat = +Object.keys(seats).find((k) => seats[+k].id === from)!;
+    if (Number.isNaN(seat)) return;
+    if (m.t === 'pick') pickAs(seat, m.m);
+    if (m.t === 'play' && m.c) playAs(seat, { s: +m.c.s, r: +m.c.r });
+  }
+  // host: every change goes out, each guest sees only its own cards
+  function push() {
+    if (room.role !== 'host') return;
+    const s = $state.snapshot({ phase, mode, vorhand, chooser, pushed, turn, trick, collect, tricksWon, live, total, summary, winner, bubbles, target, match, names });
+    for (const [k, g] of Object.entries(seats)) {
+      const seat = +k;
+      room.sendTo(g.id, { t: 'state', s: { ...s, seat, hands: hands.map((h, i) => (i === seat ? $state.snapshot(h) : h.map(() => back))) } });
+    }
+  }
+  $effect(() => {
+    // a deep read, so a changed bubble or a card leaving a hand counts too
+    void $state.snapshot([phase, mode, vorhand, chooser, pushed, turn, trick, collect, tricksWon, live, total, summary, winner, bubbles, target, match, names, hands, seats]);
+    untrack(push);
+  });
+  // guest: say hello (and again after reconnecting); host or solo: back to seat 0
+  $effect(() => {
+    const role = room.role;
+    untrack(() => {
+      if (role === 'guest') { gen++; room.send({ t: 'join', name: settings.name }); }
+      else { me = 0; if (role === 'solo') { seats = {}; if (isGuestBefore) { gen++; phase = 'setup'; hands = [[], [], [], []]; trick = []; total = [0, 0]; mode = null; } } }
+      isGuestBefore = role === 'guest';
+    });
+  });
+  let isGuestBefore = false;
+  // guests stake when a match starts and settle when it ends
+  let staked0 = 0, bookedMatch = 0;
+  function guestPhase() {
+    if (phase === 'choose' && match !== bookedMatch && staked0 !== match) {
+      staked0 = match;
+      staked = bet > 0 && bet <= wallet.balance && total[0] + total[1] === 0 ? bet : 0;
+      if (staked) stake(staked);
+    }
+    if (phase === 'over' && match !== bookedMatch) {
+      bookedMatch = match;
+      const won = staked && winner === myTeam ? Math.round(staked * J.PAYOUT * 100) / 100 : 0;
+      if (staked) settle(won, won);
+      sfx(winner === myTeam ? 'big' : 'lose');
+    }
+  }
 
   type Phase = 'setup' | 'choose' | 'play' | 'round' | 'over';
   let phase = $state<Phase>('setup');
@@ -66,7 +156,8 @@
     const key = (c: JCard) => (m !== null && J.isTrump(c, m) ? -1 : order.indexOf(c.s)) * 100 - J.power(c, m ?? 'obe', c.s);
     return [...h].sort((a, b) => key(a) - key(b));
   }
-  const legalNow = $derived(phase === 'play' && turn === 0 && mode !== null && trick.length < 4 ? J.legal(hands[0], trick, mode) : []);
+  const myHand = $derived(sorted(hands[me] ?? [], mode));
+  const legalNow = $derived(phase === 'play' && turn === me && mode !== null && trick.length < 4 ? J.legal(hands[me], trick, mode) : []);
   const canPlay = (c: JCard) => legalNow.some((x) => J.same(x, c));
 
   const weisName = (w: Weis) => {
@@ -78,9 +169,10 @@
   };
 
   function newMatch() {
-    if (bet < 1 || bet > wallet.balance) return;
+    if (isGuest || bet < 1 || bet > wallet.balance) return;
     stake(bet);
     staked = bet;
+    match++;
     total = [0, 0];
     winner = -1;
     vorhand = Math.floor(Math.random() * 4);
@@ -92,12 +184,12 @@
   async function startRound() {
     const g = ++gen;
     const h = J.deal();
-    hands = [sorted(h[0], null), h[1], h[2], h[3]];
+    hands = h;
     mode = null; pushed = false; trick = []; collect = -1; played = []; tricks = [];
     tricksWon = [0, 0]; live = [0, 0]; summary = null; chooser = vorhand; turn = -1;
     phase = 'choose';
     for (let i = 0; i < 9; i++) { sfx('card'); await sleep(40); }
-    if (vorhand !== 0) await botChoose(g, vorhand, true);
+    if (!human(vorhand)) await botChoose(g, vorhand, true);
   }
 
   async function botChoose(g: number, p: number, canPush: boolean) {
@@ -109,7 +201,7 @@
       pushed = true;
       const partner = (p + 2) % 4;
       chooser = partner;
-      if (partner === 0) return; // your turn to choose
+      if (human(partner)) return; // a player chooses
       await sleep(900);
       if (g !== gen) return;
       setMode(J.chooseMode(hands[partner], false) as Mode);
@@ -117,15 +209,20 @@
   }
 
   function pick(m: Mode | 'push') {
-    if (phase !== 'choose' || chooser !== 0) return;
+    if (isGuest) return room.send({ t: 'pick', m });
+    pickAs(0, m);
+  }
+  function pickAs(p: number, m: Mode | 'push') {
+    if (phase !== 'choose' || chooser !== p) return;
     if (m === 'push') {
       if (pushed) return;
       pushed = true;
-      chooser = 2;
-      say(0, L('Schiebe!', 'I push!'));
-      botChoose(gen, 2, false);
+      chooser = (p + 2) % 4;
+      say(p, L('Schiebe!', 'I push!'));
+      if (!human(chooser)) botChoose(gen, chooser, false);
       return;
     }
+    if (![0, 1, 2, 3, 'obe', 'unde'].includes(m)) return;
     setMode(m);
   }
 
@@ -133,7 +230,6 @@
     mode = m;
     say(chooser, modeName(m), 2600);
     sfx('chip');
-    hands[0] = sorted(hands[0], m);
     weis = hands.map((h) => J.weisOf(h, m));
     stSeat = J.stoeckSeat(hands, m);
     phase = 'play';
@@ -141,9 +237,9 @@
     run(gen);
   }
 
-  // bots play until it is your turn
+  // bots play until it is a player's turn
   async function run(g: number) {
-    while (g === gen && phase === 'play' && turn !== 0) {
+    while (g === gen && phase === 'play' && turn >= 0 && !human(turn)) {
       await sleep(trick.length ? 520 : 750);
       if (g !== gen || phase !== 'play') return;
       await place(g, turn, J.botPlay(hands[turn], trick, mode!, turn, played));
@@ -151,10 +247,15 @@
   }
 
   function tap(c: JCard) {
-    if (!canPlay(c)) { if (phase === 'play' && turn === 0) sfx('lose'); return; }
+    if (!canPlay(c)) { if (phase === 'play' && turn === me) sfx('lose'); return; }
+    if (isGuest) { turn = -1; return room.send({ t: 'play', c }); }
+    playAs(0, c);
+  }
+  function playAs(p: number, c: JCard) {
+    if (phase !== 'play' || turn !== p || mode === null || !J.legal(hands[p], trick, mode).some((x) => J.same(x, c))) return;
     const g = gen;
     turn = -1;
-    place(g, 0, c).then(() => run(g));
+    place(g, p, c).then(() => run(g));
   }
 
   async function place(g: number, p: number, c: JCard) {
@@ -198,7 +299,7 @@
       winner = total[0] === total[1] ? (cards[0] >= cards[1] ? 0 : 1) : total[0] > total[1] ? 0 : 1;
       phase = 'over';
       const won = winner === 0 ? Math.round(staked * J.PAYOUT * 100) / 100 : 0;
-      settle(won, won);
+      if (staked) settle(won, won);
       sfx(winner === 0 ? 'big' : 'lose');
     } else {
       phase = 'round';
@@ -207,6 +308,7 @@
   }
 
   function nextRound() {
+    if (isGuest) return;
     vorhand = (vorhand + 1) % 4;
     startRound();
   }
@@ -227,35 +329,37 @@
       {#each DECKS as [d, de, en]}<button class:on={deck === d} onclick={() => (deck = d)}><JassCard icon card={{ s: 0, r: 6 }} deck={d} /> {L(de, en)}</button>{/each}
     </div>
   </header>
+  <RoomBar {room} />
 
   <div class="score rise" style="--i:1">
-    <div class="team us" class:lead={total[0] > total[1]}><span class="eyebrow">{L('Wir', 'Us')}<span class="who"> · {names[0]} & Ueli</span></span><strong class="mono">{total[0]}</strong><span class="mono sub">+{live[0]} · {tricksWon[0]} {L('Stiche', 'tricks')}</span></div>
+    <div class="team us" class:lead={total[us] > total[them]}><span class="eyebrow">{L('Wir', 'Us')}<span class="who"> · {names[me]} & {names[(me + 2) % 4]}</span></span><strong class="mono">{total[us]}</strong><span class="mono sub">+{live[us]} · {tricksWon[us]} {L('Stiche', 'tricks')}</span></div>
     <div class="mid">
       {#if mode !== null}<span class="trump">{#if typeof mode === 'number'}<JassCard icon card={{ s: mode, r: 6 }} {deck} />{:else}<img class="mico" src={mode === 'obe' ? obeIcon : undeIcon} alt="" />{/if} {modeName(mode)}</span>{:else}<span class="muted">{L('Kein Trumpf', 'No trump')}</span>{/if}
       <span class="mono muted">{L('Ziel', 'Target')} {target}</span>
     </div>
-    <div class="team them" class:lead={total[1] > total[0]}><span class="eyebrow">{L('Gegner', 'Them')}<span class="who"> · Vreni & Sepp</span></span><strong class="mono">{total[1]}</strong><span class="mono sub">+{live[1]} · {tricksWon[1]} {L('Stiche', 'tricks')}</span></div>
+    <div class="team them" class:lead={total[them] > total[us]}><span class="eyebrow">{L('Gegner', 'Them')}<span class="who"> · {names[(me + 1) % 4]} & {names[(me + 3) % 4]}</span></span><strong class="mono">{total[them]}</strong><span class="mono sub">+{live[them]} · {tricksWon[them]} {L('Stiche', 'tricks')}</span></div>
   </div>
 
   <div class="felt rise" style="--i:2">
-    {#each [1, 2, 3] as p}
-      <div class="seat s{p}" class:turn={turn === p}>
+    {#each [1, 2, 3] as v}
+      {@const p = view(v)}
+      <div class="seat s{v}" class:turn={turn === p}>
         <div class="backs">{#each hands[p] as _, i (i)}<div class="bk"><JassCard card={back} down /></div>{/each}</div>
-        <span class="nm">{names[p]}{#if p === vorhand && phase !== 'setup'}<i class="vh" title="Vorhand">V</i>{/if}</span>
+        <span class="nm">{names[p]}{#if seats[p] || (isGuest && p === 0)}<i class="hu" title={L('Mitspieler', 'Player')}>●</i>{/if}{#if p === vorhand && phase !== 'setup'}<i class="vh" title="Vorhand">V</i>{/if}</span>
         {#if bubbles[p]}<span class="bubble" in:pop>{bubbles[p]}</span>{/if}
       </div>
     {/each}
 
     <div class="center">
       {#each trick as x (x.p + '-' + x.c.s + '-' + x.c.r)}
-        <div class="tc" style:transform={collect >= 0 ? `${SLOT[x.p]} translate(${OFF[collect][0] * 1.6}px, ${OFF[collect][1] * 1.6}px) scale(.6)` : SLOT[x.p]} class:gone={collect >= 0} in:fly={{ x: OFF[x.p][0], y: OFF[x.p][1], duration: 300, opacity: 0.2 }}>
+        <div class="tc" style:transform={collect >= 0 ? `${SLOT[pos(x.p)]} translate(${OFF[pos(collect)][0] * 1.6}px, ${OFF[pos(collect)][1] * 1.6}px) scale(.6)` : SLOT[pos(x.p)]} class:gone={collect >= 0} in:fly={{ x: OFF[pos(x.p)][0], y: OFF[pos(x.p)][1], duration: 300, opacity: 0.2 }}>
           <JassCard card={x.c} {deck} />
         </div>
       {/each}
 
-      {#if phase === 'choose' && chooser === 0}
+      {#if phase === 'choose' && chooser === me}
         <div class="choose" in:pop>
-          <p>{pushed ? L('Ueli hat geschoben: du bestimmst.', 'Ueli pushed: you decide.') : L('Du bestimmst den Trumpf.', 'You choose trump.')}</p>
+          <p>{pushed ? names[(me + 2) % 4] + L(' hat geschoben: du bestimmst.', ' pushed: you decide.') : L('Du bestimmst den Trumpf.', 'You choose trump.')}</p>
           <div class="modes">
             {#each [0, 1, 2, 3] as s}<button class="btn" onclick={() => pick(s as Mode)}><JassCard icon card={{ s, r: 6 }} {deck} /> {SUIT_NAMES[s]}</button>{/each}
             <button class="btn" onclick={() => pick('obe')}><img class="mico" src={obeIcon} alt="" /> Obenabe</button>
@@ -267,34 +371,35 @@
         <p class="wait" in:pop>{names[chooser]} {L('überlegt …', 'is thinking …')}</p>
       {:else if (phase === 'round' || phase === 'over') && summary}
         <div class="sum" in:pop>
-          {#if phase === 'over'}<h2 class:win={winner === 0}>{winner === 0 ? L('Gewonnen!', 'You win!') : L('Verloren', 'You lose')}</h2>{/if}
+          {#if phase === 'over'}<h2 class:win={winner === us}>{winner === us ? L('Gewonnen!', 'You win!') : L('Verloren', 'You lose')}</h2>{/if}
           <table>
             <thead><tr><th></th><th>{L('Wir', 'Us')}</th><th>{L('Gegner', 'Them')}</th></tr></thead>
             <tbody>
-              <tr><td>{L('Karten', 'Cards')}</td><td class="mono">{summary.cards[0]}</td><td class="mono">{summary.cards[1]}</td></tr>
-              {#if summary.weis[0] || summary.weis[1]}<tr><td>Weis</td><td class="mono">{summary.weis[0]}</td><td class="mono">{summary.weis[1]}</td></tr>{/if}
-              {#if summary.stoeck[0] || summary.stoeck[1]}<tr><td>Stöck</td><td class="mono">{summary.stoeck[0]}</td><td class="mono">{summary.stoeck[1]}</td></tr>{/if}
-              <tr class="tot"><td>{L('Spielstand', 'Score')}</td><td class="mono">{total[0]}</td><td class="mono">{total[1]}</td></tr>
+              <tr><td>{L('Karten', 'Cards')}</td><td class="mono">{summary.cards[us]}</td><td class="mono">{summary.cards[them]}</td></tr>
+              {#if summary.weis[0] || summary.weis[1]}<tr><td>Weis</td><td class="mono">{summary.weis[us]}</td><td class="mono">{summary.weis[them]}</td></tr>{/if}
+              {#if summary.stoeck[0] || summary.stoeck[1]}<tr><td>Stöck</td><td class="mono">{summary.stoeck[us]}</td><td class="mono">{summary.stoeck[them]}</td></tr>{/if}
+              <tr class="tot"><td>{L('Spielstand', 'Score')}</td><td class="mono">{total[us]}</td><td class="mono">{total[them]}</td></tr>
             </tbody>
           </table>
-          {#if summary.match >= 0}<p class="match">Match! {summary.match === 0 ? L('Alle Stiche für uns', 'All tricks for us') : L('Alle Stiche für die Gegner', 'All tricks for them')}</p>{/if}
-          {#if phase === 'round'}<button class="btn primary" onclick={nextRound}>{L('Nächste Runde', 'Next round')}</button>
-          {:else}<p class="mono pay">{winner === 0 ? '+' + fmt(Math.round(staked * J.PAYOUT * 100) / 100) : '−' + fmt(staked)}</p>{/if}
+          {#if summary.match >= 0}<p class="match">Match! {summary.match === us ? L('Alle Stiche für uns', 'All tricks for us') : L('Alle Stiche für die Gegner', 'All tricks for them')}</p>{/if}
+          {#if phase === 'round'}{#if isGuest}<p class="muted">{L('Der Host teilt gleich neu aus …', 'The host deals the next round …')}</p>{:else}<button class="btn primary" onclick={nextRound}>{L('Nächste Runde', 'Next round')}</button>{/if}
+          {:else if staked}<p class="mono pay">{winner === us ? '+' + fmt(Math.round(staked * J.PAYOUT * 100) / 100) : '−' + fmt(staked)}</p>{/if}
         </div>
       {:else if phase === 'setup'}
         <div class="intro" in:pop>
-          <p>{L('Du spielst mit Ueli (oben) gegen Vreni und Sepp. Wer zuerst das Ziel erreicht, gewinnt.', 'You play with Ueli (top) against Vreni and Sepp. First team to the target wins.')}</p>
+          <p>{L(`Du spielst mit ${names[(me + 2) % 4]} (oben) gegen ${names[(me + 1) % 4]} und ${names[(me + 3) % 4]}. Wer zuerst das Ziel erreicht, gewinnt.`, `You play with ${names[(me + 2) % 4]} (top) against ${names[(me + 1) % 4]} and ${names[(me + 3) % 4]}. First team to the target wins.`)}</p>
+          <p class="muted">{L('Mit Freunden: Raum öffnen und den Code teilen. Mitspieler übernehmen die Bot-Plätze, zuerst den deines Partners.', 'With friends: open a room and share the code. Players take over the bot seats, your partner first.')}</p>
           <p class="muted">{L('Sieg zahlt', 'A win pays')} ×{J.PAYOUT}</p>
         </div>
       {/if}
     </div>
 
-    <div class="seat s0" class:turn={turn === 0}>
-      {#if bubbles[0]}<span class="bubble" in:pop>{bubbles[0]}</span>{/if}
+    <div class="seat s0" class:turn={turn === me}>
+      {#if bubbles[me]}<span class="bubble" in:pop>{bubbles[me]}</span>{/if}
     </div>
-    <div class="hand" class:my={turn === 0}>
-      {#each hands[0] as c (c.s * 100 + c.r)}
-        <button class="hc" class:ok={canPlay(c)} class:no={turn === 0 && !canPlay(c)} onclick={() => tap(c)} disabled={phase !== 'play'} aria-label="card">
+    <div class="hand" class:my={turn === me}>
+      {#each myHand as c (c.s * 100 + c.r)}
+        <button class="hc" class:ok={canPlay(c)} class:no={turn === me && !canPlay(c)} onclick={() => tap(c)} disabled={phase !== 'play'} aria-label="card">
           <JassCard card={c} {deck} />
         </button>
       {/each}
@@ -306,14 +411,15 @@
     {#if phase === 'setup' || phase === 'over'}
       <BetInput bind:value={bet} />
       <label class="field">{L('Ziel', 'Target')}
-        <select bind:value={target}>{#each [500, 1000, 1500, 2500] as v}<option value={v}>{v}</option>{/each}</select>
+        <select bind:value={target} disabled={isGuest}>{#each [500, 1000, 1500, 2500] as v}<option value={v}>{v}</option>{/each}</select>
       </label>
-      <button class="btn primary deal" onclick={newMatch} disabled={bet < 1 || bet > wallet.balance}>{phase === 'over' ? L('Neues Spiel', 'New match') : L('Spielen', 'Play')}</button>
+      {#if isGuest}<p class="status">{L('Dein Einsatz gilt, sobald der Host das Spiel startet.', 'Your stake counts once the host starts the match.')}</p>
+      {:else}<button class="btn primary deal" onclick={newMatch} disabled={bet < 1 || bet > wallet.balance}>{phase === 'over' ? L('Neues Spiel', 'New match') : L('Spielen', 'Play')}</button>{/if}
     {:else}
       <p class="status">
-        {#if phase === 'choose'}{chooser === 0 ? L('Wähle Trumpf oder schiebe.', 'Choose trump or push.') : names[chooser] + L(' wählt …', ' is choosing …')}
+        {#if phase === 'choose'}{chooser === me ? L('Wähle Trumpf oder schiebe.', 'Choose trump or push.') : names[chooser] + L(' wählt …', ' is choosing …')}
         {:else if phase === 'round'}{L('Runde fertig.', 'Round over.')}
-        {:else if turn === 0}{L('Du bist dran. Spielbare Karten sind angehoben.', 'Your turn. Playable cards are raised.')}
+        {:else if turn === me}{L('Du bist dran. Spielbare Karten sind angehoben.', 'Your turn. Playable cards are raised.')}
         {:else}{L('Warten auf die anderen …', 'Waiting for the others …')}{/if}
       </p>
       <span class="mono muted">{L('Einsatz', 'Stake')} {fmt(staked)}</span>
@@ -330,6 +436,7 @@
 <style>
   .page { padding-bottom: 120px; }
   .credit { font-size: 0.78rem; margin: 14px 0 0; }
+  .hu { margin-left: 5px; color: #2fbf71; font-style: normal; font-size: 0.7em; vertical-align: 0.15em; }
   /* the mode icons are black line art: light on the dark themes and on the red button */
   .mico { width: 1.3em; height: 1.3em; vertical-align: -0.3em; filter: invert(1); }
   :global([data-theme='ivory']) .mico:not(.inv) { filter: none; }
