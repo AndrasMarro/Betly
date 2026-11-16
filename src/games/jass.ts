@@ -7,6 +7,8 @@ import { shuffle } from '../lib/cards.ts';
 export type JCard = { s: number; r: number };
 export type Mode = 0 | 1 | 2 | 3 | 'obe' | 'unde';
 export type Play = { p: number; c: JCard };
+/** Card pictures: Swiss German, Swiss French or the international French pattern. */
+export type Deck = 'de' | 'fr' | 'intl';
 
 export const PAYOUT = 1.9; // a won match pays the stake x1.9
 export const same = (a: JCard, b: JCard) => a.s === b.s && a.r === b.r;

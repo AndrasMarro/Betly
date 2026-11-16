@@ -4,21 +4,23 @@
   import { onDestroy } from 'svelte';
   import { fly } from 'svelte/transition';
   import JassCard from '../components/JassCard.svelte';
+  import obeIcon from '../assets/jass/icons/obe.webp';
+  import undeIcon from '../assets/jass/icons/unde.webp';
+  import pushIcon from '../assets/jass/icons/schieben.webp';
   import HowTo from '../components/HowTo.svelte';
   import BetInput from '../components/BetInput.svelte';
   import * as J from '../games/jass';
-  import type { JCard, Mode, Play, Weis } from '../games/jass';
+  import type { JCard, Mode, Play, Weis, Deck } from '../games/jass';
   import { wallet, settle, stake, settings, fmt } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
 
   const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
-  // card pictures dropped into src/assets/jass/fr (see the README there) need their sources named
-  const FR_SCANS = Object.keys(import.meta.glob('../assets/jass/fr/*.{png,jpg,jpeg,webp,gif}')).length > 0;
+  const DECKS: [Deck, string, string][] = [['de', 'Deutsch', 'Swiss German'], ['fr', 'Französisch', 'Swiss French'], ['intl', 'International', 'International']];
   const load = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
   const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
 
-  let deck = $state<'de' | 'fr'>(load('betly:jass-deck', 'de') === 'fr' ? 'fr' : 'de');
+  let deck = $state<Deck>(DECKS.find(([d]) => d === load('betly:jass-deck', 'de'))?.[0] ?? 'de');
   let target = $state(+load('betly:jass-target', '1000') || 1000);
   $effect(() => { save('betly:jass-deck', deck); save('betly:jass-target', String(target)); });
   let bet = $state(100);
@@ -222,15 +224,14 @@
       <div class="h1row"><h1>Jass</h1><HowTo id="jass" /></div>
     </div>
     <div class="seg" role="group" aria-label={L('Kartenblatt', 'Deck')}>
-      <button class:on={deck === 'de'} onclick={() => (deck = 'de')}><JassCard icon card={{ s: 0, r: 6 }} deck="de" /> {L('Deutsch', 'Swiss German')}</button>
-      <button class:on={deck === 'fr'} onclick={() => (deck = 'fr')}><JassCard icon card={{ s: 0, r: 6 }} deck="fr" /> {L('Französisch', 'French')}</button>
+      {#each DECKS as [d, de, en]}<button class:on={deck === d} onclick={() => (deck = d)}><JassCard icon card={{ s: 0, r: 6 }} deck={d} /> {L(de, en)}</button>{/each}
     </div>
   </header>
 
   <div class="score rise" style="--i:1">
     <div class="team us" class:lead={total[0] > total[1]}><span class="eyebrow">{L('Wir', 'Us')}<span class="who"> · {names[0]} & Ueli</span></span><strong class="mono">{total[0]}</strong><span class="mono sub">+{live[0]} · {tricksWon[0]} {L('Stiche', 'tricks')}</span></div>
     <div class="mid">
-      {#if mode !== null}<span class="trump">{#if typeof mode === 'number'}<JassCard icon card={{ s: mode, r: 6 }} {deck} />{:else}<b>{mode === 'obe' ? '↓' : '↑'}</b>{/if} {modeName(mode)}</span>{:else}<span class="muted">{L('Kein Trumpf', 'No trump')}</span>{/if}
+      {#if mode !== null}<span class="trump">{#if typeof mode === 'number'}<JassCard icon card={{ s: mode, r: 6 }} {deck} />{:else}<img class="mico" src={mode === 'obe' ? obeIcon : undeIcon} alt="" />{/if} {modeName(mode)}</span>{:else}<span class="muted">{L('Kein Trumpf', 'No trump')}</span>{/if}
       <span class="mono muted">{L('Ziel', 'Target')} {target}</span>
     </div>
     <div class="team them" class:lead={total[1] > total[0]}><span class="eyebrow">{L('Gegner', 'Them')}<span class="who"> · Vreni & Sepp</span></span><strong class="mono">{total[1]}</strong><span class="mono sub">+{live[1]} · {tricksWon[1]} {L('Stiche', 'tricks')}</span></div>
@@ -257,10 +258,10 @@
           <p>{pushed ? L('Ueli hat geschoben: du bestimmst.', 'Ueli pushed: you decide.') : L('Du bestimmst den Trumpf.', 'You choose trump.')}</p>
           <div class="modes">
             {#each [0, 1, 2, 3] as s}<button class="btn" onclick={() => pick(s as Mode)}><JassCard icon card={{ s, r: 6 }} {deck} /> {SUIT_NAMES[s]}</button>{/each}
-            <button class="btn" onclick={() => pick('obe')}><b>↓</b> Obenabe</button>
-            <button class="btn" onclick={() => pick('unde')}><b>↑</b> Undenufe</button>
+            <button class="btn" onclick={() => pick('obe')}><img class="mico" src={obeIcon} alt="" /> Obenabe</button>
+            <button class="btn" onclick={() => pick('unde')}><img class="mico" src={undeIcon} alt="" /> Undenufe</button>
           </div>
-          {#if !pushed}<button class="btn primary push" onclick={() => pick('push')}>{L('Schieben', 'Push')}</button>{/if}
+          {#if !pushed}<button class="btn primary push" onclick={() => pick('push')}><img class="mico inv" src={pushIcon} alt="" /> {L('Schieben', 'Push')}</button>{/if}
         </div>
       {:else if phase === 'choose'}
         <p class="wait" in:pop>{names[chooser]} {L('überlegt …', 'is thinking …')}</p>
@@ -318,19 +319,20 @@
       <span class="mono muted">{L('Einsatz', 'Stake')} {fmt(staked)}</span>
     {/if}
   </div>
-  {#if FR_SCANS && deck === 'fr'}
     <p class="credit muted">
-      {L('Bildquellen französisches Blatt:', 'Image sources for the French deck:')}
+      {L('Bildquellen der Kartenblätter:', 'Card image sources:')}
       <a href="https://jassverzeichnis.ch/uebersicht/franzoesische-jasskarten" target="_blank" rel="noopener noreferrer">jassverzeichnis.ch</a>,
       <a href="https://github.com/d-sbrgr/DSPRO2-jassAIr/tree/main" target="_blank" rel="noopener noreferrer">d-sbrgr/DSPRO2-jassAIr</a>,
       <a href="https://github.com/saadelmoutaouakil/Jass-Game/tree/master" target="_blank" rel="noopener noreferrer">saadelmoutaouakil/Jass-Game</a>
     </p>
-  {/if}
 </section>
 
 <style>
   .page { padding-bottom: 120px; }
   .credit { font-size: 0.78rem; margin: 14px 0 0; }
+  /* the mode icons are black line art: light on the dark themes and on the red button */
+  .mico { width: 1.3em; height: 1.3em; vertical-align: -0.3em; filter: invert(1); }
+  :global([data-theme='ivory']) .mico:not(.inv) { filter: none; }
   .credit a { color: inherit; }
   .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 12px; }
   .h1row { display: flex; align-items: center; gap: 12px; }
@@ -352,7 +354,7 @@
 
   .felt {
     --cw: clamp(58px, min(7vw, 9.5vh), 96px);
-    --hcw: clamp(56px, min(7.4vw, 11vh), 92px); --hh: calc(var(--hcw) * 1.4 + 26px);
+    --hcw: clamp(56px, min(7.4vw, 11vh), 92px); --hh: calc(var(--hcw) * 1.53 + 26px);
     position: relative; height: clamp(440px, calc(100dvh - var(--nav-h, 64px) - 250px), 680px); border-radius: 40px; color: #fff; overflow: hidden;
     background: radial-gradient(ellipse at 50% 40%, #1d6b48, #0c3a26 75%);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 0 0 10px rgba(0,0,0,.16), 0 30px 60px -30px rgba(0,0,0,.6);
