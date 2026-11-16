@@ -9,12 +9,12 @@
   const uid = $props.id();
   // Real card scans, if present: src/assets/jass/<fr|de>/<farbe>-<wert>.<png|jpg|webp>, e.g. fr/herz-koenig.png,
   // de/rosen-under.webp. Missing files fall back to the drawn cards below.
-  const SCANS = import.meta.glob('../assets/jass/*/*.{png,jpg,jpeg,webp}', { eager: true, import: 'default' }) as Record<string, string>;
+  const SCANS = import.meta.glob('../assets/jass/*/*.{png,jpg,jpeg,webp,gif}', { eager: true, import: 'default' }) as Record<string, string>;
   const SUIT_FILE = { fr: ['herz', 'schaufel', 'kreuz', 'ecke'], de: ['rosen', 'schilten', 'eicheln', 'schellen'] };
   const RANK_FILE = { fr: { 10: '10', 11: 'bauer', 12: 'dame', 13: 'koenig', 14: 'ass' }, de: { 10: 'banner', 11: 'under', 12: 'ober', 13: 'koenig', 14: 'ass' } } as Record<'fr' | 'de', Record<number, string>>;
   const scan = $derived.by(() => {
     const base = `../assets/jass/${deck}/${SUIT_FILE[deck][card.s]}-${RANK_FILE[deck][card.r] ?? card.r}.`;
-    for (const ext of ['webp', 'png', 'jpg', 'jpeg']) if (SCANS[base + ext]) return SCANS[base + ext];
+    for (const ext of ['webp', 'png', 'jpg', 'jpeg', 'gif']) if (SCANS[base + ext]) return SCANS[base + ext];
     return null;
   });
   // engine suit -> poker suit (0♠ 1♥ 2♦ 3♣): Rosen=Herz, Schilten=Schaufel, Eicheln=Kreuz, Schellen=Ecken

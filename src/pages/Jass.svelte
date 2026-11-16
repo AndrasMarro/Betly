@@ -13,6 +13,8 @@
   import { pop } from '../lib/motion';
 
   const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
+  // card pictures dropped into src/assets/jass/fr (see the README there) need their sources named
+  const FR_SCANS = Object.keys(import.meta.glob('../assets/jass/fr/*.{png,jpg,jpeg,webp,gif}')).length > 0;
   const load = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
   const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
 
@@ -316,10 +318,20 @@
       <span class="mono muted">{L('Einsatz', 'Stake')} {fmt(staked)}</span>
     {/if}
   </div>
+  {#if FR_SCANS && deck === 'fr'}
+    <p class="credit muted">
+      {L('Bildquellen französisches Blatt:', 'Image sources for the French deck:')}
+      <a href="https://jassverzeichnis.ch/uebersicht/franzoesische-jasskarten" target="_blank" rel="noopener noreferrer">jassverzeichnis.ch</a>,
+      <a href="https://github.com/d-sbrgr/DSPRO2-jassAIr/tree/main" target="_blank" rel="noopener noreferrer">d-sbrgr/DSPRO2-jassAIr</a>,
+      <a href="https://github.com/saadelmoutaouakil/Jass-Game/tree/master" target="_blank" rel="noopener noreferrer">saadelmoutaouakil/Jass-Game</a>
+    </p>
+  {/if}
 </section>
 
 <style>
   .page { padding-bottom: 120px; }
+  .credit { font-size: 0.78rem; margin: 14px 0 0; }
+  .credit a { color: inherit; }
   .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 12px; }
   .h1row { display: flex; align-items: center; gap: 12px; }
   h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; }
