@@ -203,16 +203,27 @@ function icon(g: CanvasRenderingContext2D, k: Icon, x: number, y: number, z: num
 }
 
 /** Tall, narrow serif lettering (a classic serif squeezed sideways), fitted into width room. */
-function serif(g: CanvasRenderingContext2D, txt: string, x: number, y: number, size: number, room: number, col: string) {
+function serif(g: CanvasRenderingContext2D, txt: string, x: number, y: number, size: number, room: number, col: string, narrow = 0.62) {
   g.save();
   g.font = `700 ${Math.round(size)}px Georgia, 'Times New Roman', serif`;
-  const sq = Math.min(0.62, room / Math.max(1, g.measureText(txt).width));
+  const sq = Math.min(narrow, room / Math.max(1, g.measureText(txt).width));
   g.translate(x, y); g.scale(sq, 1);
   g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 0, 0);
   g.restore();
 }
+/** The Alpenrot banner from the roof: wide, red over white with the mountain edge and the name across, swallowtail hem. */
+function alpsFlag(g: CanvasRenderingContext2D, cx: number, top: number, w: number, h: number) {
+  const x = cx - w / 2, hem = h * 0.12;
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(x + 4, top + 4, w, h);
+  g.save();
+  g.beginPath(); g.moveTo(x, top); g.lineTo(x + w, top); g.lineTo(x + w, top + h + hem); g.lineTo(x + w / 2, top + h); g.lineTo(x, top + h + hem); g.closePath(); g.clip();
+  paintAlps(g, { bg: '#ffffff', fg: '#121212', txt: 'ALPENROT', alps: true }, x, top, w, h + hem, 0.8);
+  g.restore();
+  g.fillStyle = '#c9ccd3'; g.fillRect(x - 2, top, w + 4, Math.max(2, h * 0.025)); // the pole it hangs from
+}
+
 /** The red-and-white board: red sky, a white mountain range rising into it, the name below in black. */
-function paintAlps(g: CanvasRenderingContext2D, ad: Ad, x: number, y: number, w: number, h: number) {
+function paintAlps(g: CanvasRenderingContext2D, ad: Ad, x: number, y: number, w: number, h: number, narrow = 0.62) {
   g.fillStyle = '#ffffff'; g.fillRect(x, y, w, h);
   g.fillStyle = '#d0101c';
   g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.lineTo(x + w, y + h * 0.42);
@@ -220,7 +231,7 @@ function paintAlps(g: CanvasRenderingContext2D, ad: Ad, x: number, y: number, w:
   let px = x + w;
   for (const [fx, fy] of peaks) { const nx = x + w * fx; g.lineTo((px + nx) / 2, y + h * (fy + 0.16)); g.lineTo(nx, y + h * fy); px = nx; }
   g.lineTo(x + w * 0.08, y + h * 0.36); g.lineTo(x, y + h * 0.42); g.closePath(); g.fill();
-  serif(g, ad.txt, x + w / 2, y + h * 0.7, h * 0.5, w * 0.8, ad.fg);
+  serif(g, ad.txt, x + w / 2, y + h * 0.7, h * 0.5, w * 0.8, ad.fg, narrow);
 }
 
 /** One advertising board: background, logo on the left, the name shrunk to fit. */
@@ -246,17 +257,22 @@ const SKIN = ['#f1c8a5', '#d9a07a', '#a86b45', '#7a4a2c', '#f6d8bd'];
 let standCache: { key: string; tiles: HTMLCanvasElement[] } | null = null;
 
 // Secret guests: little caricatures hidden in the front rows (no names anywhere, find them yourself).
-type Vip = 'blond' | 'judo' | 'marshal' | 'seven' | 'founder' | 'curls';
+type Vip = 'blond' | 'judo' | 'marshal' | 'seven' | 'founder' | 'curls' | 'hoodie' | 'grin' | 'tee' | 'beard' | 'bowler' | 'tweed' | 'longhair';
 const VIPS: { k: Vip; r: number; f: number }[] = [
   // f: share of the 48 m tile, kept clear of the pillars at 6, 18, 30 and 42 m
   { k: 'blond', r: 6, f: 0.16 }, { k: 'judo', r: 5, f: 0.33 }, { k: 'marshal', r: 6, f: 0.58 },
   { k: 'seven', r: 4, f: 0.71 }, { k: 'founder', r: 5, f: 0.79 }, { k: 'curls', r: 5, f: 0.815 },
+  // further back, also clear of the hanging banners (at 1.5, 11.4-15.6, 25.5 and 37.5 m)
+  { k: 'hoodie', r: 2, f: 0.083 }, { k: 'grin', r: 3, f: 0.22 }, { k: 'tee', r: 1, f: 0.344 }, { k: 'beard', r: 2, f: 0.46 },
+  { k: 'bowler', r: 3, f: 0.573 }, { k: 'tweed', r: 1, f: 0.66 }, { k: 'longhair', r: 2, f: 0.94 },
 ];
 function drawVip(g: CanvasRenderingContext2D, k: Vip, cx: number, by: number, rh: number, sp: number, up: boolean) {
   const hr = rh * 0.18, hy = by - rh * 0.13;
   const look = {
     blond: { body: '#1f2a44', skin: '#f2b27c' }, judo: { body: '#2b2f36', skin: '#f0d2b8' }, marshal: { body: '#22252b', skin: '#f1d0a8' },
     seven: { body: '#d5112b', skin: '#c98f62' }, founder: { body: '#6c7a70', skin: '#f2cdb0' }, curls: { body: '#8fb3d9', skin: '#e9c09c' },
+    hoodie: { body: '#e8742a', skin: '#e3b48e' }, grin: { body: '#f2c33a', skin: '#f0c9a6' }, tee: { body: '#141418', skin: '#f2cdb0' }, beard: { body: '#7a1d22', skin: '#e9be98' },
+    bowler: { body: '#1a1a1d', skin: '#f2d5bd' }, tweed: { body: '#7a5a3a', skin: '#f0cfb4' }, longhair: { body: '#141418', skin: '#e6c0a0' },
   }[k];
   if (up) { g.strokeStyle = look.body; g.lineWidth = Math.max(1.5, sp * 0.09); g.lineCap = 'round'; g.beginPath(); g.moveTo(cx - sp * 0.16, by + rh * 0.1); g.lineTo(cx - sp * 0.32, by - rh * 0.3); g.moveTo(cx + sp * 0.16, by + rh * 0.1); g.lineTo(cx + sp * 0.32, by - rh * 0.3); g.stroke(); }
   g.fillStyle = look.body; g.beginPath(); g.roundRect(cx - sp * 0.24, by, sp * 0.48, rh * 0.6, sp * 0.12); g.fill();
@@ -275,6 +291,35 @@ function drawVip(g: CanvasRenderingContext2D, k: Vip, cx: number, by: number, rh
   if (k === 'marshal') { g.fillStyle = '#111'; g.beginPath(); g.roundRect(cx - hr * 0.62, hy - hr * 1.32, hr * 1.24, hr * 0.72, hr * 0.2); g.fill(); }
   if (k === 'seven') { g.fillStyle = '#1c140f'; g.beginPath(); g.ellipse(cx + hr * 0.1, hy - hr * 0.78, hr * 0.85, hr * 0.42, -0.25, 0, 7); g.fill(); }
   if (k === 'founder') { g.fillStyle = '#3a2a1e'; g.beginPath(); g.arc(cx, hy - hr * 0.2, hr * 1.02, Math.PI * 1.08, Math.PI * 1.92); g.fill(); }
+  if (k === 'bowler' || k === 'tweed' || k === 'longhair') { // shirt and tie under the jacket
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(cx - sp * 0.08, by); g.lineTo(cx + sp * 0.08, by); g.lineTo(cx, by + rh * 0.18); g.fill();
+    g.fillStyle = k === 'tweed' ? '#b3262c' : '#141418'; g.fillRect(cx - sp * 0.02, by + rh * 0.03, sp * 0.04, rh * 0.26);
+  }
+  if (k === 'grin') { g.fillStyle = '#e5484d'; for (const [dx, dy] of [[-0.12, 0.2], [0.1, 0.35], [-0.05, 0.45], [0.14, 0.12]]) { g.beginPath(); g.arc(cx + sp * dx, by + rh * dy, sp * 0.04, 0, 7); g.fill(); } }
+  if (k === 'hoodie') { g.strokeStyle = '#b8541a'; g.lineWidth = Math.max(1, hr * 0.2); g.beginPath(); g.arc(cx, hy + hr * 0.2, hr * 1.15, Math.PI * 0.15, Math.PI * 0.85); g.stroke(); }
+  if (k === 'hoodie') { g.fillStyle = '#2a1d16'; for (const dx of [-0.7, -0.25, 0.2, 0.65]) { g.beginPath(); g.arc(cx + hr * dx, hy - hr * 0.78, hr * 0.38, 0, 7); g.fill(); } }
+  if (k === 'grin') {
+    g.fillStyle = '#2a1d16'; g.beginPath(); g.ellipse(cx, hy - hr * 0.72, hr * 0.95, hr * 0.42, 0, 0, 7); g.fill();
+    g.beginPath(); g.moveTo(cx - hr * 0.2, hy - hr * 1.0); g.lineTo(cx + hr * 0.1, hy - hr * 1.45); g.lineTo(cx + hr * 0.3, hy - hr * 0.95); g.fill(); // the spike
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(cx, hy + hr * 0.2, hr * 0.5, 0, Math.PI); g.fill(); // the big grin
+  }
+  if (k === 'tee') { g.fillStyle = '#3a2a1e'; g.beginPath(); g.arc(cx, hy - hr * 0.15, hr * 1.0, Math.PI * 1.12, Math.PI * 1.88); g.fill(); }
+  if (k === 'beard') {
+    g.fillStyle = '#6b4a2e'; g.beginPath(); g.arc(cx, hy - hr * 0.2, hr * 1.02, Math.PI * 1.05, Math.PI * 1.95); g.fill();
+    g.beginPath(); g.arc(cx, hy + hr * 0.15, hr * 0.85, Math.PI * 0.05, Math.PI * 0.95); g.fill();
+  }
+  if (k === 'bowler') {
+    g.fillStyle = '#121214'; g.fillRect(cx - hr * 1.25, hy - hr * 0.62, hr * 2.5, hr * 0.22); // brim
+    g.beginPath(); g.arc(cx, hy - hr * 0.62, hr * 0.85, Math.PI, 0); g.fill(); // dome
+    g.fillRect(cx - hr * 0.22, hy + hr * 0.25, hr * 0.44, hr * 0.16); // the small moustache
+  }
+  if (k === 'tweed') { g.fillStyle = '#2a1d16'; g.beginPath(); g.moveTo(cx - hr, hy - hr * 0.2); g.quadraticCurveTo(cx - hr * 0.9, hy - hr * 1.15, cx + hr * 0.2, hy - hr * 1.05); g.quadraticCurveTo(cx + hr, hy - hr * 0.95, cx + hr, hy - hr * 0.3); g.lineTo(cx - hr * 0.3, hy - hr * 0.65); g.fill(); }
+  if (k === 'longhair') {
+    g.fillStyle = '#1a1310';
+    g.beginPath(); g.arc(cx, hy - hr * 0.2, hr * 1.05, Math.PI, 0); g.fill();
+    g.fillRect(cx - hr * 1.05, hy - hr * 0.3, hr * 0.38, hr * 1.5); g.fillRect(cx + hr * 0.67, hy - hr * 0.3, hr * 0.38, hr * 1.5); // down to the shoulders
+    g.beginPath(); g.arc(cx, hy + hr * 0.25, hr * 0.7, Math.PI * 0.1, Math.PI * 0.9); g.fill(); // beard
+  }
   if (k === 'curls') {
     g.fillStyle = '#2a1d16';
     for (const [dx, dy] of [[-0.8, -0.5], [-0.4, -0.95], [0.1, -1.05], [0.55, -0.9], [0.9, -0.45], [-0.95, 0], [0.98, 0.05]]) { g.beginPath(); g.arc(cx + hr * dx, hy + hr * dy, hr * 0.42, 0, 7); g.fill(); }
@@ -341,25 +386,18 @@ function standTiles(ppm: number, h: number) {
     // hanging banners from the roof, between the pillars: logo at the top, the short name running down
     const HANG = ['BETLY', 'ALPENROT', 'GIPFELZEIT', 'ROTFUCHS RACING'].map((t) => SPONSORS.find((ad) => ad.txt === t)!);
     HANG.forEach((ad, k) => {
+      if (ad.alps) return alpsFlag(g, (12 * k + 1.5) * ppm, roof, Math.max(70, ppm * 4.2), h * 0.4);
       const m = 12 * k + 1.5, bw = Math.max(20, ppm * 1.6), bh = h * 0.6, bx = m * ppm - bw / 2, tip = bw * 0.35;
       g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(bx + 3, roof + 3, bw, bh);
       g.save();
       g.beginPath(); g.moveTo(bx, roof); g.lineTo(bx + bw, roof); g.lineTo(bx + bw, roof + bh); g.lineTo(bx + bw / 2, roof + bh + tip); g.lineTo(bx, roof + bh); g.closePath(); g.clip();
       g.fillStyle = ad.alps ? '#ffffff' : ad.bg; g.fillRect(bx, roof, bw, bh + tip);
       let head = bw * 0.35;
-      if (ad.alps) {
-        // red top with one white peak, like the boards
-        // red top with a small white mountain range, like the boards
-        g.fillStyle = '#d0101c'; g.beginPath(); g.moveTo(bx, roof); g.lineTo(bx + bw, roof); g.lineTo(bx + bw, roof + bh * 0.34);
-        for (const [fx, fy] of [[0.83, 0.25], [0.67, 0.31], [0.5, 0.2], [0.33, 0.31], [0.17, 0.25]]) g.lineTo(bx + bw * fx, roof + bh * fy);
-        g.lineTo(bx, roof + bh * 0.34); g.fill();
-        head = bh * 0.38;
-      } else if (ad.icon) { icon(g, ad.icon, bx + bw / 2, roof + bw * 0.62, bw * 0.6, ad.fg); head = bw * 1.15; }
+      if (ad.icon) { icon(g, ad.icon, bx + bw / 2, roof + bw * 0.62, bw * 0.6, ad.fg); head = bw * 1.15; }
       g.restore();
       const name = ad.short ?? ad.txt, room = bh - head - bw * 0.2, cy = roof + head + room / 2;
       g.save(); g.translate(bx + bw / 2, cy); g.rotate(-Math.PI / 2);
-      if (ad.alps) serif(g, name, 0, 1, bw * 0.78, room, ad.fg);
-      else {
+      {
         let fs = Math.round(bw * 0.6); g.font = `800 ${fs}px Geist Variable, sans-serif`;
         const tw = g.measureText(name).width;
         if (tw > room) { fs = Math.max(6, Math.floor((fs * room) / tw)); g.font = `800 ${fs}px Geist Variable, sans-serif`; }
