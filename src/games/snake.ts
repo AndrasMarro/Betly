@@ -1,12 +1,17 @@
 // Snake with modifiers: pure game logic, no UI. The board is n x n, (0,0) top left; the border is deadly.
 export type Pt = { x: number; y: number };
 export type Dir = 'up' | 'down' | 'left' | 'right';
-export type AppleKind = 'red' | 'gold' | 'cosmic';
+export type AppleKind = 'red' | 'gold' | 'cosmic' | 'poison';
 export type Apple = Pt & { kind: AppleKind; ttl: number };
-export type Mods = { size: 12 | 18 | 24; speed: 'normal' | 'fast' | 'turbo'; walls: boolean; portals: boolean; many: boolean; rare: boolean };
+export type Mods = {
+  size: 12 | 18 | 24; speed: 'normal' | 'fast' | 'turbo'; walls: boolean; portals: boolean; many: boolean; rare: boolean;
+  /** wrap: no deadly border, you come out on the other side · poison: purple apples shrink you and cost points ·
+   *  mirror: controls reversed · hunger: the tail shrinks when you do not eat · runner: apples run away · dark: you only see near your head */
+  wrap: boolean; poison: boolean; mirror: boolean; hunger: boolean; runner: boolean; dark: boolean;
+};
 export type Snake = {
   n: number; mods: Mods; body: Pt[]; dir: Dir; grow: number; apples: Apple[]; walls: Pt[]; portals: [Pt, Pt] | null;
-  points: number; eaten: number; alive: boolean; ticks: number;
+  points: number; eaten: number; alive: boolean; ticks: number; hungry: number;
 };
 
 export const DIRS: Record<Dir, Pt> = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
@@ -16,17 +21,20 @@ export const APPLES: Record<AppleKind, { pts: number; grow: number; ttl: number;
   red: { pts: 1, grow: 1, ttl: Infinity, chance: 0 },
   gold: { pts: 3, grow: 2, ttl: 55, chance: 0.012 },
   cosmic: { pts: 10, grow: 3, ttl: 34, chance: 0.0028 },
+  poison: { pts: -2, grow: 0, ttl: 70, chance: 0.03 },
 };
+/** Hunger: after this many ticks without food the tail loses a piece every HUNGER_EVERY ticks. */
+export const HUNGER = 45, HUNGER_EVERY = 8;
 export const TICK_MS = { normal: 125, fast: 90, turbo: 66 };
 export const PER_POINT = 0.1; // multiplier per point before modifiers
-export const DEFAULT_MODS: Mods = { size: 18, speed: 'normal', walls: false, portals: false, many: false, rare: true };
+export const DEFAULT_MODS: Mods = { size: 18, speed: 'normal', walls: false, portals: false, many: false, rare: true, wrap: false, poison: false, mirror: false, hunger: false, runner: false, dark: false };
+/** Pay factor per switch: easier settings pay less, harder ones more. */
+export const MOD_FACTOR = { walls: 1.3, portals: 1.1, many: 0.75, rare: 1, wrap: 0.8, poison: 1.15, mirror: 1.35, hunger: 1.2, runner: 1.2, dark: 1.25 } as const;
 
 /** Harder settings pay more per point; the daily challenge doubles it. */
 export function factor(m: Mods, daily = false) {
   let f = { 12: 1.2, 18: 1, 24: 0.85 }[m.size] * { normal: 1, fast: 1.25, turbo: 1.6 }[m.speed];
-  if (m.walls) f *= 1.3;
-  if (m.portals) f *= 1.1;
-  if (m.many) f *= 0.75;
+  for (const k of Object.keys(MOD_FACTOR) as (keyof typeof MOD_FACTOR)[]) if (m[k]) f *= MOD_FACTOR[k];
   if (daily) f *= 2;
   return Math.round(f * 1000) / 1000;
 }
@@ -41,6 +49,12 @@ export function dailyMods(rand: () => number): Mods {
     portals: rand() < 0.6,
     many: false,
     rare: true,
+    wrap: false,
+    poison: rand() < 0.5,
+    mirror: false,
+    hunger: rand() < 0.4,
+    runner: rand() < 0.4,
+    dark: rand() < 0.25,
   };
 }
 
@@ -59,7 +73,7 @@ function freeCell(s: Snake, rand: () => number, minDist = 0): Pt | null {
 
 export function newSnake(mods: Mods, rand: () => number): Snake {
   const n = mods.size, y = Math.floor(n / 2), x = Math.floor(n / 3);
-  const s: Snake = { n, mods, body: [{ x, y }, { x: x - 1, y }, { x: x - 2, y }], dir: 'right', grow: 0, apples: [], walls: [], portals: null, points: 0, eaten: 0, alive: true, ticks: 0 };
+  const s: Snake = { n, mods, body: [{ x, y }, { x: x - 1, y }, { x: x - 2, y }], dir: 'right', grow: 0, apples: [], walls: [], portals: null, points: 0, eaten: 0, alive: true, ticks: 0, hungry: 0 };
   if (mods.portals) {
     // one portal in the left half, one in the right half, away from the start row
     const a = { x: 1 + Math.floor(rand() * (n / 2 - 2)), y: rand() < 0.5 ? 1 + Math.floor(rand() * (y - 2)) : y + 2 + Math.floor(rand() * (n - y - 3)) };
@@ -79,8 +93,23 @@ function refill(s: Snake, rand: () => number) {
   }
 }
 
+/** Runaway apples: every few ticks each red apple hops one cell, preferably away from the head. */
+function flee(s: Snake, rand: () => number) {
+  const head = s.body[0];
+  for (const a of s.apples) {
+    if (a.kind !== 'red') continue;
+    const opts = Object.values(DIRS)
+      .map((d) => ({ x: a.x + d.x, y: a.y + d.y }))
+      .filter((p) => p.x >= 0 && p.y >= 0 && p.x < s.n && p.y < s.n && !taken(s, p) && Math.abs(p.x - head.x) + Math.abs(p.y - head.y) > 1);
+    if (!opts.length) continue;
+    opts.sort((p, q) => Math.abs(q.x - head.x) + Math.abs(q.y - head.y) - (Math.abs(p.x - head.x) + Math.abs(p.y - head.y)));
+    const p = rand() < 0.7 ? opts[0] : opts[Math.floor(rand() * opts.length)];
+    a.x = p.x; a.y = p.y;
+  }
+}
+
 /** Advance one tick in direction `dir` (a reversal is ignored). Returns what happened. */
-export function step(s: Snake, dir: Dir, rand: () => number): 'move' | 'eat' | 'dead' {
+export function step(s: Snake, dir: Dir, rand: () => number): 'move' | 'eat' | 'poison' | 'dead' {
   if (!s.alive) return 'dead';
   if (dir !== OPPOSITE[s.dir]) s.dir = dir;
   s.ticks++;
@@ -90,6 +119,7 @@ export function step(s: Snake, dir: Dir, rand: () => number): 'move' | 'eat' | '
     const i = s.portals.findIndex((p) => same(p, head));
     if (i >= 0) { const o = s.portals[1 - i]; head = { x: o.x + d.x, y: o.y + d.y }; }
   }
+  if (s.mods.wrap) head = { x: (head.x + s.n) % s.n, y: (head.y + s.n) % s.n };
   const out = head.x < 0 || head.y < 0 || head.x >= s.n || head.y >= s.n;
   // the tail moves away this tick unless we are growing, so it is not an obstacle
   const body = s.grow > 0 ? s.body : s.body.slice(0, -1);
@@ -101,11 +131,20 @@ export function step(s: Snake, dir: Dir, rand: () => number): 'move' | 'eat' | '
   if (s.grow > 0) s.grow--;
   else s.body.pop();
 
-  let result: 'move' | 'eat' = 'move';
+  let result: 'move' | 'eat' | 'poison' = 'move';
+  s.hungry++;
   const ai = s.apples.findIndex((a) => same(a, head));
-  if (ai >= 0) {
+  if (ai >= 0 && s.apples[ai].kind === 'poison') {
+    // poison: lose points and two pieces of tail
+    s.apples.splice(ai, 1);
+    s.points = Math.max(0, s.points + APPLES.poison.pts);
+    s.grow = 0;
+    s.body.splice(Math.max(2, s.body.length - 2));
+    result = 'poison';
+  } else if (ai >= 0) {
     const a = s.apples[ai], k = APPLES[a.kind];
     s.apples.splice(ai, 1);
+    s.hungry = 0;
     s.points += k.pts;
     s.grow += k.grow;
     s.eaten++;
@@ -115,9 +154,18 @@ export function step(s: Snake, dir: Dir, rand: () => number): 'move' | 'eat' | '
       for (let i = rand() < 0.35 ? 2 : 1; i > 0; i--) { const p = freeCell(s, rand, 4); if (p) s.walls.push(p); }
     }
   }
+  if (s.mods.hunger && s.hungry >= HUNGER && (s.hungry - HUNGER) % HUNGER_EVERY === 0) {
+    if (s.body.length <= 2) { s.alive = false; return 'dead'; }
+    s.body.pop();
+  }
+  if (s.mods.runner && s.ticks % 4 === 0) flee(s, rand);
+  if (s.mods.poison && s.apples.filter((a) => a.kind === 'poison').length < (s.n >= 18 ? 2 : 1) && rand() < APPLES.poison.chance) {
+    const p = freeCell(s, rand, 3);
+    if (p) s.apples.push({ ...p, kind: 'poison', ttl: APPLES.poison.ttl });
+  }
   for (const a of s.apples) a.ttl--;
   s.apples = s.apples.filter((a) => a.ttl > 0);
-  if (s.mods.rare && !s.apples.some((a) => a.kind !== 'red')) {
+  if (s.mods.rare && !s.apples.some((a) => a.kind === 'gold' || a.kind === 'cosmic')) {
     const r = rand();
     const kind: AppleKind | null = r < APPLES.cosmic.chance ? 'cosmic' : r < APPLES.cosmic.chance + APPLES.gold.chance ? 'gold' : null;
     const p = kind && freeCell(s, rand, 3);

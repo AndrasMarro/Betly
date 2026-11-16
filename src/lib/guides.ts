@@ -233,18 +233,18 @@ export const GUIDES: Record<string, Guide> = {
   },
   snake: {
     de: [
-      { h: 'Ziel', p: 'Friss Äpfel, wachse und crashe nicht: Rand, Mauern und der eigene Körper sind tödlich. Jeder Punkt erhöht den Multiplikator.' },
+      { h: 'Ziel', p: 'Friss Äpfel, wachse und crashe nicht: Rand (ausser mit Durchgang), Mauern und der eigene Körper sind tödlich. Jeder Punkt erhöht den Multiplikator.' },
       { h: 'Steuerung', li: ['Pfeiltasten oder WASD (Handy: wischen oder die Pfeile tippen).', 'Leertaste startet, Enter zahlt aus.'] },
       { h: 'Äpfel', li: ['Roter Apfel: 1 Punkt', 'Goldener Apfel: 3 Punkte, verschwindet nach kurzer Zeit', 'Kosmischer Apfel: 10 Punkte, sehr selten und schnell weg'] },
-      { h: 'Modifier', li: ['Spielfeld klein/mittel/gross, Tempo normal/schnell/turbo', 'Mauern: nach jedem dritten Apfel wächst ein Block', 'Portale: rein in das eine, raus beim anderen', 'Härtere Einstellungen zahlen mehr pro Punkt, mehr Äpfel zahlen weniger.'] },
+      { h: 'Modifier', li: ['Spielfeld klein/mittel/gross, Tempo normal/schnell/turbo', 'Mauern: nach jedem dritten Apfel wächst ein Block', 'Portale: rein in das eine, raus beim anderen', 'Durchgang: kein tödlicher Rand, du kommst gegenüber wieder raus (×0.8)', 'Giftäpfel (lila mit Totenkopf): −2 Punkte und zwei Teile kürzer (×1.15)', 'Spiegel: alle Richtungen vertauscht (×1.35)', 'Hunger: Iss regelmässig, sonst schrumpft der Schwanz; der Balken oben zeigt es (×1.2)', 'Fluchtäpfel: die Äpfel hüpfen vor dir weg (×1.2)', 'Dunkelheit: du siehst nur rund um den Kopf (×1.25)', 'Die Faktoren werden multipliziert: Härtere Einstellungen zahlen mehr pro Punkt, leichtere weniger.'] },
       { h: 'Einsatz', p: 'Mit Einsatz bekommst du beim Auszahlen Einsatz × Multiplikator. Crashst du vorher, ist der Einsatz weg. Ohne Einsatz spielst du nur um den Rekord.' },
       { h: 'Daily-Challenge', p: 'Jeden Tag neue, zufällige und harte Modifier, für alle gleich. Dafür doppelte Auszahlung pro Punkt.' },
     ],
     en: [
-      { h: 'Goal', p: 'Eat apples, grow and do not crash: the border, walls and your own body are deadly. Every point raises the multiplier.' },
+      { h: 'Goal', p: 'Eat apples, grow and do not crash: the border (unless wrap-around is on), walls and your own body are deadly. Every point raises the multiplier.' },
       { h: 'Controls', li: ['Arrow keys or WASD (phone: swipe or tap the arrows).', 'Space starts, Enter cashes out.'] },
       { h: 'Apples', li: ['Red apple: 1 point', 'Golden apple: 3 points, vanishes after a while', 'Cosmic apple: 10 points, very rare and quickly gone'] },
-      { h: 'Modifiers', li: ['Board small/medium/large, speed normal/fast/turbo', 'Walls: a block grows after every third apple', 'Portals: in through one, out of the other', 'Harder settings pay more per point, more apples pay less.'] },
+      { h: 'Modifiers', li: ['Board small/medium/large, speed normal/fast/turbo', 'Walls: a block grows after every third apple', 'Portals: in through one, out of the other', 'Wrap-around: no deadly border, you come out on the opposite side (×0.8)', 'Poison apples (purple with a skull): −2 points and two pieces shorter (×1.15)', 'Mirrored: every direction is reversed (×1.35)', 'Hunger: eat regularly or the tail shrinks; the bar at the top shows it (×1.2)', 'Runaway apples: the apples hop away from you (×1.2)', 'Darkness: you only see around your head (×1.25)', 'The factors multiply: harder settings pay more per point, easier ones less.'] },
       { h: 'Stake', p: 'With a stake, cashing out pays stake × multiplier. Crash first and the stake is gone. Without a stake you only play for the record.' },
       { h: 'Daily challenge', p: 'New, random and hard modifiers every day, the same for everyone. In return double pay per point.' },
     ],

@@ -298,6 +298,28 @@ import { rng, dailyGame } from '../src/lib/daily.ts';
   assert.equal(dailyGame(20261109), dailyGame(20261109));
   s.points = 10;
   assert.equal(multiplier({ ...s, mods: DEFAULT_MODS }), 1, '10 points = 1x on default settings');
+  // wrap: leaving on the right comes back on the left
+  const wr = newSnake({ ...DEFAULT_MODS, wrap: true, rare: false }, rng(2));
+  wr.apples = []; wr.body = [{ x: wr.n - 1, y: 3 }, { x: wr.n - 2, y: 3 }]; wr.dir = 'right';
+  assert.equal(step(wr, 'right', rng(1)), 'move');
+  assert.deepEqual(wr.body[0], { x: 0, y: 3 }, 'wrap around');
+  // poison: minus 2 points and two pieces shorter
+  const po = newSnake({ ...DEFAULT_MODS, poison: true, rare: false }, rng(4));
+  po.body = Array.from({ length: 6 }, (_, i) => ({ x: 8 - i, y: 5 })); po.dir = 'right'; po.points = 5;
+  po.apples = [{ x: 9, y: 5, kind: 'poison', ttl: 50 }];
+  assert.equal(step(po, 'right', rng(1)), 'poison');
+  assert.equal(po.points, 3); assert.equal(po.body.length, 4, 'poison shrinks');
+  // hunger: without food the snake withers away
+  const hu = newSnake({ ...DEFAULT_MODS, hunger: true, wrap: true, rare: false }, rng(6));
+  hu.apples = [];
+  let res = '';
+  for (let i = 0; i < 200 && res !== 'dead'; i++) { hu.apples = []; res = step(hu, 'right', rng(i)); }
+  assert.equal(res, 'dead', 'starved');
+  // runaway apples stay on free cells inside the board
+  const ru = newSnake({ ...DEFAULT_MODS, runner: true, many: true, wrap: true, rare: false }, rng(8));
+  for (let i = 0; i < 80; i++) step(ru, 'down', rng(100 + i));
+  assert.ok(ru.apples.every((q) => q.x >= 0 && q.y >= 0 && q.x < ru.n && q.y < ru.n && !ru.body.some((bb) => bb.x === q.x && bb.y === q.y)), 'runner apples stay free');
+  assert.ok(factor({ ...DEFAULT_MODS, mirror: true }) > factor(DEFAULT_MODS) && factor({ ...DEFAULT_MODS, wrap: true }) < factor(DEFAULT_MODS), 'harder pays more');
   console.log('snake checks passed');
 }
 

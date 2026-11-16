@@ -3,7 +3,7 @@
   import { fly } from 'svelte/transition';
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
-  import { newSnake, step, multiplier, factor, dailyMods, DEFAULT_MODS, TICK_MS, PER_POINT, OPPOSITE, type Snake, type Dir, type Mods, type Pt } from '../games/snake';
+  import { newSnake, step, multiplier, factor, dailyMods, DEFAULT_MODS, MOD_FACTOR, HUNGER, TICK_MS, PER_POINT, OPPOSITE, type Snake, type Dir, type Mods, type Pt } from '../games/snake';
   import { rng, today } from '../lib/daily';
   import { wallet, settle, stake as takeStake, fmt } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
@@ -81,6 +81,7 @@
 
   function turn(d: Dir) {
     if (phase !== 'play') return;
+    if (game.mods.mirror) d = OPPOSITE[d]; // mirrored controls
     const last = queue.at(-1) ?? game.dir;
     if (d === last || d === OPPOSITE[last] || queue.length >= 3) return;
     queue.push(d);
@@ -132,6 +133,7 @@
         prev = game.body.map((p) => ({ ...p }));
         const r = step(game, queue.shift() ?? game.dir, rand);
         if (r === 'eat') { points = game.points; mult = multiplier(game, isDaily); sfx('gem'); }
+        if (r === 'poison') { points = game.points; mult = multiplier(game, isDaily); sfx('lose'); }
         if (r === 'dead') die();
       }
     }
@@ -149,7 +151,7 @@
       ctx.shadowColor = '#a78bff'; ctx.shadowBlur = c * 0.6;
     } else if (kind === 'gold') { ctx.shadowColor = '#ffd45a'; ctx.shadowBlur = c * 0.5; }
     const g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r * 1.1);
-    const [a, b] = kind === 'red' ? ['#ff7a72', '#c0141f'] : kind === 'gold' ? ['#fff3b0', '#d39a12'] : ['#9be8ff', '#6a2bd9'];
+    const [a, b] = kind === 'red' ? ['#ff7a72', '#c0141f'] : kind === 'gold' ? ['#fff3b0', '#d39a12'] : kind === 'poison' ? ['#c9a2ff', '#3b1460'] : ['#9be8ff', '#6a2bd9'];
     g.addColorStop(0, a); g.addColorStop(1, b);
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -164,7 +166,14 @@
     ctx.beginPath(); ctx.ellipse(cx + r * 0.5, cy - r * 1.0, r * 0.38, r * 0.17, -0.5, 0, 7); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.55)';
     ctx.beginPath(); ctx.ellipse(cx - r * 0.42, cy - r * 0.15, r * 0.13, r * 0.26, 0.3, 0, 7); ctx.fill();
-    if (kind !== 'red') {
+    if (kind === 'poison') {
+      // a little skull: do not eat
+      ctx.fillStyle = '#e9ffd9';
+      ctx.beginPath(); ctx.arc(cx, cy - r * 0.05, r * 0.36, 0, 7); ctx.fill();
+      ctx.fillRect(cx - r * 0.22, cy + r * 0.2, r * 0.44, r * 0.2);
+      ctx.fillStyle = '#3b1460';
+      for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + sx * r * 0.14, cy - r * 0.08, r * 0.1, 0, 7); ctx.fill(); }
+    } else if (kind !== 'red') {
       ctx.fillStyle = '#fff';
       for (let i = 0; i < 3; i++) {
         const t = clock * 2 + i * 2.1, sx = cx + Math.cos(t) * r * 1.25, sy = cy + Math.sin(t * 1.3) * r * 1.1, s = c * 0.05 * (1 + Math.sin(t * 3));
@@ -277,6 +286,28 @@
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex, ey, c * 0.13, 0, 7); ctx.fill();
       ctx.fillStyle = '#10131a'; ctx.beginPath(); ctx.arc(ex + d[0] * c * 0.04, ey + d[1] * c * 0.04, dead ? c * 0.03 : c * 0.065, 0, 7); ctx.fill();
     }
+    // darkness: only a circle of light around the head
+    if (game.mods.dark && phase !== 'idle') {
+      const g = ctx.createRadialGradient(h.x, h.y, c * 2.2, h.x, h.y, c * 4.6);
+      g.addColorStop(0, 'rgba(4,8,6,0)'); g.addColorStop(1, 'rgba(4,8,6,.96)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+      // apples still glimmer faintly in the dark
+      ctx.globalAlpha = 0.3;
+      for (const ap of game.apples) apple(ctx, ap.x * c, ap.y * c, c, ap.kind, ap.ttl);
+      ctx.globalAlpha = 1;
+    }
+    // wrap-around: the border is open, shown as a dashed edge
+    if (game.mods.wrap) {
+      ctx.strokeStyle = 'rgba(160,240,190,.45)'; ctx.lineWidth = 2; ctx.setLineDash([c * 0.3, c * 0.25]);
+      ctx.strokeRect(1, 1, size - 2, size - 2); ctx.setLineDash([]);
+    }
+    // hunger: a bar along the top that empties; it blinks red while the tail withers
+    if (game.mods.hunger && phase === 'play') {
+      const left = Math.max(0, 1 - game.hungry / HUNGER), starving = left === 0;
+      ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(6, 6, size - 12, 6);
+      ctx.fillStyle = starving ? (Math.floor(clock * 6) % 2 ? '#ff4d5e' : '#7a1c26') : left < 0.3 ? '#ffb347' : '#7fe39a';
+      ctx.fillRect(6, 6, starving ? size - 12 : (size - 12) * left, 6);
+    }
     if (phase === 'play' && Math.floor(clock * 3) % 3 === 0) {
       ctx.strokeStyle = '#ff5a6a'; ctx.lineWidth = c * 0.06;
       ctx.beginPath(); ctx.moveTo(h.x + d[0] * c * 0.4, h.y + d[1] * c * 0.4); ctx.lineTo(h.x + d[0] * c * 0.62, h.y + d[1] * c * 0.62); ctx.stroke();
@@ -284,7 +315,10 @@
   }
 
   const win = $derived(Math.round((phase === 'play' ? staked : paid ? bet : 0) * mult * 100) / 100);
-  const MODS_UI: [keyof Mods, Key][] = [['walls', 'sn.walls'], ['portals', 'sn.portals'], ['many', 'sn.many'], ['rare', 'sn.rare']];
+  const MODS_UI: [keyof typeof MOD_FACTOR, Key][] = [
+    ['walls', 'sn.walls'], ['portals', 'sn.portals'], ['many', 'sn.many'], ['rare', 'sn.rare'], ['wrap', 'sn.wrap'],
+    ['poison', 'sn.poison'], ['mirror', 'sn.mirror'], ['hunger', 'sn.hunger'], ['runner', 'sn.runner'], ['dark', 'sn.dark'],
+  ];
 </script>
 
 <svelte:window onkeydown={key} />
@@ -323,9 +357,14 @@
         <div class="seg">
           {#each ['normal', 'fast', 'turbo'] as v}<button class:on={mods.speed === v} onclick={() => (mods.speed = v as Mods['speed'])}>{t(('sn.' + v) as Key)}</button>{/each}
         </div>
-        {#each MODS_UI as [k, l]}
-          <label class="switch"><span>{t(l)}</span><input type="checkbox" bind:checked={mods[k] as boolean} /></label>
-        {/each}
+        <span class="lbl">Modifier</span>
+        <div class="mods">
+          {#each MODS_UI as [k, l]}
+            <button type="button" class="mod" class:on={mods[k]} aria-pressed={mods[k]} title={t((l + '.tip') as Key)} onclick={() => (mods[k] = !mods[k])}>
+              <span>{t(l)}</span>{#if MOD_FACTOR[k] !== 1}<i class="mono" class:down={MOD_FACTOR[k] < 1}>×{MOD_FACTOR[k]}</i>{/if}
+            </button>
+          {/each}
+        </div>
       </fieldset>
     {/if}
     <div class="stats">
@@ -378,6 +417,11 @@
   fieldset:disabled { opacity: 0.55; }
   .lbl { font-size: 0.8rem; color: var(--muted); }
   .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .mods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .mod { display: flex; justify-content: space-between; align-items: center; gap: 4px; min-height: 40px; padding: 4px 10px; border-radius: 12px; border: 1px solid var(--line-2); background: none; color: var(--muted); font-size: 0.8rem; text-align: left; }
+  .mod.on { background: color-mix(in srgb, #3fbf66 22%, transparent); border-color: #3fbf66; color: var(--text); }
+  .mod i { font-style: normal; font-size: 0.68rem; color: #7fe39a; }
+  .mod i.down { color: #ffb347; }
   .seg.two { grid-template-columns: 1fr 1fr; }
   .seg button { min-height: 38px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2); font-size: 0.82rem; transition: background-color 0.25s var(--ease-snap), color 0.25s var(--ease-snap); }
   .seg button.on { background: var(--text); color: var(--bg); }
