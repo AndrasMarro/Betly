@@ -253,10 +253,9 @@
     background: linear-gradient(180deg, #1d1f2c, color-mix(in srgb, var(--c) 28%, #1d1f2c)); box-shadow: inset 0 -4px 0 var(--c);
   }
   .item .ico { width: 70px; height: 70px; }
-  .ico.pic { width: 100% !important; height: auto !important; aspect-ratio: 3 / 2; display: block; }
-  .ico.pic img, .hist .pic img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none;
-    -webkit-mask: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent), linear-gradient(transparent, #000 9%, #000 91%, transparent); -webkit-mask-composite: source-in;
-    mask: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent), linear-gradient(transparent, #000 9%, #000 91%, transparent); mask-composite: intersect; }
+  .ico.pic { width: 100% !important; height: auto !important; aspect-ratio: 8 / 5; display: block; }
+  /* item pictures share one 256×160 canvas with a transparent background, so every tile looks the same */
+  .ico.pic img, .hist .pic img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
   .item .ico.pic { padding: 0 6px; }
   .cell .ico.pic { max-width: 150px; }
   .ico.big.pic { width: 150px !important; }
