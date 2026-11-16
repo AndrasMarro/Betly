@@ -344,18 +344,38 @@
     // small things sit at a slightly different spot in their cell, so the grass does not look gridded
     const ox = w < 0.7 ? (jitter - 0.5) * C * (1 - w) * 0.8 : 0, oy = w < 0.7 ? (jitter - 0.5) * C * 0.25 : 0;
     const cx = x + C / 2 + ox, by = y + C * 0.85 + oy;
-    shadow(ctx, cx + dw * 0.08, by - C * 0.05, dw * 0.46, C * 0.1 + dw * 0.05);
+    if (w >= 0.3) castSprite(ctx, img, cx, by, dw, dh);
     ctx.drawImage(img, cx - dw / 2, by - dh, dw, dh);
   }
-  /** Soft contact shadow, the same for every object so they sit on the grass instead of floating on it. */
-  function shadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number) {
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx);
-    g.addColorStop(0, 'rgba(20,50,10,.38)'); g.addColorStop(0.6, 'rgba(20,50,10,.2)'); g.addColorStop(1, 'rgba(20,50,10,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 7); ctx.fill();
+  // Shadows: light comes from the top left, so everything casts a flat, hard-edged shadow to the right that
+  // starts right at its base. Boxes cast their footprint, sprites a flattened, sheared copy of their own outline.
+  const SHADOW = 'rgba(0,0,0,.24)';
+  function castBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, d: number, h: number) {
+    const s = h * 0.45, t = h * 0.12;
+    ctx.fillStyle = SHADOW;
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w + s, y + t); ctx.lineTo(x + w + s, y + d + t); ctx.lineTo(x + s, y + d + t); ctx.lineTo(x, y + d);
+    ctx.closePath(); ctx.fill();
+  }
+  const silhouettes = new Map<HTMLImageElement, HTMLCanvasElement>();
+  function castSprite(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, by: number, dw: number, dh: number) {
+    let sil = silhouettes.get(img);
+    if (!sil) {
+      sil = document.createElement('canvas');
+      sil.width = img.naturalWidth; sil.height = img.naturalHeight;
+      const g = sil.getContext('2d')!;
+      g.drawImage(img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, sil.width, sil.height);
+      silhouettes.set(img, sil);
+    }
+    ctx.save();
+    ctx.globalAlpha = 0.24;
+    // anchor at the base line, fold the outline down onto the ground towards the bottom right
+    ctx.transform(1, 0, -0.6, -0.3, 0.6 * by, by + 0.3 * by);
+    ctx.drawImage(sil, cx - dw / 2, by - dh, dw, dh);
+    ctx.restore();
   }
   function drawFlag(ctx: CanvasRenderingContext2D, x: number, y: number, C: number) {
-    shadow(ctx, x + C * 0.1, y + C * 0.8, C * 0.25, C * 0.08);
+    castBox(ctx, x - C * 0.03, y + C * 0.74, C * 0.06, C * 0.06, C * 1.35);
     ctx.fillStyle = '#e8e8ee'; ctx.fillRect(x - C * 0.03, y - C * 0.55, C * 0.06, C * 1.35);
     const wave = Math.sin(clock * 5) * C * 0.05;
     ctx.fillStyle = '#ffd23f';
@@ -393,7 +413,7 @@
     if ((r + Math.round(x / C)) % 3 === 0) { ctx.fillStyle = '#ff8fb8'; ctx.beginPath(); ctx.arc(cx + C * 0.16, cy - C * 0.06, C * 0.08, 0, 7); ctx.fill(); ctx.fillStyle = '#ffe0ec'; ctx.beginPath(); ctx.arc(cx + C * 0.16, cy - C * 0.08, C * 0.04, 0, 7); ctx.fill(); }
   }
   function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, C: number, rock: boolean) {
-    shadow(ctx, x + C * 0.58, y + C * 0.78, C * 0.45, C * 0.14);
+    castBox(ctx, x + C * 0.1, y + C * 0.15, C * 0.8, C * 0.65, rock ? C * 0.35 : C * 1.0);
     if (rock) { box(ctx, x + C * 0.15, y + C * 0.2, C * 0.7, C * 0.6, C * 0.35, '#b8bcc6', '#8d929e'); return; }
     box(ctx, x + C * 0.38, y + C * 0.45, C * 0.24, C * 0.25, C * 0.35, '#8a5a32', '#6b4426');
     box(ctx, x + C * 0.1, y + C * 0.15, C * 0.8, C * 0.65, C * 0.65, '#5fbf3e', '#3f8f2a');
@@ -407,46 +427,83 @@
       ctx.fillStyle = 'rgba(0,0,0,.12)'; for (let k = C * 0.6; k < w - C * 0.4; k += C * 0.7) ctx.fillRect(x + k, y + C * 0.1, 2, C * 0.45);
       return;
     }
-    // cracked log: rotten wood with jagged cracks. Once stepped on it shakes, splits in two and both
-    // halves (with their cracks) tilt away and sink.
-    const t = it.breakT, k = t === undefined ? 0 : Math.min(1, t / BREAK);
-    const sink = t !== undefined && t > BREAK ? (t - BREAK) / (SINK - BREAK) : 0;
-    const shakeX = t !== undefined && !sink ? Math.sin(t * 60) * C * 0.04 * (0.4 + k) : 0;
-    const half = (w - 4) / 2, gap = sink ? C * 0.06 + C * 0.3 * sink : k * C * 0.05;
-    const crack = t === undefined ? 'rgba(30,18,10,.85)' : `rgb(${150 + 100 * k},40,30)`;
-    for (const side of [0, 1]) {
+    // cracked log: dry, pale wood already split into pieces (dark jagged seams, splinters, a warning mark).
+    // Stepped on, it shakes and the seams open; then the pieces drift apart, tip over and sink with ripples.
+    const t = it.breakT, n = Math.max(2, Math.round(it.len));
+    const k = t === undefined ? 0 : Math.min(1, t / BREAK);
+    const s = t !== undefined && t > BREAK ? Math.min(1, (t - BREAK) / (SINK - BREAK)) : 0;
+    const ease = 1 - (1 - s) ** 3;
+    const seg = (w - 4) / n;
+    const pieces = Array.from({ length: n }, (_, i) => {
+      const mid = i - (n - 1) / 2;
+      const jit = t !== undefined && !s ? Math.sin(t * 55 + i * 2.1) * C * 0.035 * (0.3 + k) : 0;
+      return { i, cx: x + 2 + i * seg + seg / 2 + mid * C * 0.45 * ease + jit, cy: y + C * 0.5 + k * C * 0.025 * (i % 2 ? 1 : -1) + s * C * 0.22, rot: (i % 2 ? 1 : -1) * 0.22 * ease + mid * 0.04 * k };
+    });
+    // ripples spread under the pieces while they go down
+    if (s) for (const pc of pieces) {
+      ctx.strokeStyle = `rgba(255,255,255,${0.6 * (1 - s)})`; ctx.lineWidth = Math.max(1.5, C * 0.035);
+      for (const d of [0, 0.4]) {
+        const rr = Math.max(0, s - d) / (1 - d);
+        if (rr > 0) { ctx.beginPath(); ctx.ellipse(pc.cx, y + C * 0.66, seg * 0.35 + C * 0.4 * rr, C * (0.1 + 0.12 * rr), 0, 0, 7); ctx.stroke(); }
+      }
+    }
+    const gap = C * 0.035 + C * 0.05 * k;
+    for (const { i, cx, cy, rot } of pieces) {
       ctx.save();
-      ctx.globalAlpha = 1 - sink;
-      // each half pivots on its outer end and drops into the water
-      const hx = x + 2 + side * (half + gap) + shakeX, px = side ? hx + half : hx;
-      ctx.translate(px, y + C * 0.5);
-      ctx.rotate((side ? 1 : -1) * sink * 0.35);
-      ctx.translate(-px, -(y + C * 0.5) + sink * C * 0.35);
-      ctx.beginPath(); ctx.rect(hx - 1, y - C, half + 2, C * 2.2); ctx.clip();
-      box(ctx, hx, y + C * 0.2, half - gap / 2, C * 0.6, C * 0.18, '#8d6a4a', '#5e4430');
-      ctx.fillStyle = '#b08b66';
-      ctx.fillRect(side ? hx + half - gap / 2 - C * 0.16 : hx, y + C * 0.02, C * 0.16, C * 0.6);
-      // the split edge is jagged, plus one crack inside the half
-      ctx.strokeStyle = crack; ctx.lineWidth = Math.max(1.5, C * 0.045);
-      for (const cx0 of [side ? hx + C * 0.06 : hx + half - gap / 2 - C * 0.06, hx + half * 0.5]) {
-        ctx.beginPath(); ctx.moveTo(cx0, y + C * 0.04);
-        for (let i = 1; i <= 4; i++) ctx.lineTo(cx0 + (i % 2 ? C * 0.07 : -C * 0.06), y + C * 0.04 + (i * C * 0.56) / 4);
-        ctx.stroke();
+      ctx.globalAlpha = 1 - s ** 1.8;
+      ctx.translate(cx, cy);
+      ctx.rotate(rot);
+      // below the water line the piece disappears: clip it while it sinks
+      if (s) { ctx.beginPath(); ctx.rect(-seg, -C * 1.2, seg * 2, C * 1.2 + C * 0.32 - s * C * 0.5); ctx.clip(); }
+      const pw = seg - gap, px = -seg / 2 + gap / 2;
+      // same log as the solid ones, but older wood: darker, with moss and bark lines
+      box(ctx, px, -C * 0.3, pw, C * 0.6, C * 0.18, '#94643a', '#64401f');
+      ctx.fillStyle = 'rgba(255,230,190,.16)'; ctx.fillRect(px, -C * 0.44, pw, C * 0.1);
+      ctx.fillStyle = 'rgba(0,0,0,.16)'; for (let bx = px + C * 0.25; bx < px + pw - C * 0.1; bx += C * 0.45) ctx.fillRect(bx, -C * 0.4, 2, C * 0.42);
+      ctx.fillStyle = '#5f8a2e';
+      for (const [mx, my, mr] of [[0.3, -0.18, 0.07], [0.62, -0.32, 0.05], [0.45, -0.05, 0.05]]) { ctx.beginPath(); ctx.arc(px + pw * mx, my * C, mr * C, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#c99764';
+      if (i === 0) ctx.fillRect(px, -C * 0.48, C * 0.16, C * 0.6);
+      if (i === n - 1) ctx.fillRect(px + pw - C * 0.16, -C * 0.48, C * 0.16, C * 0.6);
+      // broken ends: pale splintered wood with a jagged edge
+      ctx.fillStyle = '#e2c79c';
+      for (const side of [i > 0 ? -1 : 0, i < n - 1 ? 1 : 0]) {
+        if (!side) continue;
+        const ex = side > 0 ? px + pw : px;
+        ctx.beginPath(); ctx.moveTo(ex, -C * 0.48);
+        for (let j = 1; j <= 6; j++) ctx.lineTo(ex - side * (j % 2 ? C * 0.07 : C * 0.02), -C * 0.48 + (j * C * 0.6) / 6);
+        ctx.lineTo(ex, C * 0.12); ctx.closePath(); ctx.fill();
       }
       ctx.restore();
     }
-    if (sink) { ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - sink)})`; ctx.beginPath(); ctx.ellipse(x + w / 2, y + C * 0.55, w * 0.3 * (0.5 + sink), C * 0.12, 0, 0, 7); ctx.fill(); }
+    // the seams between the pieces: dark gaps, plainly visible before you step on
+    if (!s) {
+      ctx.fillStyle = '#1c120a';
+      for (let i = 0; i < n - 1; i++) {
+        const gx = (pieces[i].cx + pieces[i + 1].cx) / 2;
+        ctx.fillRect(gx - gap / 2, y + C * 0.02, gap, C * 0.6);
+      }
+    }
+    // wood chips fly up the moment it snaps
+    if (t !== undefined && t > BREAK * 0.9 && s < 0.6) {
+      const u = t - BREAK * 0.9;
+      ctx.fillStyle = '#d9b98c';
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI - Math.PI, v = C * (1.6 + (i % 3) * 0.5);
+        ctx.fillRect(x + w / 2 + Math.cos(a) * v * u * 1.4 - 2, y + C * 0.3 + Math.sin(a) * v * u + 9 * C * u * u - 2, Math.max(3, C * 0.08), Math.max(3, C * 0.06));
+      }
+    }
     if (t === undefined) {
       // a little warning mark floats above cracked logs
-      ctx.fillStyle = 'rgba(255,214,90,.9)';
-      ctx.font = `700 ${Math.round(C * 0.32)}px Geist Variable, sans-serif`;
+      ctx.fillStyle = 'rgba(255,214,90,.95)';
+      ctx.font = `800 ${Math.round(C * 0.34)}px Geist Variable, sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText('!', x + w / 2, y - C * 0.02 + Math.sin(clock * 4) * 2);
     }
   }
   function drawCar(ctx: CanvasRenderingContext2D, x: number, y: number, len: number, C: number, col: string, dir: number) {
     const w = len * C - C * 0.12;
-    ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x + C * 0.08, y + C * 0.78, w, C * 0.1);
+    castBox(ctx, x + C * 0.06, y + C * 0.15, w, C * 0.67, len >= 2 ? C * 0.7 : C * 0.58);
     if (len >= 2) {
       // truck: cab plus white cargo box
       const cab = C * 0.75, cx = dir > 0 ? x + w - cab : x;
@@ -463,6 +520,7 @@
     ctx.fillStyle = '#fff6b0'; ctx.fillRect(dir > 0 ? x + w - 2 : x + C * 0.06, y + C * 0.55, 4, C * 0.1);
   }
   function drawTrain(ctx: CanvasRenderingContext2D, x: number, y: number, len: number, C: number, dir: number) {
+    castBox(ctx, x, y + C * 0.12, len * C - C * 0.12, C * 0.72, C * 0.85);
     for (let k = 0; k < len; k += 3) {
       const cx = x + k * C, cw = Math.min(3, len - k) * C - C * 0.12;
       box(ctx, cx, y + C * 0.12, cw, C * 0.72, C * 0.85, '#e8e8ee', '#c33a3a');
@@ -471,6 +529,7 @@
     ctx.fillStyle = '#ffe680'; ctx.fillRect(dir > 0 ? x + len * C - C * 0.2 : x, y + C * 0.84 - C * 0.3, C * 0.12, C * 0.14);
   }
   function drawSignal(ctx: CanvasRenderingContext2D, x: number, y: number, C: number, on: boolean) {
+    castBox(ctx, x + C * 0.13, y + C * 0.05, C * 0.08, C * 0.1, C * 1.1);
     box(ctx, x + C * 0.13, y + C * 0.05, C * 0.08, C * 0.1, C * 0.9, '#666', '#3a3a40');
     box(ctx, x - C * 0.04, y + C * 0.02, C * 0.42, C * 0.14, C * 1.3, '#26262c', '#16161a');
     // alternating lamps with a big halo: impossible to miss before a train comes
