@@ -1,6 +1,6 @@
 # Jasskarten-Bilder
 
-Drei Blätter, alle 240 × 368 px, WebP, abgerundete Ecken mit transparentem Rand:
+Drei Blätter: `de/` und `fr/` 240 × 368 px, `intl/` 240 × 336 px (übliches Pokerformat 5:7), alle WebP, abgerundete Ecken mit transparentem Rand:
 
 | Ordner | Blatt | Farben | Werte |
 |---|---|---|---|
