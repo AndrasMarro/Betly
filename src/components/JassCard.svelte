@@ -1,7 +1,9 @@
 <script lang="ts">
-  // A Jass card. French deck reuses the poker card; the Swiss German deck (Rosen, Schilten, Eicheln, Schellen)
-  // is drawn here: pips for 6–9, the Banner flag, framed Under / Ober / König and a large Ass.
+  // A Jass card. French deck: number cards reuse the poker card, König / Dame / Bauer are classic double-headed
+  // portraits. The Swiss German deck (Rosen, Schilten, Eicheln, Schellen) is drawn here: pips for 6–9, the Banner
+  // flag, framed Under / Ober / König and a large Ass.
   import CardView from './Card.svelte';
+  import { SUIT } from '../lib/cards';
   import type { JCard } from '../games/jass';
   let { card, deck = 'de', down = false, icon = false }: { card: JCard; deck?: 'de' | 'fr'; down?: boolean; icon?: boolean } = $props();
   const uid = $props.id();
@@ -18,7 +20,65 @@
     9: [[L, 85], [R, 85], [L, 148], [R, 148], [M, 180], [L, 211], [R, 211], [L, 274], [R, 274]],
   };
   const ink = $derived(['#b3261e', '#1f1f24', '#6b4313', '#b07a0c'][card.s]);
+  // French portraits: red suits wear red robes, black suits blue
+  const frRed = $derived(card.s === 0 || card.s === 3);
+  const FR_LABEL: Record<number, string> = { 11: 'B', 12: 'D', 13: 'K' };
 </script>
+
+{#snippet portrait(r: number, red: boolean, pip: number)}
+  <!-- the upper half of a French court card, drawn around the centre line y = 175; the lower half is this rotated -->
+  {@const robe = red ? '#c8262c' : '#1f4fa0'}
+  {@const robe2 = red ? '#1f4fa0' : '#c8262c'}
+  {#if r === 12}
+    <!-- Dame: long hair behind the face -->
+    <path d="M100 96 C96 122 98 150 106 175 L144 175 C152 150 154 122 150 96 C146 76 104 76 100 96Z" fill="#e8b23a" stroke="#6b4a10" stroke-width="2" />
+  {/if}
+  <!-- robe with a gold centre band and trim -->
+  <path d="M46 175 C50 152 72 138 98 134 L152 134 C178 138 200 152 204 175Z" fill={robe} stroke="#1a1a1a" stroke-width="2" />
+  <path d="M60 175 C64 160 78 150 96 146 L100 175Z" fill={robe2} />
+  <path d="M190 175 C186 160 172 150 154 146 L150 175Z" fill={robe2} />
+  <path d="M112 134 L138 134 L134 175 L116 175Z" fill="#f2c12e" stroke="#1a1a1a" stroke-width="1.5" />
+  {#each [144, 156, 168] as y}<circle cx="125" cy={y} r="3" fill="#1a1a1a" />{/each}
+  {#each [70, 84, 166, 180] as x}<path d="M{x} 160 l6 -6 l6 6 l-6 6Z" fill="#f2c12e" stroke="#1a1a1a" stroke-width="1" />{/each}
+  <ellipse cx="125" cy="134" rx="31" ry="7" fill="#fbf7ee" stroke="#1a1a1a" stroke-width="1.5" />
+  {#if r === 13}
+    <!-- König: grey hair, full beard, crown and sceptre -->
+    <path d="M104 94 C98 110 100 124 108 130 L112 108Z M146 94 C152 110 150 124 142 130 L138 108Z" fill="#d9d2bf" stroke="#3a2a1a" stroke-width="1.5" />
+  {:else if r === 11}
+    <path d="M105 92 C100 106 102 116 108 122 L110 102Z M145 92 C150 106 148 116 142 122 L140 102Z" fill="#7a4a1e" stroke="#3a2a1a" stroke-width="1.5" />
+  {/if}
+  <ellipse cx="125" cy="102" rx="19" ry="23" fill="#f8dcb8" stroke="#3a2a1a" stroke-width="1.5" />
+  <circle cx="118" cy="98" r="1.9" fill="#1a1a1a" /><circle cx="132" cy="98" r="1.9" fill="#1a1a1a" />
+  <path d="M113 92 q5 -3 9 0 M128 92 q5 -3 9 0" stroke="#3a2a1a" stroke-width="1.5" fill="none" />
+  <path d="M125 100 L122 109 L127 109" stroke="#8a5a3a" stroke-width="1.5" fill="none" />
+  {#if r === 13}
+    <path d="M106 108 C107 128 117 138 125 138 C133 138 143 128 144 108 C139 118 132 120 125 120 C118 120 111 118 106 108Z" fill="#e9e2cf" stroke="#3a2a1a" stroke-width="1.5" />
+    <path d="M117 114 Q125 110 133 114" stroke="#3a2a1a" stroke-width="2" fill="none" />
+    <path d="M102 82 L102 60 L111 71 L118 54 L125 68 L132 54 L139 71 L148 60 L148 82Z" fill="#f2c12e" stroke="#7a5212" stroke-width="2" />
+    <rect x="102" y="76" width="46" height="8" fill={robe} stroke="#7a5212" stroke-width="1.5" />
+    <circle cx="125" cy="66" r="3.5" fill={robe2} /><circle cx="111" cy="70" r="2.5" fill="#fff" /><circle cx="139" cy="70" r="2.5" fill="#fff" />
+    <path d="M68 172 L80 74" stroke="#7a5212" stroke-width="5" stroke-linecap="round" />
+    <circle cx="81" cy="68" r="7" fill="#f2c12e" stroke="#7a5212" stroke-width="2" />
+    <path d="M81 52 V62 M76 56 H86" stroke="#7a5212" stroke-width="2.5" />
+  {:else if r === 12}
+    <path d="M118 116 Q125 120 132 116" stroke="#c8262c" stroke-width="2.5" fill="none" />
+    <path d="M108 82 L110 66 L117 75 L125 62 L133 75 L140 66 L142 82Z" fill="#f2c12e" stroke="#7a5212" stroke-width="2" />
+    <circle cx="125" cy="71" r="3" fill={robe} />
+    <path d="M172 170 L166 92" stroke="#3f7d2a" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M168 132 C180 126 186 116 184 108 C176 112 170 120 168 132Z" fill="#4f9a33" />
+    <path d="M154 92 C154 74 164 70 166 82 C168 70 178 74 178 92 C176 102 156 102 154 92Z" fill="#e0453b" stroke="#7d1310" stroke-width="2" />
+  {:else}
+    <!-- Bauer: moustache, cap with feather and a halberd -->
+    <path d="M115 112 Q125 106 135 112 Q125 116 115 112Z" fill="#7a4a1e" />
+    <path d="M97 86 C98 66 152 66 153 86 C140 81 110 81 97 86Z" fill={robe2} stroke="#1a1a1a" stroke-width="2" />
+    <path d="M95 88 C110 82 140 82 155 88" stroke="#f2c12e" stroke-width="3" fill="none" />
+    <path d="M146 74 C158 48 178 44 186 52 C172 54 160 62 151 78Z" fill={robe} stroke="#1a1a1a" stroke-width="1.5" />
+    <path d="M182 172 L172 62" stroke="#7a5212" stroke-width="4.5" stroke-linecap="round" />
+    <path d="M171 66 L188 58 L191 78 L173 82Z" fill="#cfd5dd" stroke="#4a4f57" stroke-width="2" />
+    <path d="M172 62 L168 44 L176 60Z" fill="#cfd5dd" stroke="#4a4f57" stroke-width="1.5" />
+  {/if}
+  <g transform="translate({r === 13 ? 158 : 62} 60) scale(.2)"><path d={SUIT[pip]} fill={red ? '#c8262c' : '#16161a'} /></g>
+{/snippet}
 
 {#snippet suit(s: number)}
   <!-- every suit in a 100 x 100 box -->
@@ -50,6 +110,23 @@
 {#if icon}
   {#if deck === 'fr'}<span class="fr" style:color={card.s === 0 || card.s === 3 ? '#e5484d' : 'currentColor'}>{['♥', '♠', '♣', '♦'][card.s]}</span>
   {:else}<svg class="ico" viewBox="0 0 100 100" aria-hidden="true">{@render suit(card.s)}</svg>{/if}
+{:else if deck === 'fr' && !down && FR_LABEL[card.r]}
+  <div class="card">
+    <svg viewBox="0 0 250 350" role="img" aria-label="{({ 11: 'Bauer', 12: 'Dame', 13: 'König' } as Record<number, string>)[card.r]} {['Herz', 'Schaufel', 'Kreuz', 'Ecken'][card.s]}">
+      <defs><clipPath id="{uid}-half"><rect x="44" y="36" width="162" height="139" /></clipPath></defs>
+      <rect width="250" height="350" rx="22" fill="#fffdf6" />
+      <rect x="2" y="2" width="246" height="346" rx="20" fill="none" stroke="rgba(0,0,0,.1)" stroke-width="2" />
+      {#each [0, 180] as rot}
+        <g transform="rotate({rot} 125 175)">
+          <text x="24" y="50" class="idx" fill={frRed ? '#c8262c' : '#16161a'}>{FR_LABEL[card.r]}</text>
+          <path d={SUIT[FR[card.s]]} transform="translate(10 60) scale(.28)" fill={frRed ? '#c8262c' : '#16161a'} />
+          <g clip-path="url(#{uid}-half)"><g transform="translate(125 175) scale(1.16) translate(-125 -175)">{@render portrait(card.r, frRed, FR[card.s])}</g></g>
+        </g>
+      {/each}
+      <rect x="44" y="36" width="162" height="278" rx="6" fill="none" stroke={frRed ? '#c8262c' : '#16161a'} stroke-width="2.5" />
+      <path d="M44 175 H206" stroke="#1a1a1a" stroke-width="1.5" />
+    </svg>
+  </div>
 {:else if deck === 'fr' || down}
   <CardView card={down ? { r: 0, s: 0 } : { r: card.r === 14 ? 1 : card.r, s: FR[card.s] }} />
 {:else}
