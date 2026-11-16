@@ -5,7 +5,7 @@
   import RoomBar from '../components/RoomBar.svelte';
   import HowTo from '../components/HowTo.svelte';
   import { field, simulate, oddsAsync, payout, timeline, at, DIST, N, type Horse, type Odds, type BetKind } from '../games/horses';
-  import { drawHorse, drawBackdrop, drawForeground, drawClods, layout, SILKS } from '../games/horsesDraw';
+  import { drawHorse, drawBackdrop, drawForeground, drawClods, drawLeadLine, drawTag, layout, SILKS } from '../games/horsesDraw';
   import { Room } from '../lib/net.svelte';
   import { settings, wallet, settle, stake, credit, fmt } from '../lib/state.svelte';
   import { dailyGame } from '../lib/daily';
@@ -125,15 +125,16 @@
 
   // ---------- my bets ----------
   let amt = $state(20);
-  let kind = $state<BetKind>('win');
+  let exacta = $state(false);
   let first = $state<number | null>(null);
+  const canBet = $derived(share.phase === 'bet' && !!share.odds && amt > 0 && amt <= wallet.balance);
   const me = $derived(share.players.find((p) => p.id === room.myId));
   const myBets = $derived(me?.bets ?? []);
   const myStake = $derived(myBets.reduce((a, b) => a + b.amt, 0));
   // stakes leave the wallet when placed; this remembers what is still on the table for this round
   let open = { round: 0, amt: 0 };
-  function place(sel: number[]) {
-    if (share.phase !== 'bet' || !share.odds || amt <= 0 || amt > wallet.balance || myBets.length >= 8) return;
+  function place(kind: BetKind, sel: number[]) {
+    if (!canBet || myBets.length >= 8) return;
     stake(amt);
     if (open.round !== share.round) open = { round: share.round, amt: 0 };
     open.amt += amt;
@@ -149,11 +150,11 @@
     room.send({ t: 'unbet', i });
   }
   function refundOpen() { if (open.amt > 0 && open.round === share.round && share.phase === 'bet') credit(open.amt); open = { round: 0, amt: 0 }; }
-  function pick(i: number) {
-    if (kind !== 'exacta') return place([i]);
+  function pickExacta(i: number) {
     if (first === null || first === i) first = first === i ? null : i;
-    else place([first, i]);
+    else place('exacta', [first, i]);
   }
+  const odd = (x: number | undefined) => (x ? '×' + x.toFixed(2) : '…');
   // book my result once per round
   let booked = 0;
   let myWin = $state(0);
@@ -183,7 +184,7 @@
   // ---------- drawing ----------
   let wrap: HTMLDivElement, canvas: HTMLCanvasElement;
   let W = $state(900), H = $state(430);
-  let leftS = $state(0), meters = $state(0), slow = $state(false), live = $state<number[]>([]);
+  let leftS = $state(0), meters = $state(0), slow = $state(false), live = $state<number[]>([]), liveKey = '';
   let raf = 0, cam = -12;
   const STYLE = { front: L('Frontläufer', 'Front-runner'), even: L('Gleichmässig', 'Stalker'), closer: L('Steher', 'Closer') };
   onMount(() => {
@@ -211,28 +212,34 @@
       const wall = share.phase === 'result' ? tl.wall + 5 : (now - raceStart) / 1000;
       rt = tl.race(wall);
       pos = at(race, rt); prev = at(race, Math.max(0, rt - 0.1));
-      slow = share.phase === 'race' && tl.race(wall + 0.05) - rt < 0.03 && wall < tl.wall;
-    } else { pos = share.horses.map(() => 0); prev = pos; slow = false; }
-    const lead = Math.max(...pos);
+      const sl = share.phase === 'race' && tl.race(wall + 0.05) - rt < 0.035 && wall < tl.wall;
+      if (sl !== slow) slow = sl;
+    } else { pos = share.horses.map(() => 0); prev = pos; if (slow) slow = false; }
+    const lead = Math.max(...pos), leader = pos.indexOf(lead), running = share.phase === 'race' || share.phase === 'result';
     // before the start the gate sits in the middle; then the camera runs with the leaders
     const view = Lay.view;
     const target = share.phase === 'bet' || share.phase === 'wait' ? -view * 0.5 + 1 : Math.min(DIST + 9 - view, lead - view * 0.62);
     cam += (target - cam) * Math.min(1, dt * (share.phase === 'race' ? 3 : 1.5));
     drawBackdrop(ctx, Lay, cam, now / 1000, share.phase === 'race');
+    if (running && lead > 0) drawLeadLine(ctx, Lay, (lead - cam) * Lay.ppm);
     // back lanes first; the horse's position is its nose, the drawing origin is the girth
-    share.horses.forEach((h, i) => {
+    const at_ = share.horses.map((h, i) => {
       const { y, s } = Lay.lane(i);
       const v = (pos[i] - prev[i]) / 0.1, run = Math.min(1, v / 9);
-      const stride = pos[i] / 6.4 + i * 0.37 + (run < 0.1 ? 0 : 0);
+      const stride = pos[i] / 6.4 + i * 0.37;
       const x = (pos[i] - 1.85 - cam) * Lay.ppm;
-      if (x < -3 * Lay.ppm || x > W + 3 * Lay.ppm) return;
-      drawClods(ctx, x, y, s, stride, run);
-      drawHorse(ctx, h, x, y, s, stride, run);
+      const on = x > -3 * Lay.ppm && x < W + 3 * Lay.ppm;
+      if (on) { drawClods(ctx, x, y, s, stride, run); drawHorse(ctx, h, x, y, s, stride, run); }
+      return { h, x, y, s, on };
     });
     drawForeground(ctx, Lay, cam);
-    leftS = Math.ceil(Math.max(0, betEnd - now) / 1000);
-    meters = Math.max(0, Math.round(DIST - lead));
-    live = share.horses.map((_, i) => i).sort((a, b) => pos[b] - pos[a]);
+    for (const [i, a] of at_.entries()) if (a.on) drawTag(ctx, a.h, a.x, a.y, a.s, running && i === leader, now / 1000);
+    // the HUD only changes a few times a second: touch Svelte state only when a value really changes
+    const ls = Math.ceil(Math.max(0, betEnd - now) / 1000), mt = Math.max(0, Math.round(DIST - lead));
+    if (ls !== leftS) leftS = ls;
+    if (mt !== meters) meters = mt;
+    const ord = share.horses.map((_, i) => i).sort((a, b) => pos[b] - pos[a]), key = ord.join();
+    if (key !== liveKey) { liveKey = key; live = ord; }
   }
   const photo = $derived(share.phase === 'result' && race.finish[race.order[1]] - race.finish[race.order[0]] < 0.08);
   const isDaily = dailyGame() === 'derby';
@@ -275,6 +282,7 @@
         {#if myBets.length}<p class="mine mono" class:pos={myWin > 0}>{myWin > 0 ? '+' + fmt(myWin) : L('Kein Treffer', 'No luck') + ' · −' + fmt(myStake)}</p>{/if}
       </div>
     {/if}
+    {#if share.phase === 'bet' && share.odds}<div class="timer"><i style:width="{(leftS / (BET_MS / 1000)) * 100}%"></i></div>{/if}
     {#if share.phase === 'bet' && !isGuest && share.odds}
       <button class="btn go" onclick={() => room.send({ t: 'go' })}>{L('Start jetzt', 'Start now')} ▶</button>
     {/if}
@@ -283,33 +291,46 @@
   <div class="below">
     <div class="card panel">
       <div class="cardhead">
-        <div class="seg">
-          {#each [['win', L('Sieg', 'Win')], ['place', L('Platz', 'Place')], ['exacta', L('Zweierwette', 'Exacta')]] as [k, l]}
-            <button class:on={kind === k} onclick={() => { kind = k as BetKind; first = null; }}>{l}</button>
-          {/each}
+        <div>
+          <p class="eyebrow">{L('Rennkarte', 'Race card')}</p>
+          <p class="small muted">
+            {#if share.phase !== 'bet'}{L('Wetten sind geschlossen, gleich startet das nächste Rennen.', 'Betting is closed until the next race.')}
+            {:else if !exacta}{L('Sieg: Dein Pferd gewinnt. Platz: Erster oder Zweiter.', 'Win: your horse wins. Place: first or second.')}
+            {:else if first === null}{L('Tippe den Sieger an …', 'Tap the winner …')}
+            {:else}{L('… und jetzt den Zweiten.', '… now the runner-up.')}{/if}
+          </p>
         </div>
-        <span class="small muted">{kind === 'win' ? L('Dein Pferd gewinnt.', 'Your horse wins.') : kind === 'place' ? L('Dein Pferd wird Erster oder Zweiter.', 'Your horse finishes first or second.') : first === null ? L('Wähle den Sieger …', 'Pick the winner …') : L('… und jetzt den Zweiten.', '… now the runner-up.')}</span>
+        <div class="seg">
+          <button class:on={!exacta} onclick={() => { exacta = false; first = null; }}>{L('Sieg & Platz', 'Win & place')}</button>
+          <button class:on={exacta} onclick={() => { exacta = true; first = null; }}>{L('Zweierwette', 'Exacta')}</button>
+        </div>
       </div>
-      <table>
-        <thead><tr><th></th><th>{L('Pferd', 'Horse')}</th><th class="hide">{L('Stil', 'Style')}</th><th class="hide">{L('Form', 'Form')}</th><th>{kind === 'exacta' && first !== null ? L('Quote', 'Odds') : kind === 'place' ? L('Platz', 'Place') : L('Sieg', 'Win')}</th></tr></thead>
-        <tbody>
-          {#each share.horses as h, i}
-            {@const o = !share.odds ? null : kind === 'exacta' ? (first === null || first === i ? null : share.odds.exacta[first][i]) : kind === 'place' ? share.odds.place[i] : share.odds.win[i]}
-            <tr class:sel={first === i} class:won={share.phase === 'result' && race.order[0] === i}>
-              <td><span class="silk" style="--a:{SILKS[h.silks][0]}; --b:{SILKS[h.silks][1]}">{h.n}</span></td>
-              <td class="nm">{h.name}</td>
-              <td class="hide muted small">{STYLE[h.style]}</td>
-              <td class="hide"><span class="form">{#each [0, 1, 2, 3, 4] as k}<i class:on={k < Math.round((h.strength + 1.1) / 2.2 * 4) + 1}></i>{/each}</span></td>
-              <td>
-                <button class="odd mono" disabled={share.phase !== 'bet' || !share.odds || (kind !== 'exacta' && !o) || amt > wallet.balance} onclick={() => pick(i)}>
-                  {kind === 'exacta' && first === null ? L('1.', '1st') : kind === 'exacta' && first === i ? '✓' : o ? '×' + o.toFixed(2) : '…'}
-                </button>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-      <BetInput bind:value={amt} disabled={share.phase !== 'bet'} />
+      <div class="runners">
+        {#each share.horses as h, i}
+          <div class="runner" class:sel={first === i} class:won={share.phase === 'result' && race.order[0] === i} class:backed={myBets.some((b) => b.sel.includes(i))}>
+            <span class="silk lg" style="--a:{SILKS[h.silks][0]}; --b:{SILKS[h.silks][1]}">{h.n}</span>
+            <div class="info">
+              <b>{h.name}</b>
+              <span class="meta">{STYLE[h.style]} <span class="form" title="Form">{#each [0, 1, 2, 3, 4] as k}<i class:on={k < Math.round(((h.strength + 1.1) / 2.2) * 4) + 1}></i>{/each}</span></span>
+            </div>
+            {#if !exacta}
+              <button class="odd" disabled={!canBet} onclick={() => place('win', [i])}><small>{L('Sieg', 'Win')}</small><b class="mono">{odd(share.odds?.win[i])}</b></button>
+              <button class="odd alt" disabled={!canBet} onclick={() => place('place', [i])}><small>{L('Platz', 'Place')}</small><b class="mono">{odd(share.odds?.place[i])}</b></button>
+            {:else}
+              <button class="odd wide" class:pick={first === i} disabled={!canBet} onclick={() => pickExacta(i)}>
+                {#if first === null}<small>{L('Als Sieger', 'As winner')}</small><b>1.</b>
+                {:else if first === i}<small>{L('Sieger', 'Winner')}</small><b>✓</b>
+                {:else}<small>{share.horses[first].n} → {h.n}</small><b class="mono">{odd(share.odds?.exacta[first][i])}</b>{/if}
+              </button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+      <div class="stake">
+        <span class="eyebrow">{L('Einsatz pro Wette', 'Stake per bet')}</span>
+        <div class="chips">{#each [10, 20, 50, 100, 250, 500] as c}<button class:on={amt === c} disabled={c > wallet.balance} onclick={() => (amt = c)}>{c}</button>{/each}</div>
+        <BetInput bind:value={amt} disabled={share.phase !== 'bet'} />
+      </div>
     </div>
 
     <div class="side">
@@ -377,18 +398,43 @@
   .seg { display: flex; border: 1px solid var(--line-2); border-radius: 999px; padding: 3px; gap: 3px; }
   .seg button { flex: 1; border: 0; background: none; min-height: 36px; border-radius: 999px; color: var(--muted); }
   .seg button.on { background: var(--text); color: var(--bg); }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-size: 0.72rem; color: var(--muted); font-weight: 500; padding: 4px 6px; }
-  td { padding: 6px; border-top: 1px solid var(--line); }
-  td.nm { font-weight: 600; }
-  tr.sel td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-  tr.won td { background: color-mix(in srgb, #2fbf71 16%, transparent); }
-  .form { display: inline-flex; gap: 3px; }
-  .form i { width: 6px; height: 14px; border-radius: 2px; background: var(--line-2); }
+  .cardhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+  .cardhead .seg { min-width: 260px; }
+  .runners { display: grid; gap: 6px; }
+  .runner {
+    display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 16px;
+    background: var(--bg-2); border: 1px solid transparent; transition: border-color 0.2s, background 0.2s;
+  }
+  .runner.backed { border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+  .runner.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-2)); }
+  .runner.won { background: color-mix(in srgb, #2fbf71 18%, var(--bg-2)); border-color: #2fbf71; }
+  .runner:has(.wide) { grid-template-columns: auto 1fr auto; }
+  .silk.lg { width: 38px; height: 38px; border-radius: 12px; font-size: 1rem; }
+  .info { display: grid; gap: 3px; min-width: 0; }
+  .info b { font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--muted); }
+  .form { display: inline-flex; gap: 2px; }
+  .form i { width: 5px; height: 11px; border-radius: 2px; background: var(--line-2); }
   .form i.on { background: var(--gold); }
-  .odd { min-width: 78px; min-height: 36px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg-2); font-weight: 600; transition: transform 0.2s var(--ease-snap), background 0.2s; }
-  .odd:hover:not(:disabled) { background: var(--surface-2); transform: translateY(-1px); }
-  .odd:disabled { opacity: 0.5; }
+  .odd {
+    display: grid; justify-items: center; gap: 1px; min-width: 82px; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--line-2);
+    background: var(--surface); transition: transform 0.18s var(--ease-snap), background 0.2s, border-color 0.2s;
+  }
+  .odd small { font-size: 0.66rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .odd b { font-size: 1rem; }
+  .odd:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--accent); }
+  .odd:active:not(:disabled) { transform: scale(0.96); }
+  .odd.alt b { color: color-mix(in srgb, var(--text) 80%, var(--muted)); }
+  .odd.wide { min-width: 120px; }
+  .odd.pick { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+  .odd:disabled { opacity: 0.45; }
+  .stake { display: grid; gap: 8px; padding-top: 4px; border-top: 1px solid var(--line); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { min-width: 52px; min-height: 34px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--bg-2); font: 600 0.82rem 'Geist Mono Variable', monospace; }
+  .chips button.on { background: var(--gold); color: #1d1505; border-color: transparent; }
+  .chips button:disabled { opacity: 0.35; }
+  .timer { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(0,0,0,.25); }
+  .timer i { display: block; height: 100%; background: linear-gradient(90deg, #f2c33a, #e5484d); transition: width 1s linear; }
   .side { display: grid; gap: 12px; }
   .box { padding: 14px 16px; display: grid; gap: 8px; }
   .eyebrow { margin: 0; }

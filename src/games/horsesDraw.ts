@@ -146,69 +146,134 @@ export function drawHorse(ctx: CanvasRenderingContext2D, h: Horse, x: number, y:
   ctx.restore();
 }
 
-export type Layout = { W: number; H: number; ppm: number; view: number; horizon: number; top: number; bottom: number; lane: (i: number) => { y: number; s: number } };
+export type Layout = { W: number; H: number; ppm: number; view: number; horizon: number; standTop: number; standBot: number; top: number; bottom: number; lane: (i: number) => { y: number; s: number } };
 export function layout(W: number, H: number): Layout {
   // the picture height sets the zoom, so horses keep their size on narrow screens
-  const ppm = Math.max(W / VIEW, H / 13), horizon = H * 0.3, top = H * 0.47, bottom = H * 0.93;
-  return { W, H, ppm, view: W / ppm, horizon, top, bottom, lane: (i) => ({ y: top + (bottom - top) * (0.16 + (i / 5) * 0.72), s: ppm * (0.72 + 0.28 * (i / 5)) }) };
+  const ppm = Math.max(W / 40, H / 17), horizon = H * 0.2, standTop = H * 0.11, standBot = H * 0.5, top = H * 0.53, bottom = H * 0.95;
+  return { W, H, ppm, view: W / ppm, horizon, standTop, standBot, top, bottom, lane: (i) => ({ y: top + (bottom - top) * (0.2 + (i / 5) * 0.7), s: ppm * (0.78 + 0.22 * (i / 5)) }) };
+}
+
+// ---------- grandstand: drawn once per size into two tiles (crowd sitting / cheering), then only copied ----------
+const STAND_M = 48; // tile length in metres (stand coordinates), repeats seamlessly
+const SHIRTS = ['#e5484d', '#3d9bff', '#f2c33a', '#2fbf71', '#ffffff', '#1f2c4f', '#ff7ab8', '#e67e22', '#8e44ad', '#cfd8dc', '#c0392b', '#16a085'];
+const SKIN = ['#f1c8a5', '#d9a07a', '#a86b45', '#7a4a2c', '#f6d8bd'];
+let standCache: { key: string; tiles: HTMLCanvasElement[] } | null = null;
+function standTiles(ppm: number, h: number) {
+  const key = `${ppm.toFixed(2)}x${Math.round(h)}x${devicePixelRatio || 1}`;
+  if (standCache?.key === key) return standCache.tiles;
+  const dpr = devicePixelRatio || 1, w = Math.round(STAND_M * ppm);
+  const tiles = [0, 1].map((frame) => {
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    const g = c.getContext('2d')!;
+    g.scale(dpr, dpr);
+    const roof = h * 0.12, front = h * 0.82;
+    // back wall and roof
+    g.fillStyle = '#d8cfbd'; g.fillRect(0, roof, w, front - roof);
+    // tiers of seated fans, rows getting bigger towards the front
+    const rows = 7, heights = Array.from({ length: rows }, (_, r) => 1 + r * 0.09), sum = heights.reduce((a, b) => a + b, 0);
+    let y = roof + h * 0.04;
+    heights.forEach((k, r) => {
+      const rh = ((front - roof - h * 0.05) * k) / sum;
+      g.fillStyle = r % 2 ? '#bdb3a0' : '#c7bda9'; g.fillRect(0, y, w, rh);
+      g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, y + rh - 2, w, 2);
+      const sp = rh * 0.62, n = Math.floor(w / sp);
+      for (let i = 0; i < n; i++) {
+        const id = r * 1009 + i, cx = (i + 0.5) * (w / n) + (r % 2 ? sp * 0.25 : 0) % sp;
+        if (hash(id) < 0.08) { g.fillStyle = '#2f5f9e'; g.fillRect(cx - sp * 0.2, y + rh * 0.45, sp * 0.4, rh * 0.4); continue; } // empty seat
+        const up = frame === 1 && hash(id + 7) < 0.45, lift = up ? rh * 0.12 : 0;
+        const shirt = SHIRTS[Math.floor(hash(id + 1) * SHIRTS.length)], skin = SKIN[Math.floor(hash(id + 2) * SKIN.length)];
+        const by = y + rh * 0.42 - lift;
+        if (up) { g.strokeStyle = skin; g.lineWidth = Math.max(1.5, sp * 0.08); g.lineCap = 'round'; g.beginPath(); g.moveTo(cx - sp * 0.16, by + rh * 0.1); g.lineTo(cx - sp * 0.3, by - rh * 0.28); g.moveTo(cx + sp * 0.16, by + rh * 0.1); g.lineTo(cx + sp * 0.3, by - rh * 0.28); g.stroke(); }
+        g.fillStyle = shirt; g.beginPath(); g.roundRect(cx - sp * 0.22, by, sp * 0.44, rh * 0.58, sp * 0.14); g.fill();
+        g.fillStyle = skin; g.beginPath(); g.arc(cx, by - rh * 0.13, rh * 0.17, 0, 7); g.fill();
+        if (hash(id + 3) < 0.35) { g.fillStyle = hash(id + 4) < 0.5 ? '#2a1d14' : '#e3c27a'; g.beginPath(); g.arc(cx, by - rh * 0.17, rh * 0.17, Math.PI, 0); g.fill(); } // hair
+        if (hash(id + 5) < 0.05) { // a flag waved by a fan
+          const fx = cx + sp * 0.3, fy = by - rh * (up ? 0.75 : 0.55);
+          g.fillStyle = '#7a5a3a'; g.fillRect(fx, fy, Math.max(1, sp * 0.05), rh * 0.7);
+          g.fillStyle = SHIRTS[Math.floor(hash(id + 6) * 4)]; g.fillRect(fx, fy, sp * 0.55, rh * 0.32);
+        }
+      }
+      y += rh;
+    });
+    // shade under the roof, roof slab and its lit edge
+    const sh = g.createLinearGradient(0, roof, 0, roof + h * 0.32);
+    sh.addColorStop(0, 'rgba(20,24,40,.5)'); sh.addColorStop(1, 'rgba(20,24,40,0)');
+    g.fillStyle = sh; g.fillRect(0, roof, w, h * 0.32);
+    g.fillStyle = '#2b3240'; g.fillRect(0, 0, w, roof);
+    g.fillStyle = '#566178'; g.fillRect(0, roof - 3, w, 3);
+    g.fillStyle = 'rgba(255,255,255,.12)'; for (let x = 0; x < w; x += ppm * 2) g.fillRect(x, 0, 1, roof - 3);
+    // pillars and advertising boards along the front
+    g.fillStyle = '#3a4150'; for (let m = 6; m < STAND_M; m += 12) g.fillRect(m * ppm, roof, Math.max(3, ppm * 0.14), front - roof);
+    const ads: [string, string, string][] = [['#2f7d4f', '#ffffff', 'BETLY'], ['#ffffff', '#e5484d', 'DERBY'], ['#1f2c4f', '#f2c33a', 'GOLDEN HOUR'], ['#e5484d', '#ffffff', 'BETLY'], ['#f2c33a', '#1c1c22', 'PLAY MONEY ONLY'], ['#1f2c4f', '#ffffff', 'DERBY']];
+    const aw = w / ads.length;
+    ads.forEach(([bg, fg, txt], i) => {
+      g.fillStyle = bg; g.fillRect(i * aw, front, aw - 2, h - front);
+      // the text shrinks to fit its board
+      let fs = Math.round((h - front) * 0.52);
+      g.font = `800 ${fs}px Geist Variable, sans-serif`;
+      const tw = g.measureText(txt).width;
+      if (tw > aw * 0.82) { fs = Math.floor((fs * aw * 0.82) / tw); g.font = `800 ${fs}px Geist Variable, sans-serif`; }
+      g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(txt, i * aw + aw / 2, front + (h - front) / 2 + 1);
+    });
+    // evening light from the left
+    const lt = g.createLinearGradient(0, 0, w, 0);
+    lt.addColorStop(0, 'rgba(255,190,120,.12)'); lt.addColorStop(0.5, 'rgba(255,190,120,0)'); lt.addColorStop(1, 'rgba(255,190,120,.12)');
+    g.fillStyle = lt; g.fillRect(0, 0, w, h);
+    return c;
+  });
+  standCache = { key, tiles };
+  return tiles;
 }
 
 /** Everything behind the horses. cam: world x at the left edge, t: seconds (crowd and flags), live: race on. */
 export function drawBackdrop(ctx: CanvasRenderingContext2D, L: Layout, cam: number, t: number, live: boolean) {
-  const { W, H, ppm, horizon, top, bottom } = L;
+  const { W, H, ppm, horizon, top, bottom, standTop, standBot } = L;
   // sky at golden hour with a low sun
-  const sky = ctx.createLinearGradient(0, 0, 0, horizon + 40);
-  sky.addColorStop(0, '#2e4f86'); sky.addColorStop(0.55, '#e59a6a'); sky.addColorStop(1, '#f7d28e');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, horizon + 60);
-  const sx = W * 0.78 - ((cam * ppm * 0.02) % (W * 1.5)), sg = ctx.createRadialGradient(sx, horizon - 8, 0, sx, horizon - 8, H * 0.4);
-  sg.addColorStop(0, 'rgba(255,240,200,.95)'); sg.addColorStop(0.08, 'rgba(255,220,150,.8)'); sg.addColorStop(1, 'rgba(255,200,120,0)');
-  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, horizon + 60);
+  const sky = ctx.createLinearGradient(0, 0, 0, standBot);
+  sky.addColorStop(0, '#2e4f86'); sky.addColorStop(0.45, '#e59a6a'); sky.addColorStop(0.8, '#f7d28e');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, standBot);
+  const sx = W * 0.8 - ((cam * ppm * 0.02) % (W * 1.5)), sg = ctx.createRadialGradient(sx, horizon - 4, 0, sx, horizon - 4, H * 0.3);
+  sg.addColorStop(0, 'rgba(255,240,200,.95)'); sg.addColorStop(0.1, 'rgba(255,220,150,.75)'); sg.addColorStop(1, 'rgba(255,200,120,0)');
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, standBot);
   // hills in two layers
-  for (const [par, col, amp, base] of [[0.06, '#7d6f8f', 0.07, 0.0], [0.14, '#55607a', 0.05, 0.04]] as const) {
-    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, horizon + 60);
+  for (const [par, col, amp, base] of [[0.04, '#8a7a96', 0.06, 0.02], [0.1, '#5d6782', 0.045, 0.0]] as const) {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, standBot);
     for (let x = 0; x <= W + 20; x += 16) {
       const wx = (x / ppm + cam * par) * 0.35;
       ctx.lineTo(x, horizon - H * base - H * amp * (0.6 + 0.4 * Math.sin(wx * 0.9) + 0.3 * Math.sin(wx * 2.3 + 1)));
     }
-    ctx.lineTo(W, horizon + 60); ctx.fill();
+    ctx.lineTo(W, standBot); ctx.fill();
   }
-  // grandstand across the track (half parallax), crowd and flags
-  const gp = 0.5, unit = 46, gTop = horizon - H * 0.02, gBot = top - H * 0.035;
-  ctx.fillStyle = '#3a4a3a'; ctx.fillRect(0, gBot - 4, W, top - gBot + 8); // infield hedge
-  const first = Math.floor((cam * gp - 4) / unit);
-  for (let k = first; k < first + L.view / unit / gp + 3; k++) {
-    const x0 = (k * unit - cam * gp) * ppm, w = (unit - 0.8) * ppm;
-    ctx.fillStyle = '#e9e1d2'; ctx.fillRect(x0, gTop + 14, w, gBot - gTop - 14);
-    // roof with a scalloped valance
-    ctx.fillStyle = '#1f3557'; ctx.beginPath(); ctx.moveTo(x0 - 8, gTop + 16); ctx.lineTo(x0 + w * 0.08, gTop); ctx.lineTo(x0 + w * 0.92, gTop); ctx.lineTo(x0 + w + 8, gTop + 16); ctx.fill();
-    ctx.fillStyle = '#f2f0ea'; for (let v = x0 - 6; v < x0 + w + 6; v += 12) { ctx.beginPath(); ctx.arc(v + 6, gTop + 16, 6, 0, Math.PI); ctx.fill(); }
-    // crowd: rows of coloured dots that jump while the race is on
-    const rows = 4, rh = (gBot - gTop - 30) / rows;
-    for (let r = 0; r < rows; r++) for (let c = 0; c < w / 7; c++) {
-      const id = k * 997 + r * 131 + c, hu = hash(id);
-      const jump = live ? Math.max(0, Math.sin(t * (6 + hu * 4) + id)) * 2.2 : 0;
-      ctx.fillStyle = `hsl(${Math.floor(hu * 360)},${40 + hash(id + 1) * 40}%,${45 + hash(id + 2) * 25}%)`;
-      ctx.beginPath(); ctx.arc(x0 + 5 + c * 7 + (r % 2) * 3, gTop + 30 + r * rh - jump, 2.6, 0, 7); ctx.fill();
-    }
-    // columns and flags
-    ctx.fillStyle = '#cfc6b5'; for (let c = 0; c <= 4; c++) ctx.fillRect(x0 + (w - 4) * (c / 4), gTop + 16, 4, gBot - gTop - 16);
-    for (const fx of [0.2, 0.5, 0.8]) {
-      const px = x0 + w * fx, wave = Math.sin(t * 4 + k + fx * 10) * 3;
-      ctx.fillStyle = '#d9d9d9'; ctx.fillRect(px, gTop - 22, 2, 22);
-      ctx.fillStyle = ['#e5484d', '#f2c33a', '#2fbf71'][Math.floor(fx * 3)];
-      ctx.beginPath(); ctx.moveTo(px + 2, gTop - 22); ctx.lineTo(px + 18, gTop - 18 + wave); ctx.lineTo(px + 2, gTop - 13); ctx.fill();
-    }
+  // grandstand (half parallax): two pre-drawn tiles, the cheering one alternates in while the race is on
+  const gp = 0.5, tiles = standTiles(ppm, standBot - standTop), tw = STAND_M * ppm;
+  const tile = tiles[live && Math.floor(t * 3.2) % 2 ? 1 : 0];
+  const off = ((cam * gp * ppm) % tw + tw) % tw;
+  for (let x = -off; x < W; x += tw) ctx.drawImage(tile, x, standTop, tw, standBot - standTop);
+  // flags on the roof
+  for (let m = Math.floor((cam * gp) / 12) * 12; (m - cam * gp) * ppm < W + 20; m += 12) {
+    const px = (m - cam * gp) * ppm + 6 * ppm, wave = Math.sin(t * 4 + m) * 3;
+    if (px < -30 || px > W + 30) continue;
+    ctx.fillStyle = '#d9d9d9'; ctx.fillRect(px, standTop - 22, 2, 22);
+    ctx.fillStyle = ['#e5484d', '#f2c33a', '#2fbf71', '#3d9bff'][((m / 12) % 4 + 4) % 4];
+    ctx.beginPath(); ctx.moveTo(px + 2, standTop - 22); ctx.lineTo(px + 18, standTop - 18 + wave); ctx.lineTo(px + 2, standTop - 13); ctx.fill();
   }
+  // infield: a hedge between the stand and the track
+  ctx.fillStyle = '#2f5e2c'; ctx.fillRect(0, standBot, W, top - standBot);
+  const hr = (top - standBot) * 0.45;
+  ctx.fillStyle = '#3c7436'; for (let m = Math.floor(cam * 0.8 / 1.2) * 1.2; (m - cam * 0.8) * ppm < W + 20; m += 1.2) { ctx.beginPath(); ctx.arc((m - cam * 0.8) * ppm, top - 2, hr, Math.PI, 0); ctx.fill(); }
   // turf with mowing stripes, slanted for depth
   ctx.fillStyle = '#3f8a37'; ctx.fillRect(0, top, W, H - top);
   ctx.fillStyle = 'rgba(255,255,255,.06)';
-  const stripe = 4, f0 = Math.floor(cam / stripe);
-  for (let k = f0 - 1; k < f0 + L.view / stripe + 2; k += 2) {
+  // stripes sit on even multiples in the world, so they slide by instead of swapping light and dark
+  const stripe = 4, f0 = Math.floor(cam / (stripe * 2)) * 2 - 2;
+  for (let k = f0; k < f0 + L.view / stripe + 4; k += 2) {
     const x = (k * stripe - cam) * ppm;
     ctx.beginPath(); ctx.moveTo(x + 30, top); ctx.lineTo(x + 30 + stripe * ppm, top); ctx.lineTo(x + stripe * ppm, H); ctx.lineTo(x, H); ctx.fill();
   }
   // far rail
-  rail(ctx, L, cam, top - 2, 0.72);
+  rail(ctx, L, cam, top - 2, 0.7 * Math.min(1, ppm / 36)); // rails scale with the zoom
   // distance posts (metres to go) on the far rail and the finish line
   for (let d = 50; d < DIST; d += 50) {
     const x = (d - cam) * ppm;
@@ -229,14 +294,21 @@ export function drawBackdrop(ctx: CanvasRenderingContext2D, L: Layout, cam: numb
     ctx.fillStyle = '#e5484d'; ctx.beginPath(); ctx.arc(fx + 29, top - 96, 16, 0, 7); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(fx + 29, top - 96, 9, 0, 7); ctx.fill();
   }
-  // starting gate, swung open after the start
-  const gx = (-1.6 - cam) * ppm;
-  if (gx > -8 * ppm && gx < W) {
-    ctx.fillStyle = 'rgba(40,60,40,.25)'; ctx.fillRect(gx + 6, top + 6, 2.4 * ppm, bottom - top);
-    ctx.fillStyle = '#2f7d4f'; ctx.fillRect(gx, top - 24, 2.2 * ppm, 16);
-    ctx.fillStyle = '#fff'; ctx.font = `700 ${Math.round(ppm * 0.42)}px Geist Variable, sans-serif`; ctx.textAlign = 'center'; ctx.fillText('BETLY DERBY', gx + 1.1 * ppm, top - 12);
-    for (let i = 0; i <= 6; i++) { const y = top + (bottom - top) * (0.06 + i * 0.145); ctx.fillStyle = '#2f7d4f'; ctx.fillRect(gx, y - 3, 2.2 * ppm, 6); }
-    ctx.fillStyle = '#9aa0aa'; ctx.fillRect(gx, top - 10, 5, bottom - top + 10); ctx.fillRect(gx + 2.2 * ppm - 5, top - 10, 5, bottom - top + 10);
+  // starting gate: a green frame over all six stalls, one divider per lane at the horses' height
+  const gx = (-2.3 - cam) * ppm, gw = 2.7 * ppm;
+  if (gx > -gw * 2 && gx < W) {
+    const gTop = L.lane(0).y - L.lane(0).s * 3.05 - Math.max(10, L.lane(0).s * 0.3) - 26;
+    ctx.fillStyle = 'rgba(20,40,20,.18)'; ctx.fillRect(gx + 8, top, gw, bottom - top);
+    ctx.fillStyle = '#9aa0aa'; ctx.fillRect(gx, gTop, 6, bottom - gTop + 4); ctx.fillRect(gx + gw - 6, gTop, 6, bottom - gTop + 4);
+    ctx.fillStyle = '#2f7d4f'; ctx.beginPath(); ctx.roundRect(gx - 6, gTop - 4, gw + 12, 22, 6); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(Math.min(14, ppm * 0.38))}px Geist Variable, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('BETLY DERBY', gx + gw / 2, gTop + 7);
+    ctx.textBaseline = 'alphabetic';
+    for (let i = 0; i < 6; i++) {
+      const { y, s } = L.lane(i);
+      ctx.fillStyle = '#3c9a62'; ctx.fillRect(gx, y - 1.55 * s, gw, Math.max(3, s * 0.1));
+      ctx.fillStyle = '#2f7d4f'; ctx.fillRect(gx, y - 0.25 * s, gw, Math.max(2, s * 0.06));
+    }
   }
 }
 
@@ -251,7 +323,7 @@ function rail(ctx: CanvasRenderingContext2D, L: Layout, cam: number, y: number, 
 /** In front of the horses: the near rail, slightly blurred by depth. */
 export function drawForeground(ctx: CanvasRenderingContext2D, L: Layout, cam: number) {
   ctx.fillStyle = '#356f2f'; ctx.fillRect(0, L.bottom + 8, L.W, L.H - L.bottom);
-  rail(ctx, L, cam * 1.12, L.H - 2, 1.4);
+  rail(ctx, L, cam * 1.12, L.H - 2, 1.4 * Math.min(1, L.ppm / 36));
 }
 
 /** Turf thrown up behind galloping hooves (procedural, no state). */
@@ -264,4 +336,38 @@ export function drawClods(ctx: CanvasRenderingContext2D, x: number, y: number, s
     ctx.fillRect(x + dx - 0.6 * s, y + dy - 2, 0.07 * s + 1, 0.07 * s + 1);
   }
   ctx.globalAlpha = 1;
+}
+
+/** A faint golden line across the track at the leader's nose (drawn under the horses). */
+export function drawLeadLine(ctx: CanvasRenderingContext2D, L: Layout, noseX: number) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,214,90,.55)'; ctx.lineWidth = 2; ctx.setLineDash([8, 7]);
+  ctx.beginPath(); ctx.moveTo(noseX + 18, L.top); ctx.lineTo(noseX, L.bottom + 6); ctx.stroke();
+  ctx.restore();
+}
+
+/** Number tag above a horse; the leader's is gold and carries a waving pennant. x, y as in drawHorse. */
+export function drawTag(ctx: CanvasRenderingContext2D, h: Horse, x: number, y: number, s: number, lead: boolean, t: number) {
+  const [a, b] = SILKS[h.silks];
+  const cx = x + 0.75 * s, cy = y - 3.05 * s, r = Math.max(10, s * 0.3);
+  ctx.save();
+  if (lead) {
+    // pennant on a short pole
+    const wave = Math.sin(t * 9) * r * 0.3, top = cy - r * 4.4;
+    ctx.fillStyle = '#f4f1ea'; ctx.fillRect(cx - 1.5, top, 3, r * 3.6);
+    ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 6;
+    ctx.fillStyle = '#ffd25a';
+    ctx.beginPath(); ctx.moveTo(cx + 1.5, top); ctx.quadraticCurveTo(cx + r * 1.8, top + r * 0.3 + wave, cx + r * 3.2, top + r * 0.75 + wave); ctx.quadraticCurveTo(cx + r * 1.8, top + r * 1.2 + wave, cx + 1.5, top + r * 1.6); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#1c1c22'; ctx.font = `800 ${Math.round(r * 0.95)}px Geist Variable, sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('1.', cx + r * 0.45, top + r * 0.8 + wave * 0.5);
+  }
+  ctx.beginPath(); ctx.roundRect(cx - r, cy - r * 0.8, r * 2, r * 1.6, r * 0.45);
+  ctx.fillStyle = a; ctx.fill();
+  ctx.lineWidth = lead ? 3 : 1.5; ctx.strokeStyle = lead ? '#ffd25a' : 'rgba(0,0,0,.35)'; ctx.stroke();
+  ctx.fillStyle = a === '#ffffff' || a === '#f2c33a' ? '#1c1c22' : '#fff';
+  void b;
+  ctx.font = `800 ${Math.round(r * 1.05)}px Geist Mono Variable, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(h.n), cx, cy + 1);
+  ctx.restore();
 }

@@ -20,8 +20,8 @@
     function draw() {
       if (!W) return;
       // a taller picture than the game: zoom on the leading three
-      const L = layout(W, H * 1.6);
-      ctx.save(); ctx.translate(0, -H * 0.5);
+      const L = layout(W, H * 2.1);
+      ctx.save(); ctx.translate(0, -H * 0.93);
       const lead = DIST - 6 + ((t * 2) % 8), cam = lead - L.view * 0.7;
       drawBackdrop(ctx, L, cam, t, true);
       horses.forEach((h, k) => {

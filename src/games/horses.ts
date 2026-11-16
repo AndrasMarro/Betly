@@ -109,16 +109,22 @@ export function timeline(race: Race) {
     return { a, gap: a - b };
   };
   const map: number[] = [0];
-  let rt = 0;
+  let rt = 0, rate = 1;
   const end = race.frames.length * race.dt;
   while (rt < end + 1) {
     const { a, gap } = leaderAt(rt);
-    // close finish: the last 12 metres in slow motion
-    const slow = a > DIST - 12 && a < DIST + 2 && gap < 1.6;
-    rt += DT * (slow ? 0.3 : 1);
+    // close finish: the last metres in slow motion, easing in and out instead of jumping
+    const slow = a > DIST - 14 && a < DIST + 2 && gap < 1.6;
+    rate += ((slow ? 0.3 : 1) - rate) * 0.18;
+    rt += DT * rate;
     map.push(rt);
   }
-  return { map, wall: map.length * DT, race: (wall: number) => map[Math.max(0, Math.min(map.length - 1, Math.floor(wall / DT)))] };
+  // linear between samples, so playback is smooth at any frame rate
+  const race_ = (wall: number) => {
+    const k = Math.max(0, wall / DT), i = Math.min(map.length - 2, Math.floor(k));
+    return map[i] + (map[i + 1] - map[i]) * Math.min(1, k - i);
+  };
+  return { map, wall: map.length * DT, race: race_ };
 }
 
 /** Interpolated positions at race time t. */
