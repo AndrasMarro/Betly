@@ -36,6 +36,8 @@
     push();
   });
   const isHost = $derived(room.role !== 'guest');
+  // a new guest gets the round right away, not only with the next bet or phase
+  $effect(() => { if (room.guests) untrack(push); });
 
   function push() {
     if (room.role !== 'host') return;
