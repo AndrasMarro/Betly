@@ -14,6 +14,7 @@ export const GAMES: Game[] = [
   { id: 'paigow', name: 'Pai Gow', cat: 'classic' },
   { id: 'threecard', name: 'Three Card Poker', cat: 'classic', live: true },
   { id: 'jass', name: 'Jass', cat: 'classic', live: true },
+  { id: 'derby', name: ['Pferderennen', 'Horse Racing'], cat: 'classic', live: true },
   { id: 'videopoker', name: 'Video Poker', cat: 'classic' },
   { id: 'sicbo', name: 'Sic Bo', cat: 'classic' },
 
@@ -34,7 +35,6 @@ export const GAMES: Game[] = [
   { id: 'limbo', name: 'Limbo', cat: 'arcade' },
   { id: 'balloon', live: true, name: ['Ballon', 'Balloon'], cat: 'arcade' },
   { id: 'penalty', name: ['Elfmeter', 'Penalty'], cat: 'arcade' },
-  { id: 'derby', name: 'Derby', cat: 'arcade' },
   { id: 'scratch', live: true, name: ['Rubbellos', 'Scratch Card'], cat: 'arcade' },
 ];
 

@@ -7,6 +7,7 @@
   import voidPulse from '../assets/cases/void-pulse.webp';
   import deepTide from '../assets/cases/deep-tide.webp';
   import CrossyArt from './CrossyArt.svelte';
+  import DerbyArt from './DerbyArt.svelte';
   import planet from '../assets/space/planet.webp';
   import rock from '../assets/space/rock.webp';
   import { coinFace } from '../lib/coinface';
@@ -110,6 +111,8 @@
     </svg>
   {:else if id === 'crossy'}
     <CrossyArt />
+  {:else if id === 'derby'}
+    <DerbyArt />
   {:else if id === 'balloon'}
     <div class="bln">
       <i class="cl"></i>
@@ -182,7 +185,7 @@
   .whub { position: absolute; left: 50%; top: 50%; width: 30%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 38% 30%, #fff, #e9e3ff 25%, #8f7bd9 70%, #4b3a8f); box-shadow: 0 0 0 3px #f2c046, 0 0 0 5px #8a5d12; color: #2a1a5e; font: 800 0.6rem 'Geist Variable', sans-serif; letter-spacing: 0.08em; }
   .wpin { position: absolute; left: 50%; top: -6px; width: 20px; translate: -50% 0; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
   @keyframes wspin { to { rotate: 360deg; } }
-  .art.snake, .art.crossy { padding: 0; }
+  .art.snake, .art.crossy, .art.derby { padding: 0; }
   .snk { width: 100%; height: 100%; display: block; }
   .snk .apple { transform-origin: center; transform-box: fill-box; animation: bob 1.6s ease-in-out infinite; }
   .snk .gold { animation-delay: -0.8s; }

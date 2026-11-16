@@ -22,6 +22,7 @@ Betly ist ein privates Hobbyprojekt: eine Casino-Simulation, die sich wie ein ec
 | **Texas Hold'em** | No-Limit an 6 Plätzen, Side-Pots, korrekte Mindest-Erhöhungen, Bots mit fünf Spielstilen (Monte-Carlo-Gewinnchancen), Helfer für Hand, Gewinnchance und Pot Odds, Übersicht aller Hände |
 | **Three Card Poker** | Ante/Play gegen den Dealer (spielt ab Dame), Ante Bonus und Pair Plus bis 40:1, Strategie-Tipp (Q-6-4) |
 | **Jass** | Schieber mit Partner gegen zwei Bots: Trumpf, Obenabe, Undenufe, Schieben, Weis und Stöck, deutsches oder französisches Blatt, Ziel 500 bis 2500 |
+| **Pferderennen** | Sechs Pferde über 300 m zur goldenen Stunde: Sieg-, Platz- und Zweierwette mit Quoten aus Tausenden simulierten Rennen (95 %), Fotofinish in Zeitlupe, Mehrspieler im selben Rennen |
 | **Baccarat** | Punto Banco mit echter Ziehregel, Paar-Wetten, Big-Road-Anzeigetafel |
 | **Slots** | Lucky Sevens, Midnight Gems, Cosmic Cash, Lucky Clover (Wilds, Scatter, Freispiele) |
 

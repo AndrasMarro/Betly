@@ -121,6 +121,22 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Special symbols', li: ['Wild substitutes for all regular symbols.', 'Scatter pays anywhere on the reels; three or more start free spins (on machines that have them).'] },
     ],
   },
+  derby: {
+    de: [
+      { h: 'Ziel', p: 'Sechs Pferde laufen 300 m. Wette auf den Ausgang, bevor sich die Startboxen öffnen.' },
+      { h: 'Wetten', li: ['Sieg: Dein Pferd gewinnt.', 'Platz: Dein Pferd wird Erster oder Zweiter (kleinere Quote).', 'Zweierwette: Sieger und Zweiter in der richtigen Reihenfolge (grosse Quote).', 'Tippe auf eine Quote, um mit dem eingestellten Betrag zu wetten. Mehrere Wetten pro Rennen sind erlaubt, bis zum Start lassen sie sich zurücknehmen.'] },
+      { h: 'Quoten', p: 'Die Quoten kommen aus Tausenden simulierten Rennen mit genau diesem Feld. Wie am Totalisator behält die Bahn 5 %: Im Schnitt fliessen 95 % der Einsätze zurück.' },
+      { h: 'Das Feld', li: ['Form: wie stark das Pferd grundsätzlich ist.', 'Frontläufer gehen schnell weg und werden hinten müde, Steher kommen am Schluss.', 'Dazu kommt die Tagesform: Auch ein Aussenseiter kann gewinnen.'] },
+      { h: 'Mehrspieler', p: 'Raum öffnen und den Code teilen: Alle sehen dasselbe Rennen und wetten mit ihrem eigenen Guthaben. Bots wetten mit, wenn sie eingeschaltet sind.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Six horses run 300 m. Bet on the outcome before the stalls open.' },
+      { h: 'Bets', li: ['Win: your horse wins.', 'Place: your horse finishes first or second (shorter price).', 'Exacta: winner and runner-up in the right order (big price).', 'Tap a price to bet the amount set below. Several bets per race are fine and can be taken back until the start.'] },
+      { h: 'Odds', p: 'The prices come from thousands of simulated races with exactly this field. Like a tote the track keeps 5 %: on average 95 % of the stakes come back.' },
+      { h: 'The field', li: ['Form: how strong a horse is in general.', 'Front-runners go fast early and tire, closers come late.', 'On top there is the form of the day: an outsider can win too.'] },
+      { h: 'Multiplayer', p: 'Open a room and share the code: everyone watches the same race and bets with their own balance. Bots bet along when they are switched on.' },
+    ],
+  },
   balloon: {
     de: [
       { h: 'Ziel', p: 'Pump den Ballon auf und zahl aus, bevor er platzt. Jeder Pumpstoss erhöht den Multiplikator.' },

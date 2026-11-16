@@ -488,3 +488,25 @@ import { RISK as BRISK, balloonMult, pops } from '../src/games/balloon.ts';
   assert(balloonMult('mid', 0) === 0, 'nothing to cash before the first pump');
   console.log('balloon checks passed');
 }
+
+// Horse racing: the same seed gives the same race everywhere, payouts follow the bet rules, odds return ~95 %
+import { field as hField, simulate as hSim, odds as hOdds, payout as hPay, timeline as hTl, DIST as H_DIST } from '../src/games/horses.ts';
+{
+  const h = hField(77);
+  assert(h.length === 6 && new Set(h.map((x) => x.name)).size === 6, 'six different horses');
+  const a = hSim(h, 1234), b = hSim(h, 1234);
+  assert(JSON.stringify(a.order) === JSON.stringify(b.order) && a.finish.every((f, i) => f === b.finish[i]), 'deterministic race');
+  assert(a.frames[a.frames.length - 1].some((p) => p >= H_DIST), 'the race reaches the post');
+  const tl = hTl(a);
+  assert(tl.wall >= a.finish[a.order[0]] && tl.race(tl.wall) >= a.finish[a.order[0]], 'playback covers the finish');
+  const o = hOdds(h, 4000);
+  const order = [2, 4, 0, 1, 3, 5];
+  assert(hPay('win', [2], order, o) === o.win[2] && hPay('win', [4], order, o) === 0, 'win pays only the winner');
+  assert(hPay('place', [4], order, o) === o.place[4] && hPay('place', [0], order, o) === 0, 'place pays first and second');
+  assert(hPay('exacta', [2, 4], order, o) === o.exacta[2][4] && hPay('exacta', [4, 2], order, o) === 0, 'exacta needs the right order');
+  // return to player over fresh races, all six horses backed to win: close to 95 %
+  let back = 0; const M = 6000;
+  for (let k = 0; k < M; k++) { const { order: ord } = hSim(h, 9e6 + k, false); back += o.win[ord[0]]; }
+  assert(back / M / 6 > 0.85 && back / M / 6 < 1.02, 'win RTP near 95 %: ' + (back / M / 6).toFixed(3));
+  console.log('horse racing checks passed');
+}
