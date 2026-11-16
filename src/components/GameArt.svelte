@@ -6,15 +6,17 @@
   import golden from '../assets/cases/golden-edge.webp';
   import voidPulse from '../assets/cases/void-pulse.webp';
   import deepTide from '../assets/cases/deep-tide.webp';
-  import duck from '../assets/duck/right.webp';
+  import CrossyArt from './CrossyArt.svelte';
   import planet from '../assets/space/planet.webp';
   import rock from '../assets/space/rock.webp';
   import { coinFace } from '../lib/coinface';
   import JassCard from './JassCard.svelte';
+  import Dice3D from './Dice3D.svelte';
   const coinCache: Record<string, string> = {};
   const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 512).toDataURL('image/png'));
   const CASE_ART = [[deepTide, '#8847ff'], [golden, '#e4ae39'], [voidPulse, '#eb4b4b']] as const;
   let { id }: { id: string } = $props();
+  let dice = $state<[number, number]>([5, 2]), rolls = $state(0);
 </script>
 
 <div class="art {id}" aria-hidden="true">
@@ -43,7 +45,8 @@
       {#each [0, 1, 2, 3, 4, 5, 6, 7, 8] as i}<div class="tile" class:open={i !== 4 && i % 2 === 0}>{#if i === 4}<Sprite kind="bomb" />{:else if i % 2 === 0}<Sprite kind="gem" />{/if}</div>{/each}
     </div>
   {:else if id === 'dice'}
-    <div class="pair"><div class="d1"><Sprite kind="die" n={5} /></div><div class="d2"><Sprite kind="die" n={2} /></div></div>
+    <!-- the real 3D dice from the game: they roll again whenever the pointer comes over the card -->
+    <div class="dice3" role="presentation" onpointerenter={() => { dice = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]; rolls++; }}><Dice3D values={dice} {rolls} size={58} /></div>
   {:else if id === 'hop'}
     <!-- road with a fixed lane width, so the card looks right at any width -->
     <div class="hs">
@@ -106,10 +109,7 @@
       <rect x="150" y="80" width="18" height="18" fill="#6b6f7a" /><rect x="150" y="80" width="18" height="4" fill="#8b909c" />
     </svg>
   {:else if id === 'crossy'}
-    <div class="cr">
-      <i class="g"></i><i class="r"><b style="--d:0s"></b></i><i class="w"><u></u></i><i class="g"></i>
-      <img src={duck} alt="" class="duck" />
-    </div>
+    <CrossyArt />
   {:else if id === 'cases'}
     <div class="drops">
       {#each CASE_ART as [src, c], i}<span class="drop" style="--c:{c}; --i:{i}"><img {src} alt="" /></span>{/each}
@@ -147,7 +147,8 @@
   .art.slots { background: radial-gradient(ellipse at 50% 20%, #2a1b10, #120b07); }
   .art.rocket { background: radial-gradient(ellipse at 70% 10%, #24204a, #0a0918); }
   .art.mines { background: radial-gradient(ellipse at 50% 20%, #1c2a3a, #0b121b); }
-  .art.dice { background: radial-gradient(ellipse at 50% 20%, #4a1d24, #1a080b); }
+  .art.dice { background: radial-gradient(ellipse at 50% 30%, var(--felt), var(--felt-2)); }
+  .dice3 { position: absolute; inset: 0; display: grid; align-content: center; }
   .art.hop { background: #2c2f36; }
   .art.tower { background: linear-gradient(180deg, #1d1838, #0f1424); }
   .art.coinflip { background: repeating-linear-gradient(90deg, #6b4126 0 54px, #5e3820 54px 56px, #744830 56px 110px, #5e3820 110px 112px); perspective: 700px; }
@@ -174,17 +175,8 @@
   .snk .apple { transform-origin: center; transform-box: fill-box; animation: bob 1.6s ease-in-out infinite; }
   .snk .gold { animation-delay: -0.8s; }
   @keyframes bob { 50% { transform: translateY(-3px) scale(1.06); } }
-  .cr { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr 1fr 1fr 1fr; overflow: hidden; }
-  .cr i { position: relative; overflow: hidden; }
-  .cr .g { background: #8bd65a; }
-  .cr .r { background: #4a4e5a; }
-  .cr .r b { position: absolute; top: 18%; left: -30%; width: 22%; height: 64%; border-radius: 4px; background: #ff5a5f; box-shadow: inset 0 -6px 0 rgba(0,0,0,.25); animation: drive 3.2s linear infinite; }
-  .cr .w { background: #3aa7e6; }
-  .cr .w u { position: absolute; top: 22%; right: -40%; width: 38%; height: 56%; border-radius: 4px; background: #a8703f; box-shadow: inset 0 -5px 0 #7a4f2a; animation: drift 5s linear infinite; }
   @keyframes drive { to { left: 110%; } }
   @keyframes drift { to { right: 110%; } }
-  .cr .duck { position: absolute; left: 50%; bottom: 14%; height: 58%; translate: -50% 0; filter: drop-shadow(0 6px 4px rgba(0,0,0,.25)); transition: transform 0.4s var(--spring-snappy); }
-  :global(.game:hover) .cr .duck, :global(.dailycard:hover) .cr .duck { transform: translateY(-14%); }
   .art.jass { background: radial-gradient(ellipse at 50% 30%, #1d6b48, #0c3a26 75%); }
   .js { position: relative; display: flex; --cw: 64px; margin-bottom: 18px; }
   .jsc { margin-left: -26px; transform: rotate(calc((var(--i) - 1.5) * 9deg)) translateY(var(--y)); transform-origin: 50% 120%; transition: transform .5s var(--spring-smooth); }
@@ -263,10 +255,6 @@
   .grid { display: grid; grid-template-columns: repeat(3, 56px); gap: 8px; }
   .tile { width: 56px; height: 56px; border-radius: 12px; background: #2a3b52; box-shadow: inset 0 -4px 0 rgba(0,0,0,.3); padding: 10px; }
   .tile.open { background: #13202e; }
-  .pair { display: flex; gap: 18px; }
-  .pair div { width: 84px; height: 84px; transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); filter: drop-shadow(0 12px 16px rgba(0,0,0,.5)); }
-  .d1 { transform: rotate(-14deg); } .d2 { transform: rotate(12deg) translateY(16px); }
-  :global(.game:hover) .d1 { transform: rotate(-200deg); } :global(.game:hover) .d2 { transform: rotate(190deg) translateY(16px); }
   .art.hop { container-type: size; }
   .hs { position: absolute; inset: 0; display: flex; }
   .grass { flex: 1; min-width: 18cqh; background: repeating-linear-gradient(90deg, #4c7a3c 0 14px, #52823f 14px 28px); box-shadow: inset -6px 0 0 #c9c3b5; }
