@@ -6,6 +6,8 @@
   import { t } from './lib/i18n';
   import { byId } from './lib/games';
   import { menuMusic, setVolumes } from './lib/sfx';
+  import { account, hasSession } from './lib/account.svelte';
+  let avatarOk = $state(true);
 
   let hash = $state(location.hash);
   const path = $derived(hash.slice(1).split('?')[0] || '/');
@@ -65,7 +67,8 @@
 
   // ask for a name once per browser session (also shows the play-money notice)
   try {
-    if (!sessionStorage.getItem('betly:hi')) askName(true).then(() => sessionStorage.setItem('betly:hi', '1'));
+    // signed-in players skip it: they already accepted the notice and have a name
+    if (!sessionStorage.getItem('betly:hi') && !hasSession()) askName(true).then(() => sessionStorage.setItem('betly:hi', '1'));
   } catch {
     askName(true);
   }
@@ -97,6 +100,15 @@
       </button>
       <button class="btn icon ghost music" class:off={!settings.music || !settings.sound} onclick={() => (settings.music = !(settings.music && settings.sound)) && (settings.sound = true)} aria-label={t('settings.music')} aria-pressed={settings.music && settings.sound}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l11-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="17" cy="16" r="3" /></svg>
+      </button>
+      <button class="btn icon ghost acct" onclick={() => (ui.account = true)} aria-label={t('acc.title')} title={account.user?.email ?? t('acc.google')}>
+        {#if account.user?.avatar && avatarOk}
+          <img src={account.user.avatar} alt="" referrerpolicy="no-referrer" onerror={() => (avatarOk = false)} />
+        {:else if account.user}
+          <span class="initial">{(account.user.name || account.user.email || '?')[0].toUpperCase()}</span>
+        {:else}
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+        {/if}
       </button>
       <button class="btn icon ghost gear" onclick={() => (ui.settings = true)} aria-label={t('nav.settings')}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
@@ -162,6 +174,9 @@
   .links a.on { background: var(--surface-2); color: var(--text); }
   .tools { display: flex; gap: 6px; align-items: center; }
   .music.off { opacity: 0.4; }
+  .acct { overflow: hidden; padding: 0; }
+  .acct img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+  .initial { font-weight: 600; font-size: 0.95rem; }
   .music.off svg { stroke-dasharray: 2 2; }
   .balance {
     display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 6px 0 10px; border-radius: 999px; border: 1px solid var(--line-2);
@@ -190,5 +205,10 @@
     .links { order: 3; grid-column: 1 / -1; justify-content: space-between; }
     .links a { flex: 1; text-align: center; padding: 7px 6px; }
     .nav { height: auto; min-height: var(--nav-h); padding: 10px 0; }
+  }
+  /* small phones: the music toggle also lives in the settings, so it makes room for the account button */
+  @media (max-width: 420px) {
+    .tools .music { display: none; }
+    .tools { gap: 4px; }
   }
 </style>

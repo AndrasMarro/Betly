@@ -1,7 +1,7 @@
 // Optional account (Supabase + Google login). Local first: the games keep reading and writing localStorage,
 // this module mirrors every `betly:*` key to the `saves` table in the background (see docs/konzept-accounts.md).
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { wallet, settings } from './state.svelte';
+import { wallet, settings, ui } from './state.svelte';
 import { t } from './i18n';
 
 // Both are public by design; RLS on the table does the protecting.
@@ -11,7 +11,10 @@ const TOKEN = 'sb-wcztqzznlunixrdpschq-auth-token'; // where supabase-js keeps t
 const META = 'betly-sync'; // { uid, keys: { key: { v: last synced value, t: server updated_at } } }
 const SKIP = new Set(['betly:id', 'betly:sealed']); // per-browser seal, not progress
 
-export const account = $state({ user: null as null | { id: string; email?: string }, busy: false, error: '' });
+export const account = $state({ user: null as null | { id: string; email?: string; name?: string; avatar?: string }, busy: false, error: '' });
+
+/** A stored session means this browser is (most likely) signed in, known before supabase-js has loaded. */
+export const hasSession = () => { try { return !!localStorage.getItem(TOKEN); } catch { return false; } };
 
 let client: Promise<SupabaseClient> | null = null;
 const sb = () =>
@@ -19,7 +22,11 @@ const sb = () =>
     const c = createClient(SB_URL, KEY, { auth: { flowType: 'pkce' } });
     c.auth.onAuthStateChange((_, s) => {
       const id = s?.user.id;
-      account.user = s ? { id: s.user.id, email: s.user.email } : null;
+      const md = s?.user.user_metadata ?? {};
+      account.user = s ? { id: s.user.id, email: s.user.email, name: md.full_name ?? md.name, avatar: md.avatar_url ?? md.picture } : null;
+      ui.signedIn = !!s;
+      // a fresh browser still has the random default name: take the first name from Google (the account's saved name wins in pull)
+      if (s && /^Player-\d{4}$/.test(settings.name) && (md.given_name || md.full_name)) settings.name = String(md.given_name || md.full_name).slice(0, 20);
       if (location.search.includes('code=')) history.replaceState(history.state, '', location.pathname + location.hash);
       // never await other auth calls inside this callback (supabase-js deadlocks), so run the sync afterwards
       if (id && id !== synced) { synced = id; setTimeout(() => pull().catch(fail), 0); }

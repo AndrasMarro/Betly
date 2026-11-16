@@ -4,12 +4,18 @@
   import { sfx } from '../lib/sfx';
   import { account, signIn, signOut, deleteAccount, exportData } from '../lib/account.svelte';
 
-  let credits: HTMLDialogElement, prefs: HTMLDialogElement, gate: HTMLDialogElement;
+  let credits: HTMLDialogElement, prefs: HTMLDialogElement, gate: HTMLDialogElement, acct: HTMLDialogElement;
   let draft = $state('');
   let now = $state(Date.now());
 
   $effect(() => { if (ui.credits) credits.showModal(); else credits.close(); });
   $effect(() => { if (ui.settings) prefs.showModal(); else prefs.close(); });
+  $effect(() => { if (ui.account) acct.showModal(); else acct.close(); });
+  // the welcome screen's Google button: the notice counts as read, then off to Google
+  function welcomeGoogle() {
+    settings.accepted = true;
+    signIn();
+  }
   $effect(() => {
     if (ui.nameAsk) { draft = settings.name; if (!gate.open) gate.showModal(); }
     else if (gate.open) gate.close();
@@ -37,6 +43,36 @@
   const themes: Theme[] = ['noir', 'midnight', 'ivory'];
 </script>
 
+{#snippet google(onclick: () => void)}
+    <button type="button" class="btn google" disabled={account.busy} {onclick}>
+      <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      {t('acc.google')}
+    </button>
+{/snippet}
+
+<dialog bind:this={acct} onclose={() => (ui.account = false)} onclick={(e) => e.target === acct && (ui.account = false)}>
+  <div class="dlg">
+    <header><h2>{t('acc.title')}</h2><button class="btn icon sm ghost" onclick={() => (ui.account = false)} aria-label={t('close')}>×</button></header>
+    {#if account.user}
+      <div class="who">
+        {#if account.user.avatar}<img src={account.user.avatar} alt="" referrerpolicy="no-referrer" />{/if}
+        <div><strong>{account.user.name ?? settings.name}</strong><span class="small muted">{account.user.email}</span></div>
+      </div>
+      <p class="small muted">{t('acc.synced')}</p>
+      <label class="field">{t('settings.name')}<input bind:value={settings.name} maxlength="20" /></label>
+      <div class="acc">
+        <button class="btn sm" onclick={exportData}>{t('acc.export')}</button>
+        <button class="btn sm" disabled={account.busy} onclick={signOut}>{t('acc.signOut')}</button>
+        <button class="btn sm ghost danger" disabled={account.busy} onclick={deleteAccount}>{t('acc.delete')}</button>
+      </div>
+    {:else}
+      {@render google(signIn)}
+      <p class="small muted">{t('acc.why')}</p>
+    {/if}
+    {#if account.error}<p class="small accent">{t('acc.error')} ({account.error})</p>{/if}
+  </div>
+</dialog>
+
 <dialog bind:this={credits} onclose={() => (ui.credits = false)} onclick={(e) => e.target === credits && (ui.credits = false)}>
   <div class="dlg">
     <header><h2>{t('credits.title')}</h2><button class="btn icon sm ghost" onclick={() => (ui.credits = false)} aria-label={t('close')}>×</button></header>
@@ -60,23 +96,6 @@
 <dialog bind:this={prefs} onclose={() => (ui.settings = false)} onclick={(e) => e.target === prefs && (ui.settings = false)}>
   <div class="dlg">
     <header><h2>{t('settings.title')}</h2><button class="btn icon sm ghost" onclick={() => (ui.settings = false)} aria-label={t('close')}>×</button></header>
-    <div class="field">{t('acc.title')}
-      {#if account.user}
-        <p class="small">{t('acc.signedIn')} <b>{account.user.email}</b></p>
-        <div class="acc">
-          <button class="btn sm" onclick={exportData}>{t('acc.export')}</button>
-          <button class="btn sm" disabled={account.busy} onclick={signOut}>{t('acc.signOut')}</button>
-          <button class="btn sm ghost danger" disabled={account.busy} onclick={deleteAccount}>{t('acc.delete')}</button>
-        </div>
-      {:else}
-        <button class="btn google" disabled={account.busy} onclick={signIn}>
-          <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-          {t('acc.google')}
-        </button>
-        <p class="small muted">{t('acc.why')}</p>
-      {/if}
-      {#if account.error}<p class="small accent">{t('acc.error')} ({account.error})</p>{/if}
-    </div>
     <label class="field">{t('settings.name')}<input bind:value={settings.name} maxlength="20" /></label>
     <div class="field">{t('settings.lang')}
       <div class="seg">
@@ -111,6 +130,9 @@
         <button type="button" class:on={settings.lang === 'de'} onclick={() => (settings.lang = 'de')}>Deutsch</button>
         <button type="button" class:on={settings.lang === 'en'} onclick={() => (settings.lang = 'en')}>English</button>
       </div>
+      {@render google(welcomeGoogle)}
+      <p class="small muted">{t('acc.welcome')}</p>
+      <p class="or small muted"><span>{t('acc.guest')}</span></p>
     {:else}
       <h2>{t('name.title')}</h2>
     {/if}
@@ -156,4 +178,9 @@
   .acc { display: flex; flex-wrap: wrap; gap: 8px; }
   .google { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 44px; }
   .danger { color: var(--accent); }
+  .who { display: flex; align-items: center; gap: 12px; }
+  .who img { width: 48px; height: 48px; border-radius: 50%; }
+  .who div { display: grid; gap: 2px; }
+  .or { display: flex; align-items: center; gap: 10px; }
+  .or::before, .or::after { content: ''; flex: 1; border-top: 1px solid var(--line-2); }
 </style>

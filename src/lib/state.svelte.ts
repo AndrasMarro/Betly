@@ -125,11 +125,12 @@ export function resetWallet() {
 export const fmt = (n: number) =>
   new Intl.NumberFormat(settings.lang === 'de' ? 'de-CH' : 'en-US', { maximumFractionDigits: 2 }).format(n);
 
-export const ui = $state({ credits: false, settings: false, nameAsk: null as null | ((ok: boolean) => void), welcome: false, bonus: null as null | { amt: number; id: number } });
+export const ui = $state({ credits: false, settings: false, account: false, signedIn: false, nameAsk: null as null | ((ok: boolean) => void), welcome: false, bonus: null as null | { amt: number; id: number } });
 
 let pending: Promise<boolean> | null = null;
 /** Show the name dialog. welcome = first screen of a session (cannot be cancelled). Concurrent calls share one dialog. */
 export function askName(welcome = false) {
+  if (!welcome && ui.signedIn) return Promise.resolve(true); // signed in: the account's name is used
   if (welcome) ui.welcome = true;
   return (pending ??= new Promise<boolean>((resolve) => {
     ui.nameAsk = (ok) => {
