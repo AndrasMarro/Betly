@@ -7,6 +7,16 @@
   import type { JCard } from '../games/jass';
   let { card, deck = 'de', down = false, icon = false }: { card: JCard; deck?: 'de' | 'fr'; down?: boolean; icon?: boolean } = $props();
   const uid = $props.id();
+  // Real card scans, if present: src/assets/jass/<fr|de>/<farbe>-<wert>.<png|jpg|webp>, e.g. fr/herz-koenig.png,
+  // de/rosen-under.webp. Missing files fall back to the drawn cards below.
+  const SCANS = import.meta.glob('../assets/jass/*/*.{png,jpg,jpeg,webp}', { eager: true, import: 'default' }) as Record<string, string>;
+  const SUIT_FILE = { fr: ['herz', 'schaufel', 'kreuz', 'ecke'], de: ['rosen', 'schilten', 'eicheln', 'schellen'] };
+  const RANK_FILE = { fr: { 10: '10', 11: 'bauer', 12: 'dame', 13: 'koenig', 14: 'ass' }, de: { 10: 'banner', 11: 'under', 12: 'ober', 13: 'koenig', 14: 'ass' } } as Record<'fr' | 'de', Record<number, string>>;
+  const scan = $derived.by(() => {
+    const base = `../assets/jass/${deck}/${SUIT_FILE[deck][card.s]}-${RANK_FILE[deck][card.r] ?? card.r}.`;
+    for (const ext of ['webp', 'png', 'jpg', 'jpeg']) if (SCANS[base + ext]) return SCANS[base + ext];
+    return null;
+  });
   // engine suit -> poker suit (0♠ 1♥ 2♦ 3♣): Rosen=Herz, Schilten=Schaufel, Eicheln=Kreuz, Schellen=Ecken
   const FR = [1, 0, 3, 2];
   const LABEL: Record<number, string> = { 10: '10', 11: 'U', 12: 'O', 13: 'K', 14: 'A' };
@@ -110,6 +120,8 @@
 {#if icon}
   {#if deck === 'fr'}<span class="fr" style:color={card.s === 0 || card.s === 3 ? '#e5484d' : 'currentColor'}>{['♥', '♠', '♣', '♦'][card.s]}</span>
   {:else}<svg class="ico" viewBox="0 0 100 100" aria-hidden="true">{@render suit(card.s)}</svg>{/if}
+{:else if scan && !down}
+  <div class="card"><img class="scan" src={scan} alt="{SUIT_FILE[deck][card.s]} {RANK_FILE[deck][card.r] ?? card.r}" draggable="false" /></div>
 {:else if deck === 'fr' && !down && FR_LABEL[card.r]}
   <div class="card">
     <svg viewBox="0 0 250 350" role="img" aria-label="{({ 11: 'Bauer', 12: 'Dame', 13: 'König' } as Record<number, string>)[card.r]} {['Herz', 'Schaufel', 'Kreuz', 'Ecken'][card.s]}">
@@ -170,6 +182,7 @@
 <style>
   .card { width: var(--cw, 64px); aspect-ratio: 5 / 7; flex: none; }
   svg { display: block; width: 100%; height: 100%; border-radius: calc(var(--cw, 64px) * 0.088); box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 12px 24px -12px rgba(0,0,0,.7); }
+  .scan { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: calc(var(--cw, 64px) * 0.088); box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 12px 24px -12px rgba(0,0,0,.7); }
   .ico { width: 1.25em; height: 1.25em; vertical-align: -0.25em; }
   .fr { font-size: 1.15em; line-height: 1; }
   .idx { font: 700 46px 'Geist Variable', sans-serif; text-anchor: middle; letter-spacing: -0.04em; }
