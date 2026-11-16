@@ -5,8 +5,8 @@ export const BONUS_EVERY = 50, BONUS = 1.3, MAX_MULT = 50;
 const SPAN = COLS + 8; // items wrap within [-4, COLS + 4)
 /** weak: a cracked log that breaks once you step on it (breakT counts up from that moment). */
 export type Item = { x: number; len: number; c: number; weak?: boolean; breakT?: number; gone?: boolean };
-export type Blocker = 'tree' | 'rock' | 'bush' | 'stump' | 'crate' | 'shop' | 'fence' | 'barrier';
-export type Decor = 'flowers' | 'flower1' | 'flowers2' | 'mushroom' | 'tuft' | 'grass' | 'fern' | 'pebble1' | 'pebble2' | 'cone' | 'sign';
+export type Blocker = 'tree' | 'rock' | 'bush' | 'stump' | 'crate' | 'shop' | 'fence' | 'barrier' | 'pine' | 'hay' | 'boulder' | 'lamp' | 'house' | 'house2'; // house2: right half of a house
+export type Decor = 'flowers' | 'flower1' | 'flowers2' | 'mushroom' | 'tuft' | 'grass' | 'fern' | 'pebble1' | 'pebble2' | 'cone' | 'sign' | 'hydrant';
 export type LaneType = 'grass' | 'road' | 'river' | 'rail';
 /** trees: blocking cells (trees, rocks, shops via `deco`), flowers: decoration only, coin: column of a collectible coin, pads: a still river with lily pads. */
 export type Lane = { type: LaneType; dir: 1 | -1; speed: number; items: Item[]; trees: number[]; deco: Record<number, Blocker>; decor: { c: number; k: Decor }[]; coin: number | null; checkpoint?: number; pads?: boolean; t: number; train: Item | null };
@@ -51,10 +51,15 @@ function makeLane(w: World, r: number): Lane {
     for (let c = 0; c < COLS; c++) if (rand() < (r < 4 ? 0.08 : 0.2) && !(r < 4 && Math.abs(c - 5) < 2)) lane.trees.push(c);
     if (lane.trees.length > 5) lane.trees.length = 5;
     const pick = <T,>(list: [T, number][]) => { let x = rand() * list.reduce((a, [, n]) => a + n, 0); return list.find(([, n]) => (x -= n) < 0)![0]; };
-    for (const c of lane.trees) lane.deco[c] = pick<Blocker>([['tree', 38], ['bush', 20], ['rock', 14], ['stump', 12], ['crate', r > 5 ? 6 : 0], ['fence', r > 5 ? 5 : 0], ['shop', r > 8 ? 5 : 0]]);
+    for (const c of lane.trees) lane.deco[c] = pick<Blocker>([['tree', 30], ['pine', 14], ['bush', 18], ['rock', 10], ['boulder', 6], ['stump', 10], ['hay', r > 5 ? 6 : 0], ['crate', r > 5 ? 5 : 0], ['fence', r > 5 ? 5 : 0], ['lamp', r > 5 ? 4 : 0], ['shop', r > 8 ? 5 : 0]]);
+    // now and then a house that takes two cells
+    if (r > 8 && lane.trees.length <= 3 && rand() < 0.12) {
+      const c = Math.floor(rand() * (COLS - 1));
+      if (!lane.trees.includes(c) && !lane.trees.includes(c + 1)) { lane.trees.push(c, c + 1); lane.trees.sort((a, b) => a - b); lane.deco[c] = 'house'; lane.deco[c + 1] = 'house2'; }
+    }
     // a few small things in the grass; never on blocked cells
     const prev = w.lanes[r - 1]?.type, edge = rand() < 0.5 ? 0 : COLS - 1;
-    if (prev === 'road' && rand() < 0.3 && !lane.trees.includes(edge)) lane.decor.push({ c: edge, k: rand() < 0.6 ? 'cone' : 'sign' });
+    if (prev === 'road' && rand() < 0.3 && !lane.trees.includes(edge)) lane.decor.push({ c: edge, k: pick<Decor>([['cone', 5], ['sign', 3], ['hydrant', 3]]) });
     if (prev === 'rail' && rand() < 0.35 && !lane.trees.includes(edge)) { lane.trees.push(edge); lane.deco[edge] = 'barrier'; }
     for (let c = 0; c < COLS; c++)
       if (!lane.trees.includes(c) && !lane.decor.some((d) => d.c === c) && rand() < 0.09)
@@ -91,7 +96,7 @@ function fill(lane: Lane, rand: () => number, len: () => number, gap: () => numb
   let x = -4 + rand() * 2;
   while (x < COLS + 4) {
     const l = len();
-    if (x + l <= COLS + 4) lane.items.push({ x, len: l, c: Math.floor(rand() * 6) });
+    if (x + l <= COLS + 4) lane.items.push({ x, len: l, c: Math.floor(rand() * 9) });
     x += l + gap();
   }
 }
