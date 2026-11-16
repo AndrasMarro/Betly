@@ -18,6 +18,7 @@
     blackjack: () => import('./pages/Blackjack.svelte'),
     slots: () => import('./pages/Slots.svelte'),
     rocket: () => import('./pages/Rocket.svelte'),
+    balloon: () => import('./pages/Balloon.svelte'),
     mines: () => import('./pages/Mines.svelte'),
     dice: () => import('./pages/Dice.svelte'),
     hop: () => import('./pages/Hop.svelte'),

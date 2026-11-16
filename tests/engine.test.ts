@@ -472,3 +472,19 @@ import { newGame as msNew, open as msOpen, neighbours as msNb } from '../src/gam
   }
   console.log('minesweeper shape checks passed');
 }
+
+// Balloon: every cash-out point returns the same ~97 %, the pop chance matches the risk level
+import { RISK as BRISK, balloonMult, pops } from '../src/games/balloon.ts';
+{
+  for (const r of ['low', 'mid', 'high'] as const) {
+    const { p, max } = BRISK[r];
+    for (const k of [1, 5, max]) {
+      const ev = (1 - p) ** k * balloonMult(r, k);
+      assert(ev > 0.95 && ev <= 0.97 + 1e-9, `${r} ev at ${k}: ${ev}`);
+    }
+    let n = 0; for (let i = 0; i < 20000; i++) if (pops(r)) n++;
+    assert(Math.abs(n / 20000 - p) < 0.012, `${r} pop rate ${n / 20000}`);
+  }
+  assert(balloonMult('mid', 0) === 0, 'nothing to cash before the first pump');
+  console.log('balloon checks passed');
+}

@@ -110,6 +110,12 @@
     </svg>
   {:else if id === 'crossy'}
     <CrossyArt />
+  {:else if id === 'balloon'}
+    <div class="bln">
+      <i class="cl"></i>
+      <svg viewBox="0 0 120 170" class="bb"><path d="M60 4 C92 4 112 30 112 62 C112 96 84 122 62 130 L58 130 C36 122 8 96 8 62 C8 30 28 4 60 4Z" fill="#e5484d" /><ellipse cx="38" cy="38" rx="10" ry="17" fill="#fff" opacity=".4" transform="rotate(-25 38 38)" /><path d="M55 130 L65 130 L62 138 L58 138Z" fill="#c33a3a" /><path d="M60 138 C54 150 66 158 60 170" stroke="#fff" stroke-width="1.5" fill="none" opacity=".8" /></svg>
+      <span class="bm mono">×4.20</span>
+    </div>
   {:else if id === 'cases'}
     <div class="drops">
       {#each CASE_ART as [src, c], i}<span class="drop" style="--c:{c}; --i:{i}"><img {src} alt="" /></span>{/each}
@@ -147,6 +153,12 @@
   .art.slots { background: radial-gradient(ellipse at 50% 20%, #2a1b10, #120b07); }
   .art.rocket { background: radial-gradient(ellipse at 70% 10%, #24204a, #0a0918); }
   .art.mines { background: radial-gradient(ellipse at 50% 20%, #1c2a3a, #0b121b); }
+  .art.balloon { background: linear-gradient(180deg, #5aa9f0, #bfe3fb); }
+  .bln { position: absolute; inset: 0; display: grid; place-items: center; }
+  .bb { height: 78%; transform-origin: 50% 90%; transition: transform 0.5s cubic-bezier(.3, 1.6, .5, 1); filter: drop-shadow(0 8px 12px rgba(20,40,80,.25)); }
+  :global(.game:hover) .bb, :global(.dailycard:hover) .bb { transform: scale(1.12); }
+  .bm { position: absolute; top: 34%; color: #fff; font-weight: 700; font-size: 1.2rem; text-shadow: 0 2px 4px rgba(0,0,0,.3); }
+  .cl { position: absolute; left: 12%; top: 18%; width: 70px; height: 22px; border-radius: 999px; background: rgba(255,255,255,.85); box-shadow: 150px 40px 0 -4px rgba(255,255,255,.7); }
   .art.dice { background: radial-gradient(ellipse at 50% 30%, var(--felt), var(--felt-2)); }
   .dice3 { position: absolute; inset: 0; display: grid; align-content: center; }
   .art.hop { background: #2c2f36; }

@@ -26,7 +26,7 @@ Betly ist ein privates Hobbyprojekt: eine Casino-Simulation, die sich wie ein ec
 | **Slots** | Lucky Sevens, Midnight Gems, Cosmic Cash, Lucky Clover (Wilds, Scatter, Freispiele) |
 
 ### Arcade
-Rocket (Crash, mit seltenen Secrets im Hintergrund) · Retro Crossy Run (endloses Hüpfspiel mit der Gamer-Ente, Zügen und brechenden Baumstämmen; mit Einsatz) · Snake (Modifier, Einsatz und tägliche Challenge) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und drei Kisten zu 100, 250 und 750 Credits mit eigenem Item-Set) · Minen · Minesweeper (Classic, Arcade mit Leben, Power-ups, Hex-Raster und Kampagne, Koop und Minenjagd) · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (echte 3D-Münze auf dem Tisch) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
+Rocket (Crash, mit seltenen Secrets im Hintergrund) · Retro Crossy Run (endloses Hüpfspiel mit der Gamer-Ente, Zügen und brechenden Baumstämmen; mit Einsatz) · Snake (Modifier, Einsatz und tägliche Challenge) · Kisten (Cases, *Classic*-Modus mit offiziellen Drop-Raten und drei Kisten zu 100, 250 und 750 Credits mit eigenem Item-Set) · Minen · Minesweeper (Classic, Arcade mit Leben, Power-ups, Hex-Raster, Zufallsformen und Kampagnen, Koop und Minenjagd) · Ballon (pumpen oder kassieren, drei Risikostufen) · Würfel (echte 3D-Physik) · Hop Street · Turm · Münzwurf (echte 3D-Münze auf dem Tisch) · Hi-Lo · Plinko · Glücksrad · Rubbellos (Klassisch & Glücksgriff)
 
 Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno, Limbo, …).
 
@@ -57,7 +57,7 @@ Die Spielmathematik ist von der Oberfläche getrennt (`src/games/*.ts`) und wird
 | Blackjack | je nach Regeln ~99,5 % bei Basic Strategy |
 | Baccarat | Bank 98,94 %, Spieler 98,76 %, Unentschieden 85,6 % |
 | Slots | 96–97 % (Simulation über 400'000 Spins) |
-| Arcade (Rocket, Minen, Würfel, Hop Street, Turm, Münzwurf, Hi-Lo, Plinko, Glücksrad, Rubbellos, Kisten) | 97 % |
+| Arcade (Rocket, Minen, Würfel, Hop Street, Turm, Münzwurf, Hi-Lo, Plinko, Glücksrad, Rubbellos, Kisten, Ballon) | 97 % |
 | Kisten *Classic* | ~49 % (bewusst wie das Original, mit Erklärung der geometrischen Verteilung) |
 
 Beim Poker spielen die Bots gegeneinander und gegen dich; die Engine ist mit 400 zufällig gespielten Händen getestet (Chips bleiben erhalten, jede Hand endet).

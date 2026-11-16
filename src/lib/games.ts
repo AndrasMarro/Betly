@@ -32,7 +32,7 @@ export const GAMES: Game[] = [
   { id: 'tower', live: true, name: ['Turm', 'Tower'], cat: 'arcade' },
   { id: 'coinflip', live: true, name: ['Münzwurf', 'Coin Flip'], cat: 'arcade' },
   { id: 'limbo', name: 'Limbo', cat: 'arcade' },
-  { id: 'balloon', name: ['Ballon', 'Balloon'], cat: 'arcade' },
+  { id: 'balloon', live: true, name: ['Ballon', 'Balloon'], cat: 'arcade' },
   { id: 'penalty', name: ['Elfmeter', 'Penalty'], cat: 'arcade' },
   { id: 'derby', name: 'Derby', cat: 'arcade' },
   { id: 'scratch', live: true, name: ['Rubbellos', 'Scratch Card'], cat: 'arcade' },

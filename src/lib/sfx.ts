@@ -170,6 +170,9 @@ const recipes = {
   scratch: (c: AudioContext, o: AudioNode, t: number) => burst(c, o, t, 0.07, vary(3600, 0.2), 1.1, 0.08, 'bandpass'),
   // case reel: hard, short mechanical click
   bounce: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.025, vary(4200), 3, 0.2); tone(c, o, vary(3200), t, 0.04, 'sine', 0.05); },
+  // balloon: a puff of air through the pump, and the pop
+  pump: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.22, vary(900, 0.15), 1.4, 0.16, 'bandpass', 2200); tone(c, o, vary(140), t + 0.02, 0.12, 'sine', 0.05, 220); },
+  pop: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.12, 6000, 0.6, 0.5, 'highpass'); burst(c, o, t, 0.25, 1600, 0.8, 0.3, 'lowpass', 200); tone(c, o, 520, t, 0.08, 'square', 0.06, 90); },
   dice: (c: AudioContext, o: AudioNode, t: number) => {
     for (let i = 0; i < 10; i++) { const at = t + i * 0.05 + Math.random() * 0.03; burst(c, o, at, 0.02, 1800 + Math.random() * 2600, 3, 0.26 - i * 0.02); tone(c, o, vary(900, 0.2), at, 0.03, 'sine', 0.04); }
   },

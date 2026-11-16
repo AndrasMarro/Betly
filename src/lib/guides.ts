@@ -121,6 +121,20 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Special symbols', li: ['Wild substitutes for all regular symbols.', 'Scatter pays anywhere on the reels; three or more start free spins (on machines that have them).'] },
     ],
   },
+  balloon: {
+    de: [
+      { h: 'Ziel', p: 'Pump den Ballon auf und zahl aus, bevor er platzt. Jeder Pumpstoss erhöht den Multiplikator.' },
+      { h: 'Ablauf', li: ['Einsatz und Risiko wählen, dann «Spielen und pumpen» (oder Leertaste).', 'Jeder weitere Stoss kann den Ballon platzen lassen: Dann ist der Einsatz weg.', '«Auszahlen» (oder Enter) zahlt Einsatz × Multiplikator aus.', 'Ist der Ballon voll, steigt er von allein auf und zahlt den Höchstwert aus.'] },
+      { h: 'Risiko', li: ['Tief: 4 % Platz-Chance pro Stoss, bis 40 Stösse (bis ×5).', 'Mittel: 10 %, bis 30 Stösse (bis ×23).', 'Hoch: 20 %, bis 20 Stösse (bis ×84).'] },
+      { h: 'Fair', p: 'Der Multiplikator ist so gerechnet, dass jeder Ausstiegspunkt im Schnitt 97 % des Einsatzes zurückgibt. Wann du aussteigst, ist reine Geschmackssache.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Pump up the balloon and cash out before it pops. Every pump raises the multiplier.' },
+      { h: 'Flow', li: ['Choose stake and risk, then "Play and pump" (or space).', 'Every further pump may pop the balloon: the stake is lost.', '"Cash out" (or Enter) pays stake × multiplier.', 'A full balloon lifts off on its own and pays the top value.'] },
+      { h: 'Risk', li: ['Low: 4 % pop chance per pump, up to 40 pumps (up to ×5).', 'Medium: 10 %, up to 30 pumps (up to ×23).', 'High: 20 %, up to 20 pumps (up to ×84).'] },
+      { h: 'Fair', p: 'The multiplier is set so that every cash-out point returns 97 % of the stake on average. When you stop is purely a matter of taste.' },
+    ],
+  },
   rocket: {
     de: [
       { h: 'Ziel', p: 'Die Rakete steigt und der Multiplikator wächst, bis sie explodiert. Steig vorher aus, um Einsatz × Multiplikator zu bekommen.' },
