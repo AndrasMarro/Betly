@@ -63,6 +63,8 @@ Browser (GitHub Pages)                       Supabase (Frankfurt)
 
 ## 5. Datenmodell
 
+> **Umgesetzt (vereinfacht):** eine Tabelle `saves (user_id, key, data, updated_at)` mit einer Zeile pro `localStorage`-Schlüssel, siehe `supabase/migrations/001_init.sql`. Ein Trigger prüft das Guthaben (0 bis 100 Mio., Runden nur vorwärts). Die getrennten Tabellen und RPCs unten sind der Plan für Stufe 2.
+
 ```sql
 -- Spielername (kein E-Mail-Feld: das speichert Supabase Auth selbst)
 create table profiles (

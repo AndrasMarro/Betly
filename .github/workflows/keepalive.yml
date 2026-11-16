@@ -1,0 +1,13 @@
+# Free Supabase projects pause after 7 days without requests. One small read a day keeps the database awake.
+name: Supabase keep-alive
+on:
+  schedule: [{ cron: '17 6 * * *' }]
+  workflow_dispatch:
+permissions: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -fsS -o /dev/null "https://wcztqzznlunixrdpschq.supabase.co/rest/v1/saves?select=key&limit=1" \
+            -H "apikey: sb_publishable_z1GFMefrjm_lIVM47elIlg_qBbGLoO9"
