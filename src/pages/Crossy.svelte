@@ -12,17 +12,6 @@
   import duckDown from '../assets/duck/down.webp';
   import duckLeft from '../assets/duck/left.webp';
   import duckRight from '../assets/duck/right.webp';
-  import coinSrc from '../assets/crossy/coin.webp';
-  import shopSrc from '../assets/crossy/shop.webp';
-  import flowersSrc from '../assets/crossy/flowers.webp';
-  // every other asset in the folder (bush, stump, crate, fence, barrier, cone, sign, plants, pebbles ...)
-  const MORE = import.meta.glob('../assets/crossy/*.webp', { eager: true, import: 'default' }) as Record<string, string>;
-  const ART: Record<string, HTMLImageElement> = {};
-  for (const [k, src] of [['coin', coinSrc], ['shop', shopSrc], ['flowers', flowersSrc], ...Object.entries(MORE).map(([p, u]) => [p.split('/').pop()!.replace('.webp', ''), u])]) { if (ART[k]) continue; const i = new Image(); i.src = src; ART[k] = i; }
-  // drawn width (in cells) of each asset; blockers fill their cell, decoration stays small
-  const SIZE: Record<string, number> = { bush: 0.95, rock: 0.78, stump: 0.9, crate: 0.8, shop: 1.05, fence: 1.15, barrier: 1.15, flowers: 0.9, flower1: 0.3, flowers2: 0.5, mushroom: 0.42, tuft: 0.48, grass: 0.5, fern: 0.68, pebble1: 0.36, pebble2: 0.26, cone: 0.42, sign: 0.32 };
-  const ok = (k: string) => ART[k].complete && ART[k].naturalWidth > 0;
-
   type Dir = 'up' | 'down' | 'left' | 'right';
   const SPRITES: Record<Dir, HTMLImageElement> = { up: new Image(), down: new Image(), left: new Image(), right: new Image() };
   SPRITES.up.src = duckUp; SPRITES.down.src = duckDown; SPRITES.left.src = duckLeft; SPRITES.right.src = duckRight;
@@ -312,11 +301,11 @@
       // your record from earlier runs: a dashed golden line with a trophy coin
       if (runBest > 0 && r === runBest + 2) drawRecord(ctx, y, C, recordPaid);
       if (l.type === 'grass') {
-        for (const d of l.decor) drawArt(ctx, d.k, d.c * C, y, C, SIZE[d.k] ?? 0.5, (d.c * 37 + r * 11) % 7 / 7);
+        for (const d of l.decor) prop(ctx, d.k, d.c * C, y, C, (d.c * 37 + r * 11) % 7 / 7);
         for (const c of l.trees) {
           const k = l.deco[c];
           if (k === 'tree') drawTree(ctx, c * C, y, C, false);
-          else drawArt(ctx, k === 'rock' ? ((r + c) % 2 ? 'stone1' : 'stone2') : k, c * C, y, C, SIZE[k] ?? 0.9);
+          else prop(ctx, k === 'rock' ? ((r + c) % 2 ? 'stone1' : 'stone2') : k, c * C, y, C);
         }
       }
       if (l.type === 'river') for (const it of l.items) (l.pads ? drawPad(ctx, it.x * C, y, C, r) : drawLog(ctx, it, y, C));
@@ -338,17 +327,159 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  function drawArt(ctx: CanvasRenderingContext2D, k: string, x: number, y: number, C: number, w: number, jitter = 0.5) {
-    if (!ART[k] || !ok(k)) return;
-    const img = ART[k], dw = C * w, dh = (dw * img.naturalHeight) / img.naturalWidth;
-    // small things sit at a slightly different spot in their cell, so the grass does not look gridded
-    const ox = w < 0.7 ? (jitter - 0.5) * C * (1 - w) * 0.8 : 0, oy = w < 0.7 ? (jitter - 0.5) * C * 0.25 : 0;
-    const cx = x + C / 2 + ox, by = y + C * 0.85 + oy;
-    if (w >= 0.3) castSprite(ctx, img, cx, by, dw, dh);
-    ctx.drawImage(img, cx - dw / 2, by - dh, dw, dh);
+  // Props on the grass, drawn in the same box style as the trees and cars. Coordinates are in cell units:
+  // x and z are the left and back edge of the footprint, w and d its size, h the height, e a lift above the ground.
+  // Every prop casts one shadow first, then its boxes are stacked bottom to top, back to front.
+  function prop(ctx: CanvasRenderingContext2D, k: string, X: number, Y: number, C: number, j = 0.5) {
+    const small = !['bush', 'rock', 'stone1', 'stone2', 'stump', 'crate', 'shop', 'fence', 'barrier'].includes(k);
+    if (small) { X += (j - 0.5) * C * 0.4; Y += (j - 0.5) * C * 0.18; }
+    const S = (x: number, z: number, w: number, d: number, h: number) => castBox(ctx, X + x * C, Y + z * C, w * C, d * C, h * C);
+    const B = (x: number, z: number, w: number, d: number, h: number, top: string, side: string, e = 0) => box(ctx, X + x * C, Y + (z - e) * C, w * C, d * C, h * C, top, side);
+    const R = (x: number, sy: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(X + x * C, Y + sy * C, w * C, h * C); };
+    const LEAF = ['#5fae3c', '#3f8429'], WOOD = ['#b07a46', '#7a4f2a'], STONE = ['#b8bcc6', '#8d929e'], STONE2 = ['#cfd2da', '#a3a7b1'];
+    switch (k) {
+      case 'bush':
+        S(0.1, 0.22, 0.8, 0.58, 0.78);
+        B(0.1, 0.22, 0.8, 0.58, 0.38, '#4f9e34', '#356f22');
+        B(0.2, 0.3, 0.6, 0.42, 0.22, '#5cb23d', '#3f8429', 0.38);
+        B(0.32, 0.38, 0.36, 0.28, 0.16, '#6cc046', '#4a9330', 0.6);
+        R(0.16, 0.5, 0.06, 0.06, '#6cc046'); R(0.66, 0.6, 0.06, 0.06, '#6cc046'); R(0.4, 0.66, 0.05, 0.05, '#2a5c1c');
+        break;
+      case 'rock': case 'stone1':
+        S(0.12, 0.35, 0.72, 0.45, 0.52);
+        B(0.12, 0.35, 0.72, 0.45, 0.3, STONE[0], STONE[1]);
+        B(0.22, 0.42, 0.42, 0.3, 0.22, STONE2[0], STONE2[1], 0.3);
+        R(0.3, 0.62, 0.12, 0.04, '#7c818c');
+        break;
+      case 'stone2':
+        S(0.08, 0.42, 0.84, 0.4, 0.38);
+        B(0.08, 0.42, 0.84, 0.4, 0.24, STONE[0], STONE[1]);
+        B(0.3, 0.47, 0.42, 0.28, 0.14, STONE2[0], STONE2[1], 0.24);
+        break;
+      case 'stump':
+        S(0.2, 0.38, 0.6, 0.42, 0.42);
+        B(0.1, 0.62, 0.16, 0.16, 0.1, '#8a5a32', '#6b4426');
+        B(0.74, 0.6, 0.16, 0.16, 0.1, '#8a5a32', '#6b4426');
+        B(0.22, 0.38, 0.56, 0.42, 0.42, '#c08a52', '#7a4a26');
+        // year rings on the cut
+        R(0.3, 0.0, 0.4, 0.3, '#a8743f'); R(0.38, 0.06, 0.24, 0.18, '#c99a62'); R(0.46, 0.11, 0.08, 0.07, '#a8743f');
+        R(0.32, 0.5, 0.04, 0.24, '#5e381c'); R(0.6, 0.46, 0.04, 0.3, '#5e381c');
+        break;
+      case 'crate': {
+        S(0.17, 0.3, 0.66, 0.5, 0.62);
+        B(0.17, 0.3, 0.66, 0.5, 0.62, '#c08a55', '#9a6533');
+        // planks: a frame and a diagonal brace on the front, an inset lid on top
+        ctx.strokeStyle = '#5e3b1c'; ctx.lineWidth = Math.max(1.5, C * 0.04);
+        const fx = X + 0.17 * C, fy = Y + 0.18 * C, fw = 0.66 * C, fh = 0.62 * C, i = C * 0.06;
+        ctx.strokeRect(fx + i, fy + i, fw - 2 * i, fh - 2 * i);
+        ctx.beginPath(); ctx.moveTo(fx + i, fy + fh - i); ctx.lineTo(fx + fw - i, fy + i); ctx.stroke();
+        R(0.25, -0.24, 0.5, 0.34, '#a8743f');
+        break;
+      }
+      case 'fence':
+        S(0, 0.45, 1, 0.1, 0.7);
+        B(0.08, 0.45, 0.1, 0.1, 0.7, WOOD[0], WOOD[1]);
+        B(0.82, 0.45, 0.1, 0.1, 0.7, WOOD[0], WOOD[1]);
+        B(0, 0.47, 1, 0.06, 0.12, '#c08a55', '#8a5a32', 0.2);
+        B(0, 0.47, 1, 0.06, 0.12, '#c08a55', '#8a5a32', 0.48);
+        R(0.3, 0.13, 0.08, 0.03, '#7a4f2a'); R(0.6, -0.15, 0.08, 0.03, '#7a4f2a');
+        break;
+      case 'barrier':
+        S(0, 0.48, 1, 0.12, 0.66);
+        for (const lx of [0.1, 0.78]) { B(lx - 0.04, 0.46, 0.2, 0.16, 0.05, '#7c818c', '#5c616b'); B(lx, 0.5, 0.08, 0.08, 0.62, '#9aa0aa', '#6c727c'); }
+        for (const e of [0.2, 0.46]) for (let i = 0; i < 5; i++) B(i * 0.2, 0.48, 0.2, 0.06, 0.16, i % 2 ? '#f4f4f4' : '#e0393e', i % 2 ? '#c9c9cf' : '#a8242a', e);
+        break;
+      case 'shop':
+        S(0.04, 0.22, 0.92, 0.58, 1.05);
+        B(0.08, 0.24, 0.06, 0.06, 0.95, '#8a5a32', '#6b4426');
+        B(0.86, 0.24, 0.06, 0.06, 0.95, '#8a5a32', '#6b4426');
+        B(0.06, 0.4, 0.88, 0.4, 0.42, '#e0b07a', '#b5814b');
+        for (const px of [0.28, 0.5, 0.72]) R(px, 0.4, 0.02, 0.38, '#94643a');
+        R(0.1, 0.0, 0.8, 0.08, '#c99a62');
+        B(0.08, 0.74, 0.06, 0.06, 0.95, '#8a5a32', '#6b4426');
+        B(0.86, 0.74, 0.06, 0.06, 0.95, '#8a5a32', '#6b4426');
+        // striped awning with a scalloped edge
+        for (let i = 0; i < 5; i++) B(i * 0.2, 0.18, 0.2, 0.64, 0.08, i % 2 ? '#f4f4f4' : '#e04848', i % 2 ? '#cfcfd6' : '#a83232', 0.95);
+        for (let i = 0; i < 5; i++) { ctx.fillStyle = i % 2 ? '#cfcfd6' : '#a83232'; ctx.beginPath(); ctx.arc(X + (i * 0.2 + 0.1) * C, Y + (0.82 - 0.95) * C, C * 0.1, 0, Math.PI); ctx.fill(); }
+        break;
+      case 'cone':
+        S(0.3, 0.55, 0.4, 0.25, 0.45);
+        B(0.28, 0.55, 0.44, 0.26, 0.05, '#ff8a2a', '#d0651a');
+        B(0.38, 0.6, 0.24, 0.16, 0.12, '#ff8a2a', '#d0651a', 0.05);
+        B(0.4, 0.61, 0.2, 0.14, 0.1, '#f6f6f6', '#cfcfcf', 0.17);
+        B(0.42, 0.62, 0.16, 0.12, 0.1, '#ff8a2a', '#d0651a', 0.27);
+        B(0.44, 0.63, 0.12, 0.1, 0.08, '#f6f6f6', '#cfcfcf', 0.37);
+        break;
+      case 'sign': {
+        S(0.47, 0.62, 0.06, 0.06, 1.0);
+        B(0.47, 0.62, 0.06, 0.06, 0.62, STONE[0], STONE[1]);
+        const cx = X + 0.5 * C, top = Y + (0.68 - 1.04) * C, bot = Y + (0.68 - 0.58) * C, hw = 0.24 * C;
+        const tri = (dx: number, dy: number, k2: number, col: string) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx + dx, top + dy + (bot - top) * (1 - k2)); ctx.lineTo(cx + dx + hw * k2, bot + dy); ctx.lineTo(cx + dx - hw * k2, bot + dy); ctx.closePath(); ctx.fill(); };
+        tri(C * 0.03, C * 0.03, 1, '#8a1a1e');
+        tri(0, 0, 1, '#e0393e');
+        tri(0, -C * 0.03, 0.66, '#f6f6f6');
+        ctx.fillStyle = '#1c1c22'; ctx.fillRect(cx - C * 0.025, bot - C * 0.27, C * 0.05, C * 0.13); ctx.fillRect(cx - C * 0.025, bot - C * 0.11, C * 0.05, C * 0.05);
+        break;
+      }
+      case 'mushroom':
+        S(0.34, 0.55, 0.32, 0.22, 0.38);
+        B(0.43, 0.58, 0.14, 0.12, 0.18, '#f4ead8', '#d6c6a6');
+        B(0.32, 0.52, 0.36, 0.26, 0.12, '#d8323a', '#a0202a', 0.18);
+        B(0.38, 0.56, 0.24, 0.18, 0.08, '#e2444b', '#b0262f', 0.3);
+        R(0.36, 0.42, 0.06, 0.05, '#fff'); R(0.56, 0.4, 0.06, 0.05, '#fff'); R(0.46, 0.2, 0.06, 0.05, '#fff'); R(0.4, 0.2, 0.04, 0.04, '#fff');
+        break;
+      case 'flowers': case 'flowers2': {
+        const daisy = k === 'flowers2';
+        const spots: [number, number, number][] = daisy ? [[0.3, 0.6, 0.16], [0.52, 0.52, 0.22], [0.6, 0.66, 0.12]] : [[0.18, 0.56, 0.22], [0.34, 0.66, 0.14], [0.46, 0.5, 0.26], [0.6, 0.62, 0.18], [0.74, 0.54, 0.24], [0.28, 0.46, 0.2]];
+        spots.forEach(([fx, fz, h], i) => {
+          const col = daisy ? ['#f6f6f6', '#cfcfd6'] : i % 3 === 1 ? ['#ffd23f', '#d8a520'] : ['#e0453b', '#a8242a'];
+          S(fx, fz, 0.04, 0.04, h + 0.06);
+          B(fx, fz, 0.04, 0.04, h, '#4f9a33', '#3c7d27');
+          B(fx - 0.05, fz - 0.02, 0.14, 0.08, 0.06, col[0], col[1], h);
+          R(fx - 0.005, fz - h - 0.06, 0.05, 0.04, daisy ? '#ffd23f' : '#fff3b0');
+        });
+        if (daisy) B(0.36, 0.64, 0.24, 0.08, 0.06, LEAF[0], LEAF[1]);
+        break;
+      }
+      case 'flower1':
+        S(0.42, 0.6, 0.16, 0.1, 0.42);
+        B(0.4, 0.6, 0.2, 0.12, 0.16, LEAF[0], LEAF[1]);
+        B(0.48, 0.62, 0.04, 0.04, 0.3, '#4f9a33', '#3c7d27');
+        B(0.44, 0.6, 0.12, 0.08, 0.1, '#e0453b', '#a8242a', 0.3);
+        R(0.48, 0.18, 0.04, 0.03, '#ffd23f');
+        break;
+      case 'grass': case 'tuft': {
+        const blades: [number, number][] = k === 'tuft' ? [[0.3, 0.42], [0.38, 0.3], [0.46, 0.5], [0.54, 0.36], [0.62, 0.46], [0.42, 0.22], [0.68, 0.26]] : [[0.3, 0.2], [0.4, 0.3], [0.5, 0.16], [0.58, 0.26], [0.66, 0.14]];
+        S(0.3, 0.64, 0.4, 0.04, k === 'tuft' ? 0.4 : 0.22);
+        blades.forEach(([bx, h], i) => B(bx, 0.62 + (i % 2) * 0.03, 0.04, 0.04, h, i % 3 ? '#7fd85a' : '#5fae3c', i % 3 ? '#4fa534' : '#3f8429'));
+        break;
+      }
+      case 'fern':
+        S(0.16, 0.56, 0.68, 0.14, 0.05);
+        B(0.16, 0.58, 0.68, 0.1, 0.04, '#2f7a3a', '#235c2c');
+        B(0.45, 0.4, 0.1, 0.44, 0.04, '#2f7a3a', '#235c2c');
+        for (const fx of [0.22, 0.34, 0.6, 0.72]) B(fx, 0.55, 0.06, 0.16, 0.04, '#3a8f46', '#2a6b33');
+        break;
+      case 'pebble1': S(0.4, 0.62, 0.2, 0.12, 0.1); B(0.4, 0.62, 0.2, 0.12, 0.08, STONE[0], STONE[1]); B(0.44, 0.64, 0.1, 0.08, 0.05, STONE2[0], STONE2[1], 0.08); break;
+      case 'pebble2': S(0.44, 0.64, 0.12, 0.08, 0.07); B(0.44, 0.64, 0.12, 0.08, 0.06, STONE[0], STONE[1]); break;
+    }
   }
-  // Shadows: light comes from the top left, so everything casts a flat, hard-edged shadow to the right that
-  // starts right at its base. Boxes cast their footprint, sprites a flattened, sheared copy of their own outline.
+  /** The betly coin as a blocky gold disc; spin squeezes it, the thickness shows on the right. */
+  function coinShape(ctx: CanvasRenderingContext2D, cx: number, bottom: number, h: number, spin: number) {
+    const w = h * 0.8 * spin, t = h * 0.12 * (1 - spin * 0.6), y = bottom - h;
+    const oct = (x: number, yy: number, ww: number, hh: number, col: string) => {
+      const c = Math.min(ww, hh) * 0.28;
+      ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(x + c, yy); ctx.lineTo(x + ww - c, yy); ctx.lineTo(x + ww, yy + c); ctx.lineTo(x + ww, yy + hh - c); ctx.lineTo(x + ww - c, yy + hh); ctx.lineTo(x + c, yy + hh); ctx.lineTo(x, yy + hh - c); ctx.lineTo(x, yy + c); ctx.closePath(); ctx.fill();
+    };
+    oct(cx - w / 2 + t, y, w, h, '#b8800f');
+    oct(cx - w / 2, y, w, h, '#f2b01e');
+    oct(cx - w / 2 + w * 0.16, y + h * 0.13, w * 0.68, h * 0.74, '#ffd84a');
+    ctx.fillStyle = '#e0a21a'; ctx.fillRect(cx - w * 0.07, y + h * 0.3, w * 0.14, h * 0.4);
+    ctx.fillStyle = '#fff6c0'; ctx.fillRect(cx - w * 0.3, y + h * 0.2, w * 0.1, h * 0.14);
+  }
+  // Shadows: light comes from the top left, so everything casts a flat, hard-edged shadow to the bottom right
+  // that starts right at its base (the footprint of each box, shifted).
   const SHADOW = 'rgba(0,0,0,.24)';
   function castBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, d: number, h: number) {
     const s = h * 0.45, t = h * 0.12;
@@ -356,23 +487,6 @@
     ctx.beginPath();
     ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w + s, y + t); ctx.lineTo(x + w + s, y + d + t); ctx.lineTo(x + s, y + d + t); ctx.lineTo(x, y + d);
     ctx.closePath(); ctx.fill();
-  }
-  const silhouettes = new Map<HTMLImageElement, HTMLCanvasElement>();
-  function castSprite(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, by: number, dw: number, dh: number) {
-    let sil = silhouettes.get(img);
-    if (!sil) {
-      sil = document.createElement('canvas');
-      sil.width = img.naturalWidth; sil.height = img.naturalHeight;
-      const g = sil.getContext('2d')!;
-      g.drawImage(img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, sil.width, sil.height);
-      silhouettes.set(img, sil);
-    }
-    ctx.save();
-    ctx.globalAlpha = 0.24;
-    // anchor at the base line, fold the outline down onto the ground towards the bottom right
-    ctx.transform(1, 0, -0.6, -0.3, 0.6 * by, by + 0.3 * by);
-    ctx.drawImage(sil, cx - dw / 2, by - dh, dw, dh);
-    ctx.restore();
   }
   function drawFlag(ctx: CanvasRenderingContext2D, x: number, y: number, C: number) {
     castBox(ctx, x - C * 0.03, y + C * 0.74, C * 0.06, C * 0.06, C * 1.35);
@@ -390,19 +504,14 @@
     ctx.fillStyle = 'rgba(20,16,4,.6)'; ctx.beginPath(); ctx.roundRect(tx, ty - C * 0.3, C * 2.4, C * 0.5, C * 0.25); ctx.fill();
     ctx.fillStyle = '#ffd23f'; ctx.font = `700 ${Math.round(C * 0.28)}px Geist Mono Variable, monospace`; ctx.textAlign = 'left';
     ctx.fillText(L('Rekord ', 'Best ') + runBest, tx + C * 0.18, ty + C * 0.05);
-    if (!taken && ok('coin')) {
-      const bob = Math.sin(clock * 3) * C * 0.05, h = C * 0.6;
-      ctx.drawImage(ART.coin, W / 2 - h * 0.38, y + C * 0.5 - h + bob, h * 0.76, h);
-    }
+    if (!taken) coinShape(ctx, W / 2, y + C * 0.5 + Math.sin(clock * 3) * C * 0.05, C * 0.6, 1);
     ctx.restore();
   }
   function drawCoin(ctx: CanvasRenderingContext2D, x: number, y: number, C: number) {
-    if (!ok('coin')) return;
     const bob = Math.sin(clock * 3) * C * 0.06, spin = Math.abs(Math.cos(clock * 2.2)) * 0.6 + 0.4;
     ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x + C / 2, y + C * 0.72, C * 0.22, C * 0.07, 0, 0, 7); ctx.fill();
-    const h = C * 0.72, w = h * 0.76 * spin;
     ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = C * 0.4;
-    ctx.drawImage(ART.coin, x + C / 2 - w / 2, y + C * 0.62 - h + bob, w, h);
+    coinShape(ctx, x + C / 2, y + C * 0.62 + bob, C * 0.62, spin);
     ctx.shadowBlur = 0;
   }
   function drawPad(ctx: CanvasRenderingContext2D, x: number, y: number, C: number, r: number) {
