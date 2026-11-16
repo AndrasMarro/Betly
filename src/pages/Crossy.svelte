@@ -8,14 +8,8 @@
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
   import { t } from '../lib/i18n';
-  import { art, coinShape, drawGround, drawRow } from '../games/crossyDraw';
-  import duckUp from '../assets/duck/up.webp';
-  import duckDown from '../assets/duck/down.webp';
-  import duckLeft from '../assets/duck/left.webp';
-  import duckRight from '../assets/duck/right.webp';
+  import { art, coinShape, drawGround, drawRow, drawDuck as paintDuck } from '../games/crossyDraw';
   type Dir = 'up' | 'down' | 'left' | 'right';
-  const SPRITES: Record<Dir, HTMLImageElement> = { up: new Image(), down: new Image(), left: new Image(), right: new Image() };
-  SPRITES.up.src = duckUp; SPRITES.down.src = duckDown; SPRITES.left.src = duckLeft; SPRITES.right.src = duckRight;
 
   let best = $state(+(localStorage.getItem('betly:crossy') || 0));
   let runBest = 0, recordPaid = false; // the record at the start of this run; its line pays a coin once
@@ -68,6 +62,8 @@
     const target = world.lanes[tr];
     // land on whole cells except on rivers, where you keep riding your offset
     if ((d === 'up' || d === 'down') && (target?.type !== 'river' || target.pads)) tx = Math.round(tx);
+    // hopping forward or back from a log near the edge pulls you back onto the board instead of blocking
+    if (d === 'up' || d === 'down') tx = Math.max(-0.3, Math.min(COLS - 0.7, tx));
     if (tr < 0 || tx < -0.3 || tx > COLS - 0.7 || blocked(target, Math.round(tx)) || tr < Math.floor(cam) - 1) { bump(); return; }
     P.fromX = P.x; P.fromRow = P.row; P.x = tx; P.row = tr; P.hop = 0; P.onLog = false;
     sfx('hop');
@@ -168,7 +164,7 @@
         P.x += lane.dir * lane.speed * pace * dt;
         P.fromX = P.x;
         const it = logAt(lane, P.x);
-        if (P.x < -0.45 || P.x > COLS - 0.55) die('water');
+        if (P.x < -0.55 || P.x > COLS - 0.45) die('water'); // only once the duck's middle leaves the screen
         else if (!it) die(lastLog?.gone ? 'log' : 'water');
         else { if (it.weak && it.breakT === undefined) { it.breakT = 0; sfx('tick'); } lastLog = it; }
       }
@@ -206,6 +202,8 @@
     if (lane.type === 'river') {
       const log = logAt(lane, P.x);
       if (!log) { die('water'); return; }
+      // a near miss at the end of a log counts: step the duck fully onto it
+      P.x = P.fromX = Math.max(log.x - 0.1, Math.min(log.x + log.len - 0.9, P.x));
       if (log.weak && log.breakT === undefined) { log.breakT = 0; sfx('tick'); }
       lastLog = log;
       P.onLog = true;
@@ -291,7 +289,6 @@
     ctx.restore();
   }
   function drawDuck(ctx: CanvasRenderingContext2D, vx: number, vrow: number, C: number, Y: (r: number) => number) {
-    const img = SPRITES[P.face];
     const cx = vx * C + C / 2, base = Y(vrow) + C * 0.8;
     const lift = P.hop < 1 ? Math.sin(P.hop * Math.PI) * C * 0.4 : 0;
     let sxk = 1, syk = 1, alpha = 1;
@@ -304,11 +301,12 @@
     const air = P.hop < 1 ? Math.sin(P.hop * Math.PI) : 0;
     ctx.fillStyle = `rgba(0,0,0,${0.32 - air * 0.14})`;
     ctx.beginPath(); ctx.ellipse(cx, base - C * 0.06, C * 0.2 * (1 - air * 0.35), C * 0.07 * (1 - air * 0.35), 0, 0, 7); ctx.fill();
-    if (!img.complete || !img.naturalWidth) return;
-    const h = C * 1.08 * syk, w = (img.naturalWidth / img.naturalHeight) * C * 1.08 * sxk;
+    // squash and stretch around the feet
+    ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.drawImage(img, cx - w / 2, base - h - lift, w, h);
-    ctx.globalAlpha = 1;
+    ctx.translate(cx, base - lift); ctx.scale(sxk, syk); ctx.translate(-cx, -base);
+    paintDuck(ctx, cx, base, C, P.face);
+    ctx.restore();
   }
 
   const isDaily = dailyGame() === 'crossy';

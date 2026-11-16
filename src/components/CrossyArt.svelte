@@ -2,13 +2,10 @@
   // Lobby and daily-banner art for Retro Crossy Run: a small hand-placed scene drawn with the game's own
   // renderer (meadow, two roads with police and bus, a river with logs, a house), traffic and logs moving.
   import { onMount } from 'svelte';
-  import { art, drawGround, drawRow } from '../games/crossyDraw';
+  import { art, drawGround, drawRow, drawDuck } from '../games/crossyDraw';
   import type { Lane } from '../games/crossy';
-  import duckImg from '../assets/duck/down.webp';
 
   let wrap: HTMLDivElement, canvas: HTMLCanvasElement;
-  const duck = new Image();
-  duck.src = duckImg;
   const lane = (type: Lane['type'], o: Partial<Lane> = {}): Lane =>
     ({ type, dir: 1, speed: 0, items: [], trees: [], deco: {}, decor: [], coin: null, t: 0, train: null, ...o });
 
@@ -50,11 +47,10 @@
       for (let r = lanes.length; r >= -1; r--) drawGround(ctx, lanes[r] ?? lane('grass'), r, Y(r), cols * C, C, lanes[r + 1]?.type === 'road' && lanes[r]?.type === 'road');
       for (let r = lanes.length - 1; r >= 0; r--) {
         drawRow(ctx, lanes[r], r, Y(r), C, cols);
-        if (r === 0 && duck.complete && duck.naturalWidth) {
+        if (r === 0) {
           const cx = (Math.floor(cols / 2) + 0.5) * C, base = Y(0) + C * 0.8, bob = Math.abs(Math.sin(art.clock * 3)) * C * 0.12;
           ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(cx, base - C * 0.06, C * 0.2, C * 0.07, 0, 0, 7); ctx.fill();
-          const h = C * 1.08, w = (duck.naturalWidth / duck.naturalHeight) * h;
-          ctx.drawImage(duck, cx - w / 2, base - h - bob, w, h);
+          drawDuck(ctx, cx, base - bob, C, 'down');
         }
       }
       ctx.restore();
@@ -71,7 +67,6 @@
       draw();
       raf = requestAnimationFrame(loop);
     };
-    duck.onload = draw;
     const ro = new ResizeObserver(fit);
     ro.observe(wrap);
     fit();

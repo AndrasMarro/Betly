@@ -132,7 +132,8 @@ const overlaps = (it: Item, px: number) => it.x + 0.14 < px + 0.7 && it.x + it.l
 /** Is something on this row hitting a player standing at column px? */
 export const hit = (l: Lane, px: number) => (l.type === 'road' && l.items.some((it) => overlaps(it, px))) || (l.type === 'rail' && !!l.train && overlaps(l.train, px));
 /** The log carrying a player at px (centre must be on the log), if any. */
-export const logAt = (l: Lane, px: number) => l.items.find((it) => !it.gone && it.x - 0.15 <= px + 0.5 && it.x + it.len + 0.15 >= px + 0.5);
+// generous ends: the duck's middle may hang 0.3 past either end of the log
+export const logAt = (l: Lane, px: number) => l.items.find((it) => !it.gone && it.x - 0.3 <= px + 0.5 && it.x + it.len + 0.3 >= px + 0.5);
 export const blocked = (l: Lane | undefined, col: number) => !!l && l.type === 'grass' && l.trees.includes(col);
 
 // ---------- stakes ----------

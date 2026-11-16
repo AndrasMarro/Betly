@@ -513,3 +513,44 @@ export function drawRow(ctx: CanvasRenderingContext2D, l: Lane, r: number, y: nu
     if (l.train) drawTrain(ctx, l.train.x * C, y, l.train.len, C, l.dir);
   }
 }
+
+/**
+ * The gamer duck in the same box style as everything else: yellow body, orange beak and feet, a red headset
+ * with a green light. (cx, base): middle of the cell and the ground line under the feet. face: where it looks.
+ */
+export function drawDuck(ctx: CanvasRenderingContext2D, cx: number, base: number, C: number, face: 'up' | 'down' | 'left' | 'right') {
+  const X = cx - C / 2, Y = base - C * 0.8;
+  const B = (x: number, z: number, w: number, d: number, h: number, top: string, side: string, e = 0) => box(ctx, X + x * C, Y + (z - e) * C, w * C, d * C, h * C, top, side);
+  const R = (x: number, sy: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(X + x * C, Y + sy * C, w * C, h * C); };
+  const W = ['#ffd84a', '#e8b022'], OR = ['#ff8a2a', '#d0601a'], HS = ['#e5484d', '#a82a30'];
+  ctx.save();
+  if (face === 'left') { ctx.translate(cx, 0); ctx.scale(-1, 1); ctx.translate(-cx, 0); }
+  if (face === 'up' || face === 'down') {
+    // feet, body with folded wings, head
+    B(0.3, 0.62, 0.13, 0.12, 0.05, OR[0], OR[1]); B(0.57, 0.62, 0.13, 0.12, 0.05, OR[0], OR[1]);
+    B(0.22, 0.3, 0.56, 0.46, 0.4, W[0], W[1], 0.05);
+    R(0.22, 0.42, 0.06, 0.24, '#d99a14'); R(0.72, 0.42, 0.06, 0.24, '#d99a14');
+    if (face === 'up') B(0.4, 0.7, 0.2, 0.1, 0.14, W[0], W[1], 0.36); // tail feathers towards us
+    B(0.3, 0.32, 0.4, 0.36, 0.28, W[0], W[1], 0.45);
+    if (face === 'down') {
+      R(0.37, -0.03, 0.06, 0.08, '#1c1c22'); R(0.57, -0.03, 0.06, 0.08, '#1c1c22'); // eyes on the front of the head
+      R(0.38, -0.02, 0.02, 0.025, '#fff'); R(0.58, -0.02, 0.02, 0.025, '#fff');
+      B(0.4, 0.66, 0.2, 0.12, 0.08, OR[0], OR[1], 0.52); // beak
+    }
+    // headset: band over the head, a cup on each side with a green light
+    B(0.28, 0.46, 0.44, 0.07, 0.03, HS[0], HS[1], 0.73);
+    for (const hx of [0.24, 0.68]) { B(hx, 0.44, 0.08, 0.16, 0.14, HS[0], HS[1], 0.5); R(hx + 0.02, 0.0, 0.04, 0.03, '#4dff88'); }
+  } else {
+    // side view (drawn facing right, mirrored for left)
+    B(0.36, 0.6, 0.13, 0.12, 0.05, OR[0], OR[1]); B(0.52, 0.66, 0.13, 0.08, 0.05, OR[0], OR[1]);
+    B(0.14, 0.34, 0.6, 0.4, 0.32, W[0], W[1], 0.05);
+    B(0.06, 0.4, 0.14, 0.24, 0.12, W[0], W[1], 0.26); // tail
+    R(0.26, 0.36, 0.3, 0.07, '#d99a14'); // wing line
+    B(0.48, 0.4, 0.32, 0.3, 0.3, W[0], W[1], 0.4); // head, set forward on the body
+    R(0.68, -0.03, 0.06, 0.08, '#1c1c22'); R(0.7, -0.02, 0.02, 0.025, '#fff'); // eye
+    B(0.8, 0.46, 0.16, 0.16, 0.08, OR[0], OR[1], 0.5); // beak
+    B(0.52, 0.4, 0.06, 0.3, 0.03, HS[0], HS[1], 0.74); // headset band
+    B(0.5, 0.66, 0.11, 0.05, 0.13, HS[0], HS[1], 0.52); R(0.53, 0.02, 0.05, 0.025, '#4dff88'); // near ear cup
+  }
+  ctx.restore();
+}
