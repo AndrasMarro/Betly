@@ -155,16 +155,19 @@ export function layout(W: number, H: number): Layout {
 
 // ---------- sponsors: invented brands (plus Betly) for the boards and banners ----------
 type Icon = 'mark' | 'chip' | 'peak' | 'clock' | 'plane' | 'cup' | 'bean';
-type Ad = { bg: string; fg: string; txt: string; icon?: Icon };
+// short: the name on the narrow hanging banners; alps: red and white with a mountain edge and tall serif lettering
+type Ad = { bg: string; fg: string; txt: string; icon?: Icon; short?: string; alps?: boolean };
 export const SPONSORS: Ad[] = [
   { bg: '#121216', fg: '#ffffff', txt: 'BETLY', icon: 'mark' },
-  { bg: '#c8102e', fg: '#ffffff', txt: 'ROTFUCHS RACING', icon: 'peak' },
+  { bg: '#ffffff', fg: '#121212', txt: 'ALPENROT', alps: true },
+  { bg: '#c8102e', fg: '#ffffff', txt: 'ROTFUCHS RACING', icon: 'peak', short: 'ROTFUCHS' },
   { bg: '#f2c33a', fg: '#1c1c22', txt: 'BETLY TOKENS', icon: 'chip' },
   { bg: '#1f2c4f', fg: '#f2c33a', txt: 'GIPFELZEIT', icon: 'clock' },
   { bg: '#ffffff', fg: '#e5484d', txt: 'DERBY' },
-  { bg: '#1e88e5', fg: '#ffffff', txt: 'FÖHNWIND AIR', icon: 'plane' },
-  { bg: '#f4ead5', fg: '#5a3a22', txt: 'KUHGLOCKE KAFFEE', icon: 'cup' },
-  { bg: '#121216', fg: '#f2c33a', txt: 'BETLY · PLAY MONEY ONLY', icon: 'chip' },
+  { bg: '#1e88e5', fg: '#ffffff', txt: 'FÖHNWIND AIR', icon: 'plane', short: 'FÖHNWIND' },
+  { bg: '#f4ead5', fg: '#5a3a22', txt: 'KUHGLOCKE KAFFEE', icon: 'cup', short: 'KUHGLOCKE' },
+  { bg: '#ffffff', fg: '#121212', txt: 'ALPENROT', alps: true },
+  { bg: '#121216', fg: '#f2c33a', txt: 'BETLY · PLAY MONEY ONLY', icon: 'chip', short: 'BETLY' },
   { bg: '#4b2a6b', fg: '#ffffff', txt: 'ALPENGLANZ', icon: 'bean' },
   { bg: '#c8102e', fg: '#ffffff', txt: 'ROTFUCHS', icon: 'peak' },
 ];
@@ -199,8 +202,30 @@ function icon(g: CanvasRenderingContext2D, k: Icon, x: number, y: number, z: num
   g.restore();
 }
 
+/** Tall, narrow serif lettering (a classic serif squeezed sideways), fitted into width room. */
+function serif(g: CanvasRenderingContext2D, txt: string, x: number, y: number, size: number, room: number, col: string) {
+  g.save();
+  g.font = `700 ${Math.round(size)}px Georgia, 'Times New Roman', serif`;
+  const sq = Math.min(0.62, room / Math.max(1, g.measureText(txt).width));
+  g.translate(x, y); g.scale(sq, 1);
+  g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 0, 0);
+  g.restore();
+}
+/** The red-and-white board: red sky, a white mountain range rising into it, the name below in black. */
+function paintAlps(g: CanvasRenderingContext2D, ad: Ad, x: number, y: number, w: number, h: number) {
+  g.fillStyle = '#ffffff'; g.fillRect(x, y, w, h);
+  g.fillStyle = '#d0101c';
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.lineTo(x + w, y + h * 0.42);
+  const peaks = [[0.84, 0.3], [0.7, 0.16], [0.5, 0.04], [0.3, 0.16], [0.16, 0.3]];
+  let px = x + w;
+  for (const [fx, fy] of peaks) { const nx = x + w * fx; g.lineTo((px + nx) / 2, y + h * (fy + 0.16)); g.lineTo(nx, y + h * fy); px = nx; }
+  g.lineTo(x + w * 0.08, y + h * 0.36); g.lineTo(x, y + h * 0.42); g.closePath(); g.fill();
+  serif(g, ad.txt, x + w / 2, y + h * 0.7, h * 0.5, w * 0.8, ad.fg);
+}
+
 /** One advertising board: background, logo on the left, the name shrunk to fit. */
 export function paintAd(g: CanvasRenderingContext2D, ad: Ad, x: number, y: number, w: number, h: number) {
+  if (ad.alps) return paintAlps(g, ad, x, y, w, h);
   g.fillStyle = ad.bg; g.fillRect(x, y, w, h);
   g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x, y, w, Math.max(1, h * 0.08));
   const z = h * 0.66, hasIcon = !!ad.icon, room = w * 0.86 - (hasIcon ? z * 1.25 : 0);
@@ -219,6 +244,44 @@ const STAND_M = 48; // tile length in metres (stand coordinates), repeats seamle
 const SHIRTS = ['#e5484d', '#3d9bff', '#f2c33a', '#2fbf71', '#ffffff', '#1f2c4f', '#ff7ab8', '#e67e22', '#8e44ad', '#cfd8dc', '#c0392b', '#16a085'];
 const SKIN = ['#f1c8a5', '#d9a07a', '#a86b45', '#7a4a2c', '#f6d8bd'];
 let standCache: { key: string; tiles: HTMLCanvasElement[] } | null = null;
+
+// Secret guests: little caricatures hidden in the front rows (no names anywhere, find them yourself).
+type Vip = 'blond' | 'judo' | 'marshal' | 'seven' | 'founder' | 'curls';
+const VIPS: { k: Vip; r: number; f: number }[] = [
+  // f: share of the 48 m tile, kept clear of the pillars at 6, 18, 30 and 42 m
+  { k: 'blond', r: 6, f: 0.16 }, { k: 'judo', r: 5, f: 0.33 }, { k: 'marshal', r: 6, f: 0.58 },
+  { k: 'seven', r: 4, f: 0.71 }, { k: 'founder', r: 5, f: 0.79 }, { k: 'curls', r: 5, f: 0.815 },
+];
+function drawVip(g: CanvasRenderingContext2D, k: Vip, cx: number, by: number, rh: number, sp: number, up: boolean) {
+  const hr = rh * 0.18, hy = by - rh * 0.13;
+  const look = {
+    blond: { body: '#1f2a44', skin: '#f2b27c' }, judo: { body: '#2b2f36', skin: '#f0d2b8' }, marshal: { body: '#22252b', skin: '#f1d0a8' },
+    seven: { body: '#d5112b', skin: '#c98f62' }, founder: { body: '#6c7a70', skin: '#f2cdb0' }, curls: { body: '#8fb3d9', skin: '#e9c09c' },
+  }[k];
+  if (up) { g.strokeStyle = look.body; g.lineWidth = Math.max(1.5, sp * 0.09); g.lineCap = 'round'; g.beginPath(); g.moveTo(cx - sp * 0.16, by + rh * 0.1); g.lineTo(cx - sp * 0.32, by - rh * 0.3); g.moveTo(cx + sp * 0.16, by + rh * 0.1); g.lineTo(cx + sp * 0.32, by - rh * 0.3); g.stroke(); }
+  g.fillStyle = look.body; g.beginPath(); g.roundRect(cx - sp * 0.24, by, sp * 0.48, rh * 0.6, sp * 0.12); g.fill();
+  // clothes details
+  if (k === 'blond' || k === 'judo') { // suit: white shirt, a tie (long and red, or dark)
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(cx - sp * 0.09, by); g.lineTo(cx + sp * 0.09, by); g.lineTo(cx, by + rh * 0.2); g.fill();
+    g.fillStyle = k === 'blond' ? '#d0101c' : '#3a4a6a'; g.fillRect(cx - sp * 0.03, by + rh * 0.04, sp * 0.06, rh * (k === 'blond' ? 0.5 : 0.3));
+  }
+  if (k === 'marshal') { g.strokeStyle = '#4a4f58'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, by + rh * 0.04); g.lineTo(cx, by + rh * 0.58); g.stroke(); g.fillStyle = '#4a4f58'; g.fillRect(cx - sp * 0.1, by, sp * 0.2, rh * 0.05); }
+  if (k === 'seven') { g.fillStyle = '#1e7a3c'; g.fillRect(cx - sp * 0.1, by, sp * 0.2, rh * 0.05); g.fillStyle = '#fff'; g.font = `800 ${Math.round(rh * 0.34)}px Geist Variable, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('7', cx, by + rh * 0.3); }
+  // head (a little wider for the marshal)
+  g.fillStyle = look.skin; g.beginPath(); g.ellipse(cx, hy, hr * (k === 'marshal' ? 1.12 : 1), hr, 0, 0, 7); g.fill();
+  // hair
+  if (k === 'blond') { g.fillStyle = '#f3d27a'; g.beginPath(); g.ellipse(cx + hr * 0.15, hy - hr * 0.62, hr * 1.12, hr * 0.5, -0.15, 0, 7); g.fill(); g.beginPath(); g.ellipse(cx - hr * 0.7, hy - hr * 0.25, hr * 0.45, hr * 0.32, -0.6, 0, 7); g.fill(); }
+  if (k === 'judo') { g.fillStyle = '#b9a88c'; g.beginPath(); g.arc(cx - hr * 0.85, hy - hr * 0.1, hr * 0.28, 0, 7); g.arc(cx + hr * 0.85, hy - hr * 0.1, hr * 0.28, 0, 7); g.fill(); }
+  if (k === 'marshal') { g.fillStyle = '#111'; g.beginPath(); g.roundRect(cx - hr * 0.62, hy - hr * 1.32, hr * 1.24, hr * 0.72, hr * 0.2); g.fill(); }
+  if (k === 'seven') { g.fillStyle = '#1c140f'; g.beginPath(); g.ellipse(cx + hr * 0.1, hy - hr * 0.78, hr * 0.85, hr * 0.42, -0.25, 0, 7); g.fill(); }
+  if (k === 'founder') { g.fillStyle = '#3a2a1e'; g.beginPath(); g.arc(cx, hy - hr * 0.2, hr * 1.02, Math.PI * 1.08, Math.PI * 1.92); g.fill(); }
+  if (k === 'curls') {
+    g.fillStyle = '#2a1d16';
+    for (const [dx, dy] of [[-0.8, -0.5], [-0.4, -0.95], [0.1, -1.05], [0.55, -0.9], [0.9, -0.45], [-0.95, 0], [0.98, 0.05]]) { g.beginPath(); g.arc(cx + hr * dx, hy + hr * dy, hr * 0.42, 0, 7); g.fill(); }
+    g.strokeStyle = '#1c1c22'; g.lineWidth = Math.max(1, hr * 0.14);
+    g.beginPath(); g.arc(cx - hr * 0.38, hy + hr * 0.05, hr * 0.28, 0, 7); g.moveTo(cx + hr * 0.66, hy + hr * 0.05); g.arc(cx + hr * 0.38, hy + hr * 0.05, hr * 0.28, 0, 7); g.moveTo(cx - hr * 0.1, hy + hr * 0.05); g.lineTo(cx + hr * 0.1, hy + hr * 0.05); g.stroke();
+  }
+}
 function standTiles(ppm: number, h: number) {
   const key = `${ppm.toFixed(2)}x${Math.round(h)}x${devicePixelRatio || 1}`;
   if (standCache?.key === key) return standCache.tiles;
@@ -242,6 +305,13 @@ function standTiles(ppm: number, h: number) {
       for (let i = 0; i < n; i++) {
         const id = r * 1009 + i, cx = (i + 0.5) * (w / n) + (r % 2 ? sp * 0.25 : 0) % sp;
         if (hash(id) < 0.08) { g.fillStyle = '#2f5f9e'; g.fillRect(cx - sp * 0.2, y + rh * 0.45, sp * 0.4, rh * 0.4); continue; } // empty seat
+        const vip = VIPS.find((v) => v.r === r && Math.floor(n * v.f) === i);
+        if (vip) {
+          // a touch bigger than the fans around them, so they can be spotted
+          const vu = frame === 1, vy = y + rh * 0.42 - (vu ? rh * 0.12 : 0);
+          g.save(); g.translate(cx, vy + rh * 0.6); g.scale(1.3, 1.3); g.translate(-cx, -(vy + rh * 0.6));
+          drawVip(g, vip.k, cx, vy, rh, sp, vu); g.restore(); continue;
+        }
         const up = frame === 1 && hash(id + 7) < 0.45, lift = up ? rh * 0.12 : 0;
         const shirt = SHIRTS[Math.floor(hash(id + 1) * SHIRTS.length)], skin = SKIN[Math.floor(hash(id + 2) * SKIN.length)];
         const by = y + rh * 0.42 - lift;
@@ -268,21 +338,35 @@ function standTiles(ppm: number, h: number) {
     g.fillStyle = '#3a4150'; for (let m = 6; m < STAND_M; m += 12) g.fillRect(m * ppm, roof, Math.max(3, ppm * 0.14), front - roof);
     const aw = w / SPONSORS.length;
     SPONSORS.forEach((ad, i) => paintAd(g, ad, i * aw, front, aw - 2, h - front));
-    // hanging banners from the roof, between the pillars
-    for (let k = 0; k < STAND_M / 12; k++) {
-      const m = 12 * k + 1.5; // clear of the tile edge and of the pillars
-      const ad = SPONSORS[(k * 3) % SPONSORS.length], bw = Math.max(18, ppm * 1.5), bh = h * 0.42, bx = m * ppm - bw / 2;
+    // hanging banners from the roof, between the pillars: logo at the top, the short name running down
+    const HANG = ['BETLY', 'ALPENROT', 'GIPFELZEIT', 'ROTFUCHS RACING'].map((t) => SPONSORS.find((ad) => ad.txt === t)!);
+    HANG.forEach((ad, k) => {
+      const m = 12 * k + 1.5, bw = Math.max(20, ppm * 1.6), bh = h * 0.6, bx = m * ppm - bw / 2, tip = bw * 0.35;
       g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(bx + 3, roof + 3, bw, bh);
-      g.fillStyle = ad.bg; g.fillRect(bx, roof, bw, bh);
-      g.beginPath(); g.moveTo(bx, roof + bh); g.lineTo(bx + bw / 2, roof + bh + bw * 0.35); g.lineTo(bx + bw, roof + bh); g.fill(); // swallowtail point
-      if (ad.icon) icon(g, ad.icon, bx + bw / 2, roof + bw * 0.6, bw * 0.62, ad.fg);
-      g.save(); g.translate(bx + bw / 2, roof + bh * 0.62); g.rotate(-Math.PI / 2);
-      let fs = Math.round(bw * 0.42); g.font = `800 ${fs}px Geist Variable, sans-serif`;
-      const tw = g.measureText(ad.txt).width, room = bh * 0.62;
-      if (tw > room) { fs = Math.max(6, Math.floor((fs * room) / tw)); g.font = `800 ${fs}px Geist Variable, sans-serif`; }
-      g.fillStyle = ad.fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ad.txt, 0, 1);
+      g.save();
+      g.beginPath(); g.moveTo(bx, roof); g.lineTo(bx + bw, roof); g.lineTo(bx + bw, roof + bh); g.lineTo(bx + bw / 2, roof + bh + tip); g.lineTo(bx, roof + bh); g.closePath(); g.clip();
+      g.fillStyle = ad.alps ? '#ffffff' : ad.bg; g.fillRect(bx, roof, bw, bh + tip);
+      let head = bw * 0.35;
+      if (ad.alps) {
+        // red top with one white peak, like the boards
+        // red top with a small white mountain range, like the boards
+        g.fillStyle = '#d0101c'; g.beginPath(); g.moveTo(bx, roof); g.lineTo(bx + bw, roof); g.lineTo(bx + bw, roof + bh * 0.34);
+        for (const [fx, fy] of [[0.83, 0.25], [0.67, 0.31], [0.5, 0.2], [0.33, 0.31], [0.17, 0.25]]) g.lineTo(bx + bw * fx, roof + bh * fy);
+        g.lineTo(bx, roof + bh * 0.34); g.fill();
+        head = bh * 0.38;
+      } else if (ad.icon) { icon(g, ad.icon, bx + bw / 2, roof + bw * 0.62, bw * 0.6, ad.fg); head = bw * 1.15; }
       g.restore();
-    }
+      const name = ad.short ?? ad.txt, room = bh - head - bw * 0.2, cy = roof + head + room / 2;
+      g.save(); g.translate(bx + bw / 2, cy); g.rotate(-Math.PI / 2);
+      if (ad.alps) serif(g, name, 0, 1, bw * 0.78, room, ad.fg);
+      else {
+        let fs = Math.round(bw * 0.6); g.font = `800 ${fs}px Geist Variable, sans-serif`;
+        const tw = g.measureText(name).width;
+        if (tw > room) { fs = Math.max(6, Math.floor((fs * room) / tw)); g.font = `800 ${fs}px Geist Variable, sans-serif`; }
+        g.fillStyle = ad.fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, 0, 1);
+      }
+      g.restore();
+    });
     // evening light from the left
     const lt = g.createLinearGradient(0, 0, w, 0);
     lt.addColorStop(0, 'rgba(255,190,120,.12)'); lt.addColorStop(0.5, 'rgba(255,190,120,0)'); lt.addColorStop(1, 'rgba(255,190,120,.12)');
@@ -325,14 +409,8 @@ export function drawBackdrop(ctx: CanvasRenderingContext2D, L: Layout, cam: numb
     ctx.fillStyle = ['#e5484d', '#f2c33a', '#2fbf71', '#3d9bff'][((m / 12) % 4 + 4) % 4];
     ctx.beginPath(); ctx.moveTo(px + 2, standTop - 22); ctx.lineTo(px + 18, standTop - 18 + wave); ctx.lineTo(px + 2, standTop - 13); ctx.fill();
   }
-  // infield: a row of low sponsor boards between the stand and the track (a little parallax)
+  // infield hedge between the stand and the track
   ctx.fillStyle = '#2f5e2c'; ctx.fillRect(0, standBot, W, top - standBot);
-  const bp = 0.85, bl = 5, bh = (top - standBot) * 0.8;
-  for (let k = Math.floor((cam * bp) / bl); (k * bl - cam * bp) * ppm < W; k++) {
-    const x = (k * bl - cam * bp) * ppm;
-    if (x + bl * ppm < 0) continue;
-    paintAd(ctx, SPONSORS[((k * 7) % SPONSORS.length + SPONSORS.length) % SPONSORS.length], x, top - bh - 2, bl * ppm - 3, bh);
-  }
   // turf with mowing stripes, slanted for depth
   ctx.fillStyle = '#3f8a37'; ctx.fillRect(0, top, W, H - top);
   ctx.fillStyle = 'rgba(255,255,255,.06)';
@@ -344,6 +422,13 @@ export function drawBackdrop(ctx: CanvasRenderingContext2D, L: Layout, cam: numb
   }
   // far rail
   rail(ctx, L, cam, top - 2, 0.7 * Math.min(1, ppm / 36)); // rails scale with the zoom
+  // sponsor panels hung on the far rail, one every 10 m
+  const rk = 0.7 * Math.min(1, ppm / 36), ph = 22 * rk, pl = 6;
+  for (let k = Math.floor(cam / 10) - 1; (k * 10 - cam) * ppm < W; k++) {
+    const x = (k * 10 + 2 - cam) * ppm;
+    if (x + pl * ppm < 0) continue;
+    paintAd(ctx, SPONSORS[((k * 3) % SPONSORS.length + SPONSORS.length) % SPONSORS.length], x, top - 2 - 24 * rk, pl * ppm, ph);
+  }
   // distance posts (metres to go) on the far rail and the finish line
   for (let d = 50; d < DIST; d += 50) {
     const x = (d - cam) * ppm;
