@@ -4,8 +4,9 @@
 
 /** mine: 0 = none, 1 = mine, 2 = double mine (counts twice). kind: special mines in arcade mode. */
 /** lock: the flag was placed by the game (explosion, shield, scanner, detector) and cannot be removed. */
-export type Cell = { mine: number; n: number; open: boolean; flag: number; d: number; kind?: 'moving' | 'timer'; boom?: boolean; lock?: boolean; by?: string };
-export type Opts = { hex?: boolean; lives?: number; doubles?: number; moving?: number; timers?: number; noGuess?: boolean };
+/** void: not part of the field (random-shape boards); it has no neighbours, no mine and never needs opening. */
+export type Cell = { mine: number; n: number; open: boolean; flag: number; d: number; kind?: 'moving' | 'timer'; boom?: boolean; lock?: boolean; by?: string; void?: boolean };
+export type Opts = { hex?: boolean; lives?: number; doubles?: number; moving?: number; timers?: number; noGuess?: boolean; shape?: boolean };
 export type MS = {
   w: number; h: number; mines: number; cells: Cell[]; state: 'ready' | 'play' | 'won' | 'lost'; hit: number;
   hex: boolean; lives: number; shield: number; moves: number; opts: Opts;
@@ -18,20 +19,68 @@ export type MS = {
 export const LEVELS = { easy: [9, 9, 10], medium: [16, 16, 40], hard: [30, 16, 99] } as const;
 export type MsLevel = keyof typeof LEVELS;
 
-export const newGame = (w: number, h: number, mines: number, opts: Opts = {}): MS => ({
-  w, h, mines, state: 'ready', hit: -1, hex: !!opts.hex, lives: opts.lives ?? 1, shield: 0, moves: 0, opts, timer: null, note: '',
-  cells: Array.from({ length: w * h }, () => ({ mine: 0, n: 0, open: false, flag: 0, d: 0 })),
-});
+export function newGame(w: number, h: number, mines: number, opts: Opts = {}, rand = Math.random): MS {
+  const cells: Cell[] = Array.from({ length: w * h }, () => ({ mine: 0, n: 0, open: false, flag: 0, d: 0 }));
+  if (opts.shape) {
+    // random shape: the mine count shrinks with the field so the density stays the same
+    const keep = blob(w, h, rand);
+    cells.forEach((c, i) => (c.void = !keep[i]));
+    mines = Math.max(1, Math.round((mines * keep.filter(Boolean).length) / (w * h)));
+  }
+  return { w, h, mines, state: 'ready', hit: -1, hex: !!opts.hex, lives: opts.lives ?? 1, shield: 0, moves: 0, opts, timer: null, note: '', cells };
+}
+
+/**
+ * A pixel blob for random-shape boards: a few overlapping rectangles and ellipses, roughened, smoothed by a
+ * cellular automaton and cut down to the biggest connected piece. Covers roughly 55-80 % of the grid.
+ */
+export function blob(w: number, h: number, rand = Math.random): boolean[] {
+  for (let attempt = 0; ; attempt++) {
+    let g = Array.from({ length: w * h }, () => false);
+    const n = 3 + Math.floor(rand() * 4);
+    for (let k = 0; k < n; k++) {
+      const rw = (0.3 + rand() * 0.45) * w, rh = (0.3 + rand() * 0.45) * h, cx = rw / 2 + rand() * (w - rw), cy = rh / 2 + rand() * (h - rh), round = rand() < 0.5;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const dx = (x + 0.5 - cx) / (rw / 2), dy = (y + 0.5 - cy) / (rh / 2);
+        if (round ? dx * dx + dy * dy <= 1 : Math.abs(dx) <= 1 && Math.abs(dy) <= 1) g[y * w + x] = true;
+      }
+    }
+    // roughen the edge, then smooth it so it looks like pixel art, not noise
+    g = g.map((v) => (rand() < 0.12 ? !v : v));
+    for (let pass = 0; pass < 2; pass++) {
+      g = g.map((v, i) => {
+        const x = i % w, y = Math.floor(i / w);
+        let c = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && g[(y + dy) * w + x + dx] && x + dx >= 0 && x + dx < w && y + dy >= 0 && y + dy < h) c++;
+        return c >= 5 || (v && c >= 4);
+      });
+    }
+    // keep the biggest 4-connected piece
+    const seen = new Int32Array(w * h).fill(-1);
+    let best: number[] = [];
+    for (let i = 0; i < w * h; i++) {
+      if (!g[i] || seen[i] >= 0) continue;
+      const part = [i]; seen[i] = i;
+      for (let q = 0; q < part.length; q++) {
+        const j = part[q], x = j % w;
+        for (const k of [x > 0 ? j - 1 : -1, x < w - 1 ? j + 1 : -1, j - w, j + w]) if (k >= 0 && k < w * h && g[k] && seen[k] < 0) { seen[k] = i; part.push(k); }
+      }
+      if (part.length > best.length) best = part;
+    }
+    const share = best.length / (w * h);
+    if ((share >= 0.55 && share <= 0.85) || attempt > 40) { const out = Array.from({ length: w * h }, () => false); for (const j of best) out[j] = true; return out; }
+  }
+}
 
 // hex grids use "odd-r" offset rows: odd rows are shifted half a cell to the right
 const SQ = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
 const HEX_EVEN = [[-1, 0], [1, 0], [-1, -1], [0, -1], [-1, 1], [0, 1]];
 const HEX_ODD = [[-1, 0], [1, 0], [0, -1], [1, -1], [0, 1], [1, 1]];
-export function neighbours(ms: { w: number; h: number; hex?: boolean }, i: number) {
+export function neighbours(ms: { w: number; h: number; hex?: boolean; cells?: Cell[] }, i: number) {
   const x = i % ms.w, y = Math.floor(i / ms.w), out: number[] = [];
   for (const [dx, dy] of ms.hex ? (y % 2 ? HEX_ODD : HEX_EVEN) : SQ) {
     const nx = x + dx, ny = y + dy;
-    if (nx >= 0 && ny >= 0 && nx < ms.w && ny < ms.h) out.push(ny * ms.w + nx);
+    if (nx >= 0 && ny >= 0 && nx < ms.w && ny < ms.h && !ms.cells?.[ny * ms.w + nx].void) out.push(ny * ms.w + nx);
   }
   return out;
 }
@@ -43,7 +92,7 @@ function recount(ms: MS) {
 function placeOnce(ms: MS, safe: number, rand: () => number) {
   for (const c of ms.cells) { c.mine = 0; c.kind = undefined; }
   const banned = new Set(safe < 0 ? [] : [safe, ...neighbours(ms, safe)]);
-  const free = ms.cells.map((_, i) => i).filter((i) => !banned.has(i));
+  const free = ms.cells.map((_, i) => i).filter((i) => !banned.has(i) && !ms.cells[i].void);
   const chosen: number[] = [];
   for (let k = 0; k < ms.mines && free.length; k++) chosen.push(free.splice(Math.floor(rand() * free.length), 1)[0]);
   const o = ms.opts;
@@ -68,10 +117,10 @@ function place(ms: MS, safe: number, rand = Math.random) {
 
 /** Open a cell; empty areas flood-fill. `d` is the BFS depth, used to stagger the reveal animation. */
 export function open(ms: MS, i: number, by?: string): 'none' | 'safe' | 'hit' | 'shield' | 'lost' {
-  if (ms.state === 'won' || ms.state === 'lost') return 'none';
+  if (ms.state === 'won' || ms.state === 'lost' || ms.cells[i].void) return 'none';
   if (ms.state === 'ready') { place(ms, i); ms.state = 'play'; }
   const c = ms.cells[i];
-  if (c.open || c.flag) return 'none';
+  if (c.open || c.flag || c.void) return 'none';
   if (c.mine) return explode(ms, i);
   const queue: [number, number][] = [[i, 0]];
   c.open = true;
@@ -102,7 +151,7 @@ function explode(ms: MS, i: number): 'hit' | 'shield' | 'lost' {
 }
 
 function checkWin(ms: MS) {
-  if (ms.state === 'play' && ms.cells.every((x) => x.mine || x.open)) {
+  if (ms.state === 'play' && ms.cells.every((x) => x.mine || x.open || x.void)) {
     ms.state = 'won';
     ms.cells.forEach((x) => x.mine && (x.flag = x.mine));
   }
@@ -124,7 +173,7 @@ export function chord(ms: MS, i: number, by?: string) {
 /** Toggle a flag. With double mines in play the flag cycles none → single → double. */
 export function flag(ms: MS, i: number) {
   const c = ms.cells[i];
-  if (c.open || c.lock || ms.state === 'won' || ms.state === 'lost') return false;
+  if (c.open || c.lock || c.void || ms.state === 'won' || ms.state === 'lost') return false;
   c.flag = ms.opts.doubles ? (c.flag + 1) % 3 : c.flag ? 0 : 1;
   return true;
 }
@@ -155,7 +204,7 @@ export function tick(ms: MS, rand = Math.random) {
     const movers = ms.cells.map((c, i) => [c, i] as const).filter(([c]) => c.kind === 'moving' && !c.flag && !c.open);
     if (movers.length) {
       const [from, fi] = movers[Math.floor(rand() * movers.length)];
-      const targets = ms.cells.map((_, i) => i).filter((i) => !ms.cells[i].mine && !ms.cells[i].open && !ms.cells[i].flag && !neighbours(ms, i).some((j) => ms.cells[j].open));
+      const targets = ms.cells.map((_, i) => i).filter((i) => !ms.cells[i].void && !ms.cells[i].mine && !ms.cells[i].open && !ms.cells[i].flag && !neighbours(ms, i).some((j) => ms.cells[j].open));
       if (targets.length) {
         const ti = targets[Math.floor(rand() * targets.length)], to = ms.cells[ti];
         to.mine = from.mine; to.kind = 'moving'; from.mine = 0; from.kind = undefined;
@@ -169,6 +218,7 @@ export function tick(ms: MS, rand = Math.random) {
 
 /** Scanner: safely reveals a 3x3 area (hex: the cell and its ring); mines inside get flagged. */
 export function scan(ms: MS, i: number, by?: string) {
+  if (ms.cells[i].void) return;
   if (ms.state === 'ready') { place(ms, i); ms.state = 'play'; }
   for (const j of [i, ...neighbours(ms, i)]) {
     const c = ms.cells[j];

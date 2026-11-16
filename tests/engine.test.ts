@@ -449,3 +449,26 @@ import * as J from '../src/games/jass.ts';
   }
   console.log('jass checks passed');
 }
+
+// Minesweeper: random-shape boards
+import { newGame as msNew, open as msOpen, neighbours as msNb } from '../src/games/minesweeper.ts';
+{
+  for (let k = 0; k < 40; k++) {
+    const g = msNew(20, 16, 60, { shape: true });
+    const live = g.cells.filter((c) => !c.void).length;
+    assert(live >= 0.5 * 320 && live <= 0.9 * 320, 'shape covers a sensible share: ' + live);
+    // one connected piece (4-neighbourhood)
+    const start = g.cells.findIndex((c) => !c.void), seen = new Set([start]), q = [start];
+    while (q.length) { const j = q.pop()!, x = j % 20; for (const n of [x > 0 ? j - 1 : -1, x < 19 ? j + 1 : -1, j - 20, j + 20]) if (n >= 0 && n < 320 && !g.cells[n].void && !seen.has(n)) { seen.add(n); q.push(n); } }
+    assert(seen.size === live, 'shape is one piece');
+    assert(Math.abs(g.mines - Math.round(60 * live / 320)) <= 1, 'mines scale with the shape');
+    msOpen(g, start);
+    assert(g.cells.every((c) => !c.void || (!c.mine && !c.open)), 'no mines or openings in the void');
+    assert(g.cells.filter((c) => c.mine).length === g.mines, 'all mines placed');
+    assert(g.cells.every((_, i) => msNb(g, i).every((j) => !g.cells[j].void)), 'void cells are nobody\'s neighbour');
+    // opening every safe cell wins
+    g.cells.forEach((c, i) => { if (!c.mine && !c.void) msOpen(g, i); });
+    assert(g.state === 'won', 'clearing the shape wins');
+  }
+  console.log('minesweeper shape checks passed');
+}

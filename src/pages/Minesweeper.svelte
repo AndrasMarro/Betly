@@ -37,13 +37,15 @@
   const CLASSIC_CAMPAIGN: { w: number; h: number; m: number; boss?: boolean }[] = [
     { w: 9, h: 9, m: 10 }, { w: 10, h: 10, m: 14 }, { w: 12, h: 12, m: 22 }, { w: 16, h: 16, m: 40, boss: true }, { w: 16, h: 14, m: 42 },
     { w: 18, h: 16, m: 56 }, { w: 20, h: 16, m: 66 }, { w: 30, h: 16, m: 99, boss: true }, { w: 24, h: 18, m: 90 }, { w: 30, h: 20, m: 145, boss: true },
+    { w: 24, h: 20, m: 105 }, { w: 26, h: 20, m: 120 }, { w: 28, h: 20, m: 135 }, { w: 30, h: 20, m: 150 }, { w: 30, h: 22, m: 165, boss: true },
+    { w: 30, h: 24, m: 180 }, { w: 32, h: 24, m: 195 }, { w: 32, h: 26, m: 215 }, { w: 34, h: 26, m: 235 }, { w: 36, h: 28, m: 270, boss: true },
   ];
 
   // ---------- arcade options ----------
   let sub = $state<'free' | 'campaign'>('free');
   let asize = $state<'s' | 'm' | 'l'>('m');
   let hex = $state(false);
-  let doubles = $state(true), moving = $state(false), timers = $state(false);
+  let doubles = $state(true), moving = $state(false), timers = $state(false), shape = $state(false);
   let noGuess = $state(false), smartFlag = $state(false);
   let lvl = $state(0); // campaign level index
   const SIZES = { s: [9, 9, 12], m: [16, 14, 40], l: [24, 16, 80] } as const;
@@ -61,11 +63,24 @@
     { w: 16, h: 16, m: 48, o: { hex: true, doubles: 0.25, moving: 2 } },
     { w: 18, h: 16, m: 58, o: { timers: 2, moving: 3 } },
     { w: 30, h: 20, m: 130, o: { hex: true, doubles: 0.2, moving: 4, timers: 2 }, boss: true },
+    // part two: random shapes join in (the mine count shrinks with the shape, the density stays)
+    { w: 14, h: 12, m: 30, o: { shape: true } },
+    { w: 16, h: 14, m: 46, o: { shape: true, doubles: 0.2 } },
+    { w: 16, h: 16, m: 52, o: { hex: true, timers: 2 } },
+    { w: 26, h: 18, m: 100, o: { shape: true, moving: 3 }, boss: true },
+    { w: 18, h: 14, m: 52, o: { shape: true, hex: true } },
+    { w: 18, h: 16, m: 60, o: { doubles: 0.25, timers: 2, moving: 2 } },
+    { w: 20, h: 16, m: 70, o: { shape: true, timers: 2, doubles: 0.2 } },
+    { w: 28, h: 18, m: 120, o: { hex: true, shape: true, moving: 4 }, boss: true },
+    { w: 20, h: 18, m: 80, o: { shape: true, hex: true, doubles: 0.25, timers: 2 } },
+    { w: 22, h: 18, m: 90, o: { moving: 4, timers: 3, doubles: 0.2 } },
+    { w: 24, h: 18, m: 100, o: { shape: true, hex: true, moving: 4, timers: 2 } },
+    { w: 32, h: 22, m: 170, o: { shape: true, hex: true, doubles: 0.2, moving: 5, timers: 3 }, boss: true },
   ];
-  const BONI = [[2, 'detector'], [4, 'shield'], [8, 'scanner']] as const; // beat level n → +1 at the start
+  const BONI = [[2, 'detector'], [4, 'shield'], [8, 'scanner'], [16, 'shield'], [20, 'detector']] as const; // beat level n → +1 at the start
   const arcadePay = $derived.by(() => {
     let p = { s: 1.25, m: 2.2, l: 5 }[asize] * 0.7; // three lives are forgiving
-    if (hex) p *= 1.12; if (doubles) p *= 1.15; if (moving) p *= 1.2; if (timers) p *= 1.15; if (noGuess) p *= 0.85;
+    if (hex) p *= 1.12; if (shape) p *= 1.05; if (doubles) p *= 1.15; if (moving) p *= 1.2; if (timers) p *= 1.15; if (noGuess) p *= 0.85;
     return Math.round(p * 100) / 100;
   });
 
@@ -144,7 +159,7 @@
     if (mode === 'arcade') {
       if (sub === 'campaign') { const c = CAMPAIGN[lvl]; return [c.w, c.h, c.m, { ...c.o, lives: 3, noGuess: noGuess && !c.o.doubles }]; }
       const [w, h, m] = SIZES[asize];
-      return [w, h, m, { hex, lives: 3, doubles: doubles && !noGuess ? 0.2 : 0, moving: moving ? 2 + (asize === 'l' ? 2 : 0) : 0, timers: timers ? 1 + (asize === 'l' ? 1 : 0) : 0, noGuess }];
+      return [w, h, m, { hex, shape, lives: 3, doubles: doubles && !noGuess ? 0.2 : 0, moving: moving ? 2 + (asize === 'l' ? 2 : 0) : 0, timers: timers ? 1 + (asize === 'l' ? 1 : 0) : 0, noGuess }];
     }
     const [w, h, m] = coopKind === 'versus' ? VS_SIZE[csize] : COOP_SIZE[csize];
     return [w, h, m, coopKind === 'versus' ? {} : { lives: 3, noGuess }];
@@ -161,7 +176,7 @@
     if (mode === 'arcade') for (const [n, k] of BONI) if (campaign >= n) items[k]++;
     if (mode === 'coop') { for (const p of players) p.score = 0; turn = 0; ensureBot(); push(); }
   }
-  $effect(() => { void [mode, level, csub, clvl, sub, lvl, asize, hex, doubles, moving, timers, noGuess, coopKind, csize]; untrack(reset); });
+  $effect(() => { void [mode, level, csub, clvl, sub, lvl, asize, hex, shape, doubles, moving, timers, noGuess, coopKind, csize]; untrack(reset); });
   $effect(() => { if (mode !== 'coop' && room.role !== 'solo') untrack(() => room.leave()); });
 
   const flags = $derived(ms.cells.reduce((a, c) => a + (c.open ? 0 : c.flag), 0));
@@ -483,6 +498,7 @@
           {#each [['s', L('Klein', 'Small')], ['m', L('Mittel', 'Medium')], ['l', L('Gross', 'Large')]] as [k, l]}<button class:on={asize === k} onclick={() => (asize = k as 's')}>{l}</button>{/each}
         </div>
         <label class="switch"><span>{L('Sechseck-Raster', 'Hex grid')}</span><input type="checkbox" bind:checked={hex} /></label>
+        <label class="switch"><span>{L('Zufallsform', 'Random shape')}</span><input type="checkbox" bind:checked={shape} /></label>
         <p class="lbl">{L('Minen-Typen', 'Mine types')}</p>
         <label class="switch"><span>{L('Doppel-Minen', 'Double mines')}</span><input type="checkbox" bind:checked={doubles} disabled={noGuess} /></label>
         <label class="switch"><span>{L('Wandernde Minen', 'Moving mines')}</span><input type="checkbox" bind:checked={moving} /></label>
@@ -496,9 +512,9 @@
           {/each}
         </div>
         <p class="small muted">
-          {CAMPAIGN[lvl].boss ? L('Boss-Ebene · ', 'Boss level · ') : ''}{CAMPAIGN[lvl].w}×{CAMPAIGN[lvl].h} · {CAMPAIGN[lvl].m} {L('Minen', 'mines')}{CAMPAIGN[lvl].o.hex ? ' · Hex' : ''}{CAMPAIGN[lvl].o.doubles ? ' · ' + L('Doppel', 'doubles') : ''}{CAMPAIGN[lvl].o.moving ? ' · ' + L('wandernd', 'moving') : ''}{CAMPAIGN[lvl].o.timers ? ' · ' + L('Zeitbomben', 'time bombs') : ''}
+          {CAMPAIGN[lvl].boss ? L('Boss-Ebene · ', 'Boss level · ') : ''}{CAMPAIGN[lvl].w}×{CAMPAIGN[lvl].h} · {CAMPAIGN[lvl].m} {L('Minen', 'mines')}{CAMPAIGN[lvl].o.hex ? ' · Hex' : ''}{CAMPAIGN[lvl].o.shape ? ' · ' + L('Zufallsform', 'random shape') : ''}{CAMPAIGN[lvl].o.doubles ? ' · ' + L('Doppel', 'doubles') : ''}{CAMPAIGN[lvl].o.moving ? ' · ' + L('wandernd', 'moving') : ''}{CAMPAIGN[lvl].o.timers ? ' · ' + L('Zeitbomben', 'time bombs') : ''}
         </p>
-        <p class="small muted">{L('Boni: Level 2 +1 Detektor, Level 4 +1 Schild, Level 8 +1 Scanner zu Beginn jeder Runde.', 'Bonuses: level 2 +1 detector, level 4 +1 shield, level 8 +1 scanner at the start of every round.')}{campaign >= 12 ? ' ♛ ' + L('Minenmeister!', 'Mine master!') : ''}</p>
+        <p class="small muted">{L('Boni: Level 2 +1 Detektor, 4 +1 Schild, 8 +1 Scanner, 16 +1 Schild, 20 +1 Detektor zu Beginn jeder Runde.', 'Bonuses: level 2 +1 detector, 4 +1 shield, 8 +1 scanner, 16 +1 shield, 20 +1 detector at the start of every round.')}{campaign >= CAMPAIGN.length ? ' ♛ ' + L('Minenmeister!', 'Mine master!') : ''}</p>
       {/if}
     {:else}
       <RoomBar {room} />
@@ -586,6 +602,7 @@
             {#each row as i (i)}
               {@const c = view.cells[i]}
               {@const showMine = !!c.mine && (view.state === 'lost' || (c.open && versus))}
+              {#if c.void}<span class="cell void"></span>{:else}
               <button
                 class="cell n{Math.min(c.n, 8)}"
                 class:open={c.open && !c.mine}
@@ -607,7 +624,7 @@
                 {#if c.open && !c.mine && c.n}{c.n}{/if}
                 {#if showMine || c.boom}<span class="ico"><Sprite kind="bomb" /></span>{#if c.mine === 2}<em class="x2">×2</em>{/if}{/if}
                 {#if c.flag && !c.open && !showMine && !c.boom}<span class="fl" in:pop={{ duration: 380 }}></span>{#if c.flag === 2}<em class="x2">2</em>{/if}{/if}
-              </button>
+              </button>{/if}
             {/each}
           </div>
         {/each}
@@ -716,6 +733,7 @@
   }
   @media (hover: hover) and (pointer: fine) { .cell:not(.open):hover { background: linear-gradient(180deg, #46597d, #35445f); } }
   .cell:not(.open):active { transform: scale(0.94); }
+  .cell.void, .hex .cell.void { background: none; box-shadow: none; pointer-events: none; }
   .cell.open { background: #141b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), inset 0 -3px 0 var(--own); cursor: default; animation: reveal 0.4s var(--spring-snappy) both; animation-delay: calc(var(--d) * 18ms); }
   .hex .cell.open { background: #1d2738; }
   .hex .cell { background: linear-gradient(180deg, #46597d, #33415d); }
