@@ -8,7 +8,7 @@
   import { drawHorse, drawBackdrop, drawForeground, drawClods, drawLeadLine, drawTag, layout, SILKS } from '../games/horsesDraw';
   import { Room } from '../lib/net.svelte';
   import { settings, wallet, settle, stake, credit, fmt } from '../lib/state.svelte';
-  import { dailyGame } from '../lib/daily';
+  import { isDaily as daily } from '../lib/daily';
   import { sfx } from '../lib/sfx';
   import { t } from '../lib/i18n';
 
@@ -242,7 +242,7 @@
     if (key !== liveKey) { liveKey = key; live = ord; }
   }
   const photo = $derived(share.phase === 'result' && race.finish[race.order[1]] - race.finish[race.order[0]] < 0.08);
-  const isDaily = dailyGame() === 'derby';
+  const isDaily = daily('derby');
 </script>
 
 <section class="wrap page">

@@ -1,14 +1,22 @@
 <script lang="ts">
   import GameArt from './GameArt.svelte';
-  import { GAMES, gameName, href, byId, type Cat } from '../lib/games';
-  import { dailyGame } from '../lib/daily';
+  import DailyCard from './DailyCard.svelte';
+  import { GAMES, gameName, href, byId, matches, type Cat, type Game } from '../lib/games';
+  import { dailyGame, dailyClassic } from '../lib/daily';
   import { t, type Key } from '../lib/i18n';
-  let { cat, title = true }: { cat: Cat; title?: boolean } = $props();
-  const live = $derived(GAMES.filter((g) => g.cat === cat && g.live));
-  const soon = $derived(GAMES.filter((g) => g.cat === cat && !g.live));
-  const daily = $derived(cat === 'arcade' ? byId(dailyGame()) : undefined);
+  // q: search text; daily: show this category's game of the day on top (the home page shows both together instead)
+  let { cat, title = true, q = '', daily = true }: { cat: Cat; title?: boolean; q?: string; daily?: boolean } = $props();
+  const abc = (a: Game, b: Game) => gameName(a).localeCompare(gameName(b));
+  const all = $derived(GAMES.filter((g) => g.cat === cat && matches(g, q)));
+  // classics: card games first, then the rest, each alphabetical; arcade keeps its order
+  const groups = $derived(cat === 'classic'
+    ? (['cards', 'table'] as const).map((k) => ({ k, games: all.filter((g) => g.live && g.group === k).sort(abc) })).filter((x) => x.games.length)
+    : [{ k: '', games: all.filter((g) => g.live) }]);
+  const soon = $derived(all.filter((g) => !g.live));
+  const today = $derived(byId(cat === 'arcade' ? dailyGame() : dailyClassic()));
 </script>
 
+{#if all.length}
 <section class="sec" id={cat}>
   {#if title}
     <header class="sh">
@@ -19,55 +27,36 @@
       <p>{t(('cat.' + cat + '.text') as Key)}</p>
     </header>
   {/if}
-  {#if daily}
-    <!-- game of the day: bigger card, pays a bonus on every win -->
-    <a class="dailycard" href={href(daily)}>
-      <div class="art"><GameArt id={daily.id} /></div>
-      <div class="dtxt">
-        <span class="badge mono">{t('daily.badge')}</span>
-        <p class="eyebrow">{t('daily.title')}</p>
-        <h3>{gameName(daily)}</h3>
-        <p>{t('daily.text')}</p>
-        <span class="btn primary">{t('daily.play')} →</span>
-      </div>
-    </a>
+  {#if daily && today && !q}<DailyCard g={today} />{/if}
+  {#each groups as grp}
+    {#if grp.k}<h3 class="grp eyebrow">{t(('group.' + grp.k) as Key)}</h3>{/if}
+    <div class="grid">
+      {#each grp.games as g, i (g.id)}
+        <a class="game rise" class:isdaily={g.id === today?.id} style="--i:{Math.min(i, 6)}" href={href(g)}>
+          <div class="art"><GameArt id={g.id} /></div>
+          <div class="txt">
+            <h3>{gameName(g)}</h3>
+            <p>{t(('game.' + g.id) as Key)}</p>
+          </div>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+      {/each}
+    </div>
+  {/each}
+  {#if soon.length}
+    <div class="soon">
+      {#each soon as g}
+        <a class="tile" href={href(g)}><span>{gameName(g)}</span><span class="eyebrow">{t('home.soon')}</span></a>
+      {/each}
+    </div>
   {/if}
-  <div class="grid">
-    {#each live as g, i}
-      <a class="game rise" class:isdaily={g.id === daily?.id} style="--i:{Math.min(i, 6)}" href={href(g)}>
-        <div class="art"><GameArt id={g.id} /></div>
-        <div class="txt">
-          <h3>{gameName(g)}</h3>
-          <p>{t(('game.' + g.id) as Key)}</p>
-        </div>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    {/each}
-  </div>
-  <div class="soon">
-    {#each soon as g}
-      <a class="tile" href={href(g)}><span>{gameName(g)}</span><span class="eyebrow">{t('home.soon')}</span></a>
-    {/each}
-  </div>
 </section>
+{/if}
 
 <style>
-  .dailycard { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); margin-bottom: 16px; border-radius: 28px; overflow: hidden; text-decoration: none; color: inherit;
-    background: var(--surface); border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 10%, transparent), 0 30px 60px -30px rgba(0,0,0,.6); transition: transform 0.45s var(--spring-snappy); }
-  .dailycard:hover { transform: translateY(-4px); }
-  /* fades in without moving, so it never slides over the cards below */
-  .dailycard { position: relative; z-index: 1; animation: dfade 0.6s var(--ease-snap) backwards; }
-  @keyframes dfade { from { opacity: 0; } }
-  .dailycard .art { min-height: 240px; position: relative; display: grid; }
-  .dailycard .art :global(.art) { height: 100%; }
-  .dtxt { display: grid; align-content: center; justify-items: start; gap: 8px; padding: clamp(18px, 3vw, 36px); }
-  .dtxt h3 { margin: 0; font-size: clamp(1.8rem, 3.6vw, 2.8rem); letter-spacing: -0.04em; line-height: 1; }
-  .dtxt p { margin: 0; color: var(--muted); }
-  .dtxt .btn { margin-top: 8px; }
-  .badge { padding: 4px 10px; border-radius: 999px; background: var(--gold); color: #1d1505; font-size: 0.75rem; font-weight: 700; animation: badge 2.4s ease-in-out infinite; }
-  @keyframes badge { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 20%, transparent); } }
   .game.isdaily { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 60%, transparent); }
-  @media (max-width: 720px) { .dailycard { grid-template-columns: 1fr; } .dailycard .art { min-height: 180px; } }
+  .grp { margin: 26px 0 12px; font: 500 0.72rem/1 'Geist Mono Variable', monospace; letter-spacing: 0.14em; }
+  .grp:first-of-type { margin-top: 0; }
   .sec { padding-top: 24px; scroll-margin-top: calc(var(--nav-h) + 12px); }
   .sh { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
   .sh h2 { margin: 6px 0 0; font-size: clamp(1.8rem, 3.6vw, 3rem); letter-spacing: -0.04em; font-weight: 700; }

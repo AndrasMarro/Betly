@@ -1,5 +1,6 @@
 // Global persisted state: settings + play-money wallet (localStorage only, nothing leaves the browser).
-import { dailyGame, DAILY_BONUS } from './daily';
+import { isDaily, DAILY_BONUS } from './daily';
+import type { Deck } from '../games/jass';
 const load = <T extends object>(key: string, def: T): T => {
   try {
     return { ...def, ...JSON.parse(localStorage.getItem(key) || '{}') };
@@ -25,7 +26,7 @@ export const settings = $state(
     // card deck for Jass and Durak (older saves: the Jass choice)
     cards: ((): 'classic' | 'de' | 'fr' | 'intl' | 'ru' => { try { return (localStorage.getItem('betly:jass-deck') as 'de') || 'de'; } catch { return 'de'; } })(),
     // the 52-card games have their own choice and start on the drawn standard cards
-    cards52: 'classic' as 'classic' | 'ru',
+    cards52: 'classic' as Deck,
   }),
 );
 
@@ -88,7 +89,7 @@ $effect.root(() => {
 /** Apply the net result of a finished round (stake already included). The game of the day adds a bonus on payouts. */
 export function settle(net: number, won = 0) {
   if (!Number.isFinite(net) || !Number.isFinite(won) || won < 0) throw new Error('invalid result');
-  if (won > 0 && location.hash.slice(2).split(/[/?]/)[0] === dailyGame()) {
+  if (won > 0 && isDaily(location.hash.slice(2).split(/[/?]/)[0])) {
     const extra = Math.round(won * DAILY_BONUS * 100) / 100;
     net += extra;
     won += extra;

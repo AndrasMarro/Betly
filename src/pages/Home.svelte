@@ -1,7 +1,13 @@
 <script lang="ts">
   import Wheel from '../components/Wheel.svelte';
   import GameSection from '../components/GameSection.svelte';
+  import DailyCard from '../components/DailyCard.svelte';
+  import { GAMES, byId, matches } from '../lib/games';
+  import { dailyGame, dailyClassic } from '../lib/daily';
   import { t, type Key } from '../lib/i18n';
+  let q = $state('');
+  const dailies = [byId(dailyClassic()), byId(dailyGame())].filter((g) => !!g);
+  const found = $derived(GAMES.some((g) => matches(g, q)));
 </script>
 
 <section class="hero">
@@ -18,9 +24,18 @@
 </section>
 
 <div id="games" class="wrap games">
-  <GameSection cat="classic" />
-  <div class="gap"></div>
-  <GameSection cat="arcade" />
+  <label class="search">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" /><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+    <input type="search" bind:value={q} placeholder={t('home.search')} aria-label={t('home.search')} />
+  </label>
+  {#if !q}
+    <div class="dailies">{#each dailies as g (g.id)}<DailyCard {g} />{/each}</div>
+    <div class="gap"></div>
+  {/if}
+  <GameSection cat="classic" {q} daily={false} />
+  {#if !q}<div class="gap"></div>{/if}
+  <GameSection cat="arcade" {q} daily={false} />
+  {#if !found}<p class="none">{t('home.none')}</p>{/if}
 
   <div class="feats">
     {#each [['feat.money', 'feat.moneyText'], ['feat.multi', 'feat.multiText'], ['feat.bots', 'feat.botsText']] as [h, p], i}
@@ -61,6 +76,12 @@
 
   .games { padding: 40px 0 80px; scroll-margin-top: var(--nav-h); }
   .gap { height: 72px; }
+  .search { position: relative; display: flex; align-items: center; gap: 10px; max-width: 520px; margin: 0 auto 28px; padding: 0 18px; min-height: 52px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--muted); }
+  .search:focus-within { border-color: var(--accent); }
+  .search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 1rem; outline: none; }
+  .dailies { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .dailies :global(.dailycard) { margin: 0; }
+  .none { text-align: center; color: var(--muted); padding: 40px 0; }
   h3 { margin: 0 0 6px; letter-spacing: -0.03em; }
   .feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 80px; border-top: 1px solid var(--line); padding-top: 32px; }
   .idx { color: var(--accent); font-size: 0.8rem; }
@@ -69,5 +90,6 @@
 
   @media (max-width: 960px) {
     .feats { grid-template-columns: 1fr; }
+    .dailies { grid-template-columns: 1fr; }
   }
 </style>

@@ -1,22 +1,23 @@
 import { settings } from './state.svelte';
 
 export type Cat = 'classic' | 'arcade';
-export type Game = { id: string; name: string | [de: string, en: string]; cat: Cat; live?: boolean };
+// group: the classics are shown as card games first, then table games, each alphabetical
+export type Game = { id: string; name: string | [de: string, en: string]; cat: Cat; live?: boolean; group?: 'cards' | 'table' };
 
 export const GAMES: Game[] = [
-  { id: 'roulette', name: 'Roulette', cat: 'classic', live: true },
-  { id: 'blackjack', name: 'Blackjack', cat: 'classic', live: true },
-  { id: 'slots', name: 'Slots', cat: 'classic', live: true },
-  { id: 'holdem', name: "Texas Hold'em", cat: 'classic', live: true },
-  { id: 'baccarat', name: 'Baccarat', cat: 'classic', live: true },
+  { id: 'roulette', group: 'table', name: 'Roulette', cat: 'classic', live: true },
+  { id: 'blackjack', group: 'cards', name: 'Blackjack', cat: 'classic', live: true },
+  { id: 'slots', group: 'table', name: 'Slots', cat: 'classic', live: true },
+  { id: 'holdem', group: 'cards', name: "Texas Hold'em", cat: 'classic', live: true },
+  { id: 'baccarat', group: 'cards', name: 'Baccarat', cat: 'classic', live: true },
   { id: 'craps', name: 'Craps', cat: 'classic' },
   { id: 'caribbean', name: 'Caribbean Stud', cat: 'classic' },
   { id: 'paigow', name: 'Pai Gow', cat: 'classic' },
-  { id: 'threecard', name: 'Three Card Poker', cat: 'classic', live: true },
-  { id: 'jass', name: 'Jass', cat: 'classic', live: true },
-  { id: 'derby', name: ['Pferderennen', 'Horse Racing'], cat: 'classic', live: true },
-  { id: 'durak', name: 'Durak', cat: 'classic', live: true },
-  { id: 'videopoker', name: 'Video Poker', cat: 'classic' },
+  { id: 'threecard', group: 'cards', name: 'Three Card Poker', cat: 'classic', live: true },
+  { id: 'jass', group: 'cards', name: 'Jass', cat: 'classic', live: true },
+  { id: 'derby', group: 'table', name: ['Pferderennen', 'Horse Racing'], cat: 'classic', live: true },
+  { id: 'durak', group: 'cards', name: 'Durak', cat: 'classic', live: true },
+  { id: 'lotto', name: 'Lotto', cat: 'classic' },
   { id: 'sicbo', name: 'Sic Bo', cat: 'classic' },
 
   { id: 'rocket', name: 'Rocket', cat: 'arcade', live: true },
@@ -42,3 +43,8 @@ export const GAMES: Game[] = [
 export const gameName = (g: Game) => (typeof g.name === 'string' ? g.name : g.name[settings.lang === 'de' ? 0 : 1]);
 export const byId = (id: string) => GAMES.find((g) => g.id === id);
 export const href = (g: Game) => (g.live ? `#/${g.id}` : `#/soon/${g.id}`);
+/** Search: matches the German and the English name and the id. */
+export const matches = (g: Game, q: string) => {
+  q = q.trim().toLowerCase();
+  return !q || [g.id, ...(typeof g.name === 'string' ? [g.name] : g.name)].some((n) => n.toLowerCase().includes(q));
+};

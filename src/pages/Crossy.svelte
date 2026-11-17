@@ -4,7 +4,7 @@
   import { newWorld, ensure, update, hit, logAt, blocked, warning, multAt, coinShare, COLS, MIN_STAKE, MAX_STAKE, BONUS_EVERY, BONUS, HOP_UP, BREAK, SINK, type World, type Lane, type Item } from '../games/crossy';
   import HowTo from '../components/HowTo.svelte';
   import { settle, stake as takeStake, credit, wallet, settings, fmt } from '../lib/state.svelte';
-  import { dailyGame } from '../lib/daily';
+  import { isDaily as daily } from '../lib/daily';
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
   import { t } from '../lib/i18n';
@@ -309,7 +309,7 @@
     ctx.restore();
   }
 
-  const isDaily = dailyGame() === 'crossy';
+  const isDaily = daily('crossy');
   if (import.meta.env.DEV) (window as any).__cr = { jump(r: number) { ensure(world, r + 40); P.row = P.fromRow = r; cam = camMin = r - 3; for (const l of world.lanes) if (l.type === 'rail') l.t = 1; }, world: () => world };
 </script>
 

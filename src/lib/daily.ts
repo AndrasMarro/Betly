@@ -1,4 +1,4 @@
-// Daily features: one arcade game per day pays a bonus, and seeded randomness for daily challenges.
+// Daily features: one arcade and one classic game per day pay a bonus, and seeded randomness for daily challenges.
 export const DAILY_BONUS = 0.2; // +20 % on every payout in the game of the day
 const POOL = ['rocket', 'cases', 'mines', 'minesweeper', 'dice', 'hop', 'plinko', 'wheel', 'hilo', 'tower', 'coinflip', 'scratch', 'snake', 'crossy', 'balloon'];
 
@@ -18,3 +18,7 @@ export function rng(seed: number) {
 }
 
 export const dailyGame = (day = today()) => POOL[Math.floor(rng(day * 7 + 3)() * POOL.length)];
+// and one classic game per day, with the same bonus
+const CLASSICS = ['roulette', 'blackjack', 'slots', 'holdem', 'baccarat', 'threecard', 'jass', 'derby', 'durak'];
+export const dailyClassic = (day = today()) => CLASSICS[Math.floor(rng(day * 13 + 5)() * CLASSICS.length)];
+export const isDaily = (id: string) => id === dailyGame() || id === dailyClassic();
