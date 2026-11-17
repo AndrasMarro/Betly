@@ -41,3 +41,5 @@ export function lottoRank(nums: number[], lucky: number, drawn: number[], drawnL
   const h = nums.filter((x) => drawn.includes(x)).length, l = lucky === drawnLucky;
   return RANKS.findIndex(([rh, rl]) => rh === h && rl === l);
 }
+/** Daily lotto: the ticket is free, so prizes are fixed amounts per rank (same order as RANKS). */
+export const DAILY_PRIZE = [1_000_000, 100_000, 20_000, 5_000, 1_000, 250, 100, 40, 15];

@@ -239,16 +239,18 @@ export const GUIDES: Record<string, Guide> = {
   },
   lotto: {
     de: [
-      { h: 'Ziel', p: 'Tippe 6 der Zahlen 1–42 und eine Glückszahl 1–6. Gezogen werden 6 Zahlen und eine Glückszahl.' },
-      { h: 'Ablauf', li: ['Zahlen ankreuzen oder Quick-Tipp, dann «Tipp hinzufügen». Bis zu 6 Tipps pro Ziehung.', 'Einsatz gilt pro Tipp. «Abgeben» bezahlt, «Zurücknehmen» gibt ihn vor der Ziehung zurück.', 'Wer den Tisch eröffnet hat, startet die Ziehung.'] },
+      { h: 'Ziel', p: 'Kreuze auf einem Schein 6 der Zahlen 1–42 und eine Glückszahl 1–6 an. Gezogen werden 6 Zahlen und eine Glückszahl.' },
+      { h: 'Tageslotto', li: ['Ein Gratis-Schein pro Tag. Abgeben bis 20:00 (Zürcher Zeit), dann wird gezogen.', 'Du musst bei der Ziehung nicht online sein: Den Gewinn bekommst du beim nächsten Besuch.', 'Feste Gewinne von 15 (2 + ★) bis 1 000 000 (6 + ★).', 'Rechts: wer heute im Topf ist, die letzten Ziehungen und wer gewonnen hat.'] },
+      { h: 'Runde', li: ['Bis zu 6 Scheine, der Einsatz gilt pro Schein. «Leere ausfüllen» füllt offene Scheine zufällig.', '«Abgeben» bezahlt, «Zurücknehmen» gibt den Einsatz vor der Ziehung zurück, «Alle löschen» räumt alle Scheine weg.', 'Wer den Tisch eröffnet hat, startet die Ziehung. Unter der Trommel stehen die letzten Ziehungen.'] },
       { h: 'Gewinnränge', li: ['6 Richtige + Glückszahl: Jackpot', '6, 5 + ★, 5, 4 + ★, 4, 3 + ★, 3 Richtige', '2 Richtige + Glückszahl'] },
-      { h: 'Mehrspieler', p: 'Eröffne einen Raum und teile den Code. Alle sehen dieselbe Ziehung, am Ende zeigt die Rangliste die Gewinne. Bots spielen mit, wenn sie eingeschaltet sind.' },
+      { h: 'Mehrspieler', p: 'Eröffne im Reiter «Runde» einen Raum und teile den Code. Alle sehen dieselbe Ziehung; rechts steht bei jedem, welche Zahlen getroffen haben und was gewonnen wurde. Bots spielen mit, wenn sie eingeschaltet sind.' },
     ],
     en: [
-      { h: 'Goal', p: 'Pick 6 of the numbers 1–42 and a lucky number 1–6. The draw is 6 numbers and one lucky number.' },
-      { h: 'Flow', li: ['Mark numbers or take a quick pick, then "Add ticket". Up to 6 tickets per draw.', 'The stake is per ticket. "Hand in" pays, "Take back" refunds before the draw.', 'Whoever opened the table starts the draw.'] },
+      { h: 'Goal', p: 'On a ticket mark 6 of the numbers 1–42 and a lucky number 1–6. The draw is 6 numbers and one lucky number.' },
+      { h: 'Daily draw', li: ['One free ticket a day. Hand it in before 20:00 (Zurich time), then the draw happens.', 'You do not need to be online for the draw: you get the prize on your next visit.', 'Fixed prizes from 15 (2 + ★) to 1,000,000 (6 + ★).', 'On the right: who is in today, the last draws and who won.'] },
+      { h: 'Round', li: ['Up to 6 tickets, the stake is per ticket. "Fill empty" fills open tickets at random.', '"Hand in" pays, "Take back" refunds before the draw, "Clear all" removes every ticket.', 'Whoever opened the table starts the draw. The last draws are listed below the drum.'] },
       { h: 'Prize ranks', li: ['6 right + lucky number: jackpot', '6, 5 + ★, 5, 4 + ★, 4, 3 + ★, 3 right', '2 right + lucky number'] },
-      { h: 'Multiplayer', p: 'Open a room and share the code. Everyone sees the same draw and the leaderboard shows the wins. Bots join in when switched on.' },
+      { h: 'Multiplayer', p: 'Open a room in the "Round" tab and share the code. Everyone sees the same draw; on the right you see for each player which numbers hit and what they won. Bots join in when switched on.' },
     ],
   },
   hop: {

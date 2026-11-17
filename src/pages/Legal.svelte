@@ -79,6 +79,12 @@
         : 'Only if you actively open or join a room, a connection is made to the realtime service of Supabase (Supabase Inc., USA, with servers in Frankfurt am Main, EU), which relays the game data between the players\' browsers. A random player ID, your player name, game actions and play-money bets are sent to the other people in the same room; for technical reasons Supabase processes your IP address. Messages are not stored permanently. No account is needed for this. This disclosure happens because you explicitly use the feature (for persons in the EU: Art. 6(1)(b) GDPR). If you do not want this, play at the solo table; none of these transfers happen then.'}
     </p>
 
+    <p>
+      {de
+        ? 'Tageslotto: Wenn du einen Gratis-Schein abgibst, werden dein Spielername, deine getippten Zahlen, das Datum und eine zufällige Geräte-ID bei Supabase (Server in Frankfurt am Main, EU) gespeichert. Name und Zahlen sind für alle Besucher in der Liste «Heute im Topf» und bei den letzten Ziehungen sichtbar; die Geräte-ID nicht. Wähle deshalb einen Spielernamen, der dich nicht identifiziert. Gib keinen Schein ab, wenn du das nicht möchtest.'
+        : 'Daily draw: when you hand in a free ticket, your player name, your numbers, the date and a random device ID are stored with Supabase (servers in Frankfurt am Main, EU). Name and numbers are visible to all visitors in the list of today’s players and in the last draws; the device ID is not. So pick a player name that does not identify you. Don’t hand in a ticket if you don’t want this.'}
+    </p>
+
     <h2>7. {de ? 'Konto (optional)' : 'Account (optional)'}</h2>
     <p>
       {de
