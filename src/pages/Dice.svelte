@@ -3,6 +3,8 @@
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
   import Dice3D from '../components/Dice3D.svelte';
+  import DiceGL from '../components/DiceGL.svelte';
+  let gl = $state(true); // the CSS dice take over without WebGL
   import { diceMid, diceMult, diceProb, diceWins, mineMult, roll } from '../games/arcade';
   import { wallet, settle, stake, fmt, settings } from '../lib/state.svelte';
   import { byId, gameName } from '../lib/games';
@@ -101,8 +103,13 @@
   {/snippet}
 
   <div class="table">
-    <div class="stage"><Dice3D {values} {rolls} size={diceSize} faces={f} mines={kind === 'mine' ? mines : 0} ondone={() => done()} /></div>
-    <div class="result">
+    <div class="stage" class:css={!gl}>
+      {#if gl}
+        <DiceGL {values} {rolls} faces={f} mines={kind === 'mine' ? mines : 0} ondone={() => done()} onfail={() => (gl = false)} />
+      {:else}
+        <Dice3D {values} {rolls} size={diceSize} faces={f} mines={kind === 'mine' ? mines : 0} ondone={() => done()} />
+      {/if}
+      <div class="result">
       {#if last}
         {#if kind === 'mine'}
           <span class="sum" in:scale={{ start: 0.6, duration: 300 }}>{last.boom ? '💥 BOOM' : L('Überlebt', 'Survived')}</span>
@@ -111,6 +118,7 @@
         {/if}
         <span class="mono" class:pos={last.win > 0} in:fly={{ y: 8 }}>{last.win > 0 ? '+' + fmt(last.win) : '0'}</span>
       {/if}
+      </div>
     </div>
     {#if kind !== 'mine'}
       <div class="opts" style="--n:{opts.length}">
@@ -153,9 +161,10 @@
       radial-gradient(ellipse at 50% 0%, #4a2a66, #24123a 55%, #12081f);
     box-shadow: 0 30px 60px -30px rgba(0,0,0,.7), inset 0 0 0 1px rgba(214,178,94,.55), inset 0 0 0 7px rgba(0,0,0,.25), inset 0 0 0 8px rgba(214,178,94,.25), inset 0 0 80px rgba(0,0,0,.5);
   }
-  .table::before { content: '♛'; position: absolute; left: 50%; top: 10px; translate: -50% 0; font-size: 1.1rem; color: var(--gold); opacity: 0.55; z-index: -1; }
-  .stage { padding: 10px 0 0; overflow: hidden; }
-  .result { min-height: 54px; display: flex; gap: 16px; align-items: center; justify-content: center; font-size: 1.3rem; }
+  /* the 3D table: the dice land on a velvet mat; the result floats over the top of it */
+  .stage { position: relative; height: clamp(300px, 46vh, 440px); border-radius: 20px; overflow: hidden; box-shadow: 0 0 0 1px rgba(214,178,94,.35); }
+  .stage.css { height: auto; padding-top: 70px; }
+  .result { position: absolute; left: 0; right: 0; top: 12px; z-index: 1; min-height: 54px; display: flex; gap: 16px; align-items: center; justify-content: center; font-size: 1.3rem; pointer-events: none; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
   .sum { font-size: 2.4rem; font-weight: 700; color: #ffe7a8; }
   .pos { color: #6ff0a6; }
   .opts { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 8px; }

@@ -103,7 +103,8 @@ export function coinFace(side: 'heads' | 'tails', size = 1024) {
 }
 
 /** Warm wooden table with a round green felt mat in the middle. */
-export function tableTop(S = 1024) {
+/** A wooden table with a felt mat: round and green for the coin, or a long purple velvet mat for the dice. */
+export function tableTop(S = 1024, felt: [string, string] = ['#155c3e', '#0a3423'], rect = false) {
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const ctx = cv.getContext('2d')!;
@@ -123,17 +124,19 @@ export function tableTop(S = 1024) {
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(p * pw, 0, 3, S);
   }
   // felt mat with a gold stitched border
-  const c = S / 2, r = S * 0.3;
+  const c = S / 2, r = S * 0.3, rw = S * 0.36, rh = S * 0.2;
+  const mat = (inset: number) => { ctx.beginPath(); if (rect) ctx.roundRect(c - rw + inset, c - rh + inset, (rw - inset) * 2, (rh - inset) * 2, 40 - inset); else ctx.arc(c, c, r - inset, 0, Math.PI * 2); };
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 30;
-  const felt = ctx.createRadialGradient(c, c, r * 0.1, c, c, r);
-  felt.addColorStop(0, '#155c3e'); felt.addColorStop(1, '#0a3423');
-  ctx.fillStyle = felt; ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.fill();
+  const g = ctx.createRadialGradient(c, c, r * 0.1, c, c, rect ? rw : r);
+  g.addColorStop(0, felt[0]); g.addColorStop(1, felt[1]);
+  ctx.fillStyle = g; mat(0); ctx.fill();
   ctx.restore();
-  const img = ctx.getImageData(c - r, c - r, r * 2, r * 2), d = img.data;
+  const bw = rect ? rw : r, bh = rect ? rh : r;
+  const img = ctx.getImageData(c - bw, c - bh, bw * 2, bh * 2), d = img.data;
   for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - 0.5) * 14; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
-  ctx.putImageData(img, c - r, c - r);
+  ctx.putImageData(img, c - bw, c - bh);
   ctx.setLineDash([10, 8]); ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(232,196,120,.75)';
-  ctx.beginPath(); ctx.arc(c, c, r - 16, 0, Math.PI * 2); ctx.stroke();
+  mat(16); ctx.stroke();
   return cv;
 }
