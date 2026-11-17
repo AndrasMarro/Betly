@@ -25,7 +25,7 @@
 {:else if (down ? backScan : scan)}
   <div class="card" class:intl={deck === 'intl'} class:ru={deck === 'ru'}><img class="scan" src={down ? backScan : scan} alt={down ? '' : name} draggable="false" /></div>
 {:else}
-  <CardView card={down ? { r: 0, s: 0 } : { r: card.r === 14 ? 1 : card.r, s: FR[card.s] }} />
+  <CardView deck="classic" card={down ? { r: 0, s: 0 } : { r: card.r === 14 ? 1 : card.r, s: FR[card.s] }} />
 {/if}
 
 <style>

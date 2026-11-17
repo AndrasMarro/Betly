@@ -1,6 +1,6 @@
 // Card decks. Two settings: settings.cards for the 36-card games (Jass, Durak) and settings.cards52 for the
-// 52-card games (Blackjack, Hold'em, Baccarat, Three Card, Hi-Lo), which start on the drawn standard deck; only a
-// full 52-card picture deck (the Russian Atlas one) can replace it there. A picture deck shows up once its files
+// 52-card games (Blackjack, Hold'em, Baccarat, Three Card, Hi-Lo), which start on the drawn standard deck; the
+// French-suited picture decks can replace it there (the 36-card ones keep their 2 to 5 drawn). A picture deck shows up once its files
 // are in src/assets/jass/<deck>/ (see the README there); 'classic' are the drawn cards and always there.
 import type { Deck } from '../games/jass';
 export type Choice = Deck;
@@ -25,4 +25,4 @@ export function pickDeck<T extends Deck>(chosen: Deck, supported: T[]): T {
 export const JASS: Deck[] = ['classic', 'de', 'fr', 'intl', 'ru'];
 export const DURAK: Deck[] = ['classic', 'fr', 'intl', 'ru'];
 /** The decks the 52-card games can use. */
-export const FULL: Deck[] = ['classic', 'ru'];
+export const FULL: Deck[] = ['classic', 'fr', 'intl', 'ru'];

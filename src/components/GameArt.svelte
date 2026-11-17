@@ -13,8 +13,6 @@
   import { coinFace } from '../lib/coinface';
   import JassCard from './JassCard.svelte';
   import { settings } from '../lib/state.svelte';
-  import { pickDeck, DURAK } from '../lib/decks';
-  const dkDeck = $derived(pickDeck(settings.cards, DURAK));
   import Dice3D from './Dice3D.svelte';
   const coinCache: Record<string, string> = {};
   const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 512).toDataURL('image/png'));
@@ -116,7 +114,7 @@
     <CrossyArt />
   {:else if id === 'durak'}
     <div class="dk">
-      {#each [{ s: 0, r: 6 }, { s: 2, r: 6 }, { s: 1, r: 6 }] as c, i}<div class="dkc" style="--i:{i}"><JassCard card={c} deck={dkDeck} /></div>{/each}
+      {#each [{ s: 0, r: 6 }, { s: 2, r: 6 }, { s: 1, r: 6 }] as c, i}<div class="dkc" style="--i:{i}"><JassCard card={c} deck="ru" /></div>{/each}
       <svg class="dkhat" viewBox="0 0 48 40" aria-hidden="true"><path d="M4 34 C6 20 14 10 24 8 C34 10 42 20 44 34Z" fill="#c8102e" /><path d="M24 8 C18 12 10 14 4 10 C10 20 16 26 18 34" fill="#f2c33a" /><path d="M24 8 C30 12 38 14 44 10 C38 20 32 26 30 34" fill="#1f5fbf" /><circle cx="4" cy="10" r="3.4" fill="#fff" /><circle cx="44" cy="10" r="3.4" fill="#fff" /><circle cx="24" cy="6" r="3.4" fill="#fff" /><rect x="2" y="32" width="44" height="6" rx="3" fill="#2a2a32" /></svg>
     </div>
   {:else if id === 'derby'}
@@ -143,7 +141,7 @@
     <span class="tcpp mono">PAIR PLUS 40:1</span>
   {:else if id === 'jass'}
     <div class="js">
-      {#each [{ s: 1, r: 11 }, { s: 1, r: 9 }, { s: 0, r: 14 }, { s: 3, r: 13 }] as c, i}<div class="jsc" style="--i:{i}; --y:{[8, 1, 1, 8][i]}px"><JassCard card={c} /></div>{/each}
+      {#each [{ s: 1, r: 11 }, { s: 1, r: 9 }, { s: 0, r: 14 }, { s: 3, r: 13 }] as c, i}<div class="jsc" style="--i:{i}; --y:{[8, 1, 1, 8][i]}px"><JassCard card={c} deck="fr" /></div>{/each}
     </div>
     <span class="tcpp mono">STÖCK · WEIS · STICH</span>
   {:else if id === 'baccarat'}

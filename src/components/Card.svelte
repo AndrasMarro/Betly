@@ -2,7 +2,9 @@
   // Playing card drawn as SVG: real pip layouts, framed court cards, patterned back, 3D flip.
   import { RANKS, SUIT, type Card } from '../lib/cards';
   import { settings } from '../lib/state.svelte';
-  let { card, small = false }: { card: Card; small?: boolean } = $props();
+  import type { Deck } from '../games/jass';
+  // deck: the picture deck chosen for the 52-card games; 'classic' (always for Jass/Durak fallbacks) draws the card
+  let { card, small = false, deck = settings.cards52 }: { card: Card; small?: boolean; deck?: Deck } = $props();
   const uid = $props.id();
   const red = $derived(card.s === 1 || card.s === 2);
   const ink = $derived(red ? '#c8262c' : '#16161a');
@@ -21,15 +23,16 @@
     10: [[C[0], R[0]], [C[2], R[0]], [C[1], 100], [C[0], 140], [C[2], 140], [C[0], 210], [C[2], 210], [C[1], 250], [C[0], R[6]], [C[2], R[6]]],
   };
   const COURT: Record<number, string> = { 11: 'J', 12: 'Q', 13: 'K' };
-  // the Russian Atlas deck (all 52 cards and a back) replaces the drawn cards when it is the chosen deck
-  const ATLAS = import.meta.glob('../assets/jass/ru/*.webp', { eager: true, import: 'default' }) as Record<string, string>;
+  // a picture deck replaces the drawn cards it has pictures for: the Russian Atlas deck all 52 and a back,
+  // the Swiss French and international ones only 6 to ace, so 2 to 5 and the back stay drawn
+  const PICS = import.meta.glob('../assets/jass/*/*.webp', { eager: true, import: 'default' }) as Record<string, string>;
   const SU = ['schaufel', 'herz', 'ecke', 'kreuz'], RK: Record<number, string> = { 1: 'ass', 11: 'bauer', 12: 'dame', 13: 'koenig' };
-  const atlas = $derived(settings.cards52 === 'ru');
-  const pic = $derived(atlas && card.r ? ATLAS[`../assets/jass/ru/${SU[card.s]}-${RK[card.r] ?? card.r}.webp`] : null);
-  const backPic = $derived(atlas ? ATLAS['../assets/jass/ru/back.webp'] : null);
+  const pics = $derived(deck !== 'classic' && deck !== 'de');
+  const pic = $derived(pics && card.r ? PICS[`../assets/jass/${deck}/${SU[card.s]}-${RK[card.r] ?? card.r}.webp`] : null);
+  const backPic = $derived(pics ? PICS[`../assets/jass/${deck}/back.webp`] : null);
 </script>
 
-<div class="card" class:small class:down={card.r === 0} class:atlas={!!backPic}>
+<div class="card" class:small class:down={card.r === 0} class:ru={pics && deck === 'ru'} class:fr={pics && deck === 'fr'}>
   <div class="inner">
     {#if pic}<img class="face pic" src={pic} alt="{RANKS[card.r]} {['spades', 'hearts', 'diamonds', 'clubs'][card.s]}" draggable="false" />{:else}
     <svg class="face" viewBox="0 0 250 350" aria-label="{RANKS[card.r]} {['spades', 'hearts', 'diamonds', 'clubs'][card.s]}" role="img">
@@ -82,7 +85,9 @@
 
 <style>
   .card { width: var(--cw, 64px); aspect-ratio: 5 / 7; perspective: 800px; flex: none; }
-  .card.atlas { aspect-ratio: 2 / 3; }
+  .card.ru { aspect-ratio: 2 / 3; }
+  .card.fr { aspect-ratio: 15 / 23; }
+  .card.ru svg, .card.fr svg { width: 100%; height: 100%; }
   .pic { display: block; width: 100%; height: 100%; object-fit: fill; }
   .card.small { --cw: 48px; }
   .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.6s var(--spring-smooth); }
