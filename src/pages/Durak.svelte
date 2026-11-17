@@ -321,6 +321,7 @@
       <span class="mono muted small">{t('stake')} {fmt(staked)}</span>
     {/if}
   </div>
+  {#if deck === 'ru'}<p class="credit">{lang === 'ru' ? 'Карты' : lang === 'en' ? 'Cards' : 'Karten'}: <a href="https://commons.wikimedia.org/wiki/File:Atlasnye_playing_cards_deck_2.svg" target="_blank" rel="noopener noreferrer">Atlasnye playing cards, Wikimedia Commons</a></p>{/if}
 </section>
 
 {#if guide}<DurakGuide {lang} {deck} onclose={() => (guide = false)} />{/if}
@@ -328,6 +329,8 @@
 
 <style>
   .page { padding-bottom: 80px; }
+  .credit { font-size: 0.78rem; color: var(--muted); margin: 12px 0 0; }
+  .credit a { color: inherit; }
   .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 8px; }
   .h1row { display: flex; align-items: center; gap: 10px; }
   h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; }

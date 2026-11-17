@@ -1,4 +1,6 @@
 <script lang="ts">
+  import DeckSelect from '../components/DeckSelect.svelte';
+  import { FULL } from '../lib/decks';
   import { cubicOut } from 'svelte/easing';
   import CardView from '../components/Card.svelte';
   import HowTo from '../components/HowTo.svelte';
@@ -103,7 +105,7 @@
   <header class="head rise">
     <div>
       <p class="eyebrow">Punto Banco · 8 decks</p>
-      <div class="h1row"><h1>Baccarat</h1><HowTo id="baccarat" /></div>
+      <div class="h1row"><h1>Baccarat</h1><HowTo id="baccarat" /><DeckSelect supported={FULL} /></div>
     </div>
     <div class="stats mono">
       <span class="p">P {counts.player}</span><span class="b">B {counts.banker}</span><span class="tt">T {counts.tie}</span>

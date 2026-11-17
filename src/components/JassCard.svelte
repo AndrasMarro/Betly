@@ -22,7 +22,7 @@
   {#if deck === 'de' && deIcon}<img class="ico" src={deIcon} alt="" />
   {:else}<span class="fr" style:color={card.s === 0 || card.s === 3 ? '#e5484d' : 'currentColor'}>{['♥', '♠', '♣', '♦'][card.s]}</span>{/if}
 {:else if (down ? backScan : scan)}
-  <div class="card" class:intl={deck === 'intl' || deck === 'ru'}><img class="scan" src={down ? backScan : scan} alt={down ? '' : name} draggable="false" /></div>
+  <div class="card" class:intl={deck === 'intl'} class:ru={deck === 'ru'}><img class="scan" src={down ? backScan : scan} alt={down ? '' : name} draggable="false" /></div>
 {:else}
   <CardView card={down ? { r: 0, s: 0 } : { r: card.r === 14 ? 1 : card.r, s: FR[card.s] }} />
 {/if}
@@ -30,7 +30,8 @@
 <style>
   /* the Swiss scans are 240 x 368, the international ones 240 x 336 */
   .card { width: var(--cw, 64px); aspect-ratio: 15 / 23; flex: none; }
-  .card.intl { aspect-ratio: 5 / 7; } /* the international deck has the usual poker-card shape */
+  .card.intl { aspect-ratio: 5 / 7; }
+  .card.ru { aspect-ratio: 2 / 3; } /* the international deck has the usual poker-card shape */
   .scan { display: block; width: 100%; height: 100%; border-radius: calc(var(--cw, 64px) * 0.06); box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 12px 24px -12px rgba(0,0,0,.7); }
   .ico { width: 1.25em; height: 1.25em; vertical-align: -0.25em; object-fit: contain; }
   .fr { font-size: 1.15em; line-height: 1; }

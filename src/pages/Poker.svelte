@@ -1,4 +1,6 @@
 <script lang="ts">
+  import DeckSelect from '../components/DeckSelect.svelte';
+  import { FULL } from '../lib/decks';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { fly } from 'svelte/transition';
   import { cubicOut, cubicIn } from 'svelte/easing';
@@ -363,7 +365,7 @@
 <section class="pk">
   <header class="head">
     <div class="ttl">
-      <div class="h1row"><h1>Texas Hold'em</h1><HowTo id="holdem" label={false} /><button class="btn sm" class:on={showRanks} onclick={() => (showRanks = !showRanks)} aria-expanded={showRanks}>{t('pk.ranks')}</button></div>
+      <div class="h1row"><h1>Texas Hold'em</h1><HowTo id="holdem" label={false} /><button class="btn sm" class:on={showRanks} onclick={() => (showRanks = !showRanks)} aria-expanded={showRanks}>{t('pk.ranks')}</button><DeckSelect supported={FULL} /></div>
       <span class="mono blinds">{view.sb}/{view.bb}</span>
     </div>
     <RoomBar {room}>

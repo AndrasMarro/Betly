@@ -113,8 +113,9 @@
         {/each}
       </div>
     </div>
-    <div class="field">{settings.lang === 'de' ? 'Kartenblatt (Jass, Durak)' : 'Card deck (Jass, Durak)'}
-      <DeckSelect supported={['de', 'fr', 'intl', 'ru']} lang={settings.lang} />
+    <div class="field">{settings.lang === 'de' ? 'Kartenblatt' : 'Card deck'}
+      <DeckSelect supported={['classic', 'de', 'fr', 'intl', 'ru']} lang={settings.lang} />
+      <span class="small muted">{settings.lang === 'de' ? 'Gilt für alle Kartenspiele. Ein Blatt, das ein Spiel nicht kennt, ersetzt es durch sein eigenes; das russische hat alle 52 Karten und passt überall.' : 'Used by every card game. A game that cannot use the chosen deck falls back to its own; the Russian one has all 52 cards and fits everywhere.'}</span>
     </div>
     <label class="switch"><span>{t('settings.bots')}</span><input type="checkbox" bind:checked={settings.bots} /></label>
     <label class="switch"><span>{t('settings.sound')}</span><input type="checkbox" bind:checked={settings.sound} /></label>

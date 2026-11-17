@@ -1,4 +1,6 @@
 <script lang="ts">
+  import DeckSelect from '../components/DeckSelect.svelte';
+  import { FULL } from '../lib/decks';
   import { cubicOut } from 'svelte/easing';
   import CardView from '../components/Card.svelte';
   import HowTo from '../components/HowTo.svelte';
@@ -106,7 +108,7 @@
   <header class="head rise">
     <div>
       <p class="eyebrow">{L('Gegen den Dealer · Pair Plus', 'Against the dealer · Pair Plus')}</p>
-      <div class="h1row"><h1>Three Card Poker</h1><HowTo id="threecard" /></div>
+      <div class="h1row"><h1>Three Card Poker</h1><HowTo id="threecard" /><DeckSelect supported={FULL} /></div>
     </div>
     <label class="switch mini"><span>{L('Strategie-Tipp', 'Strategy hint')}</span><input type="checkbox" bind:checked={hints} /></label>
   </header>

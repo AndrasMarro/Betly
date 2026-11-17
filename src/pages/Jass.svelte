@@ -428,7 +428,8 @@
       {L('Bildquellen der Kartenblätter:', 'Card image sources:')}
       <a href="https://jassverzeichnis.ch/uebersicht/franzoesische-jasskarten" target="_blank" rel="noopener noreferrer">jassverzeichnis.ch</a>,
       <a href="https://github.com/d-sbrgr/DSPRO2-jassAIr/tree/main" target="_blank" rel="noopener noreferrer">d-sbrgr/DSPRO2-jassAIr</a>,
-      <a href="https://github.com/saadelmoutaouakil/Jass-Game/tree/master" target="_blank" rel="noopener noreferrer">saadelmoutaouakil/Jass-Game</a>
+      <a href="https://github.com/saadelmoutaouakil/Jass-Game/tree/master" target="_blank" rel="noopener noreferrer">saadelmoutaouakil/Jass-Game</a>,
+      <a href="https://commons.wikimedia.org/wiki/File:Atlasnye_playing_cards_deck_2.svg" target="_blank" rel="noopener noreferrer">Wikimedia Commons (Atlas)</a>
     </p>
 </section>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   // Playing card drawn as SVG: real pip layouts, framed court cards, patterned back, 3D flip.
   import { RANKS, SUIT, type Card } from '../lib/cards';
+  import { settings } from '../lib/state.svelte';
   let { card, small = false }: { card: Card; small?: boolean } = $props();
   const uid = $props.id();
   const red = $derived(card.s === 1 || card.s === 2);
@@ -20,10 +21,17 @@
     10: [[C[0], R[0]], [C[2], R[0]], [C[1], 100], [C[0], 140], [C[2], 140], [C[0], 210], [C[2], 210], [C[1], 250], [C[0], R[6]], [C[2], R[6]]],
   };
   const COURT: Record<number, string> = { 11: 'J', 12: 'Q', 13: 'K' };
+  // the Russian Atlas deck (all 52 cards and a back) replaces the drawn cards when it is the chosen deck
+  const ATLAS = import.meta.glob('../assets/jass/ru/*.webp', { eager: true, import: 'default' }) as Record<string, string>;
+  const SU = ['schaufel', 'herz', 'ecke', 'kreuz'], RK: Record<number, string> = { 1: 'ass', 11: 'bauer', 12: 'dame', 13: 'koenig' };
+  const atlas = $derived(settings.cards === 'ru');
+  const pic = $derived(atlas && card.r ? ATLAS[`../assets/jass/ru/${SU[card.s]}-${RK[card.r] ?? card.r}.webp`] : null);
+  const backPic = $derived(atlas ? ATLAS['../assets/jass/ru/back.webp'] : null);
 </script>
 
-<div class="card" class:small class:down={card.r === 0}>
+<div class="card" class:small class:down={card.r === 0} class:atlas={!!backPic}>
   <div class="inner">
+    {#if pic}<img class="face pic" src={pic} alt="{RANKS[card.r]} {['spades', 'hearts', 'diamonds', 'clubs'][card.s]}" draggable="false" />{:else}
     <svg class="face" viewBox="0 0 250 350" aria-label="{RANKS[card.r]} {['spades', 'hearts', 'diamonds', 'clubs'][card.s]}" role="img">
       <defs>
         <linearGradient id="{uid}-paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" /><stop offset="1" stop-color="#f1eee6" /></linearGradient>
@@ -54,7 +62,8 @@
           {/if}
         </g>
       {/if}
-    </svg>
+    </svg>{/if}
+    {#if backPic}<img class="back pic" src={backPic} alt="" draggable="false" />{:else}
     <svg class="back" viewBox="0 0 250 350" aria-hidden="true">
       <defs>
         <pattern id="{uid}-lat" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -67,12 +76,14 @@
       <rect x="20" y="20" width="210" height="310" rx="10" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" />
       <circle cx="125" cy="175" r="34" fill="#fbfaf7" />
       <circle cx="125" cy="175" r="24" fill="none" stroke="var(--card-back, #8e1b22)" stroke-width="9" stroke-dasharray="9 6" />
-    </svg>
+    </svg>{/if}
   </div>
 </div>
 
 <style>
   .card { width: var(--cw, 64px); aspect-ratio: 5 / 7; perspective: 800px; flex: none; }
+  .card.atlas { aspect-ratio: 2 / 3; }
+  .pic { display: block; width: 100%; height: 100%; object-fit: fill; }
   .card.small { --cw: 48px; }
   .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.6s var(--spring-smooth); }
   .down .inner { transform: rotateY(180deg); }

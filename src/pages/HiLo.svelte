@@ -3,6 +3,8 @@
   import ArcadeLayout from '../components/ArcadeLayout.svelte';
   import BetInput from '../components/BetInput.svelte';
   import CardView from '../components/Card.svelte';
+  import DeckSelect from '../components/DeckSelect.svelte';
+  import { FULL } from '../lib/decks';
   import { drawRank, hiloMult, pHigher, pLower } from '../games/arcade';
   import { wallet, settle, stake, fmt } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
@@ -72,6 +74,7 @@
 </script>
 
 <ArcadeLayout eyebrow="Arcade · A low, K high" title="Hi-Lo">
+  {#snippet top()}<DeckSelect supported={FULL} />{/snippet}
   {#snippet controls()}
     {#if phase === 'play'}
       <button class="btn big cash" disabled={!probs.length || busy} onclick={cashout}>{t('a.cashout')} <span class="mono">{fmt(Math.round(stakeNow * mult * 100) / 100)}</span></button>
