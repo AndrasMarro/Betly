@@ -2,20 +2,35 @@
   // "How to play" button plus dialog with the game's guide (and the poker hand rankings where relevant).
   import { GUIDES } from '../lib/guides';
   import HandRanks from './HandRanks.svelte';
+  import JassSteps from './JassSteps.svelte';
+  import PokerSteps from './PokerSteps.svelte';
   import { settings } from '../lib/state.svelte';
   import { t } from '../lib/i18n';
   let { id, label = true }: { id: string; label?: boolean } = $props();
   const guide = $derived(GUIDES[id]);
   let dlg = $state<HTMLDialogElement>()!;
+  // games with an animated step-by-step guide open on it; the full text stays one tab away
+  const STEPS: Record<string, typeof JassSteps | undefined> = { jass: JassSteps, holdem: PokerSteps };
+  const Steps = $derived(STEPS[id]);
+  let open = $state(false), tab = $state<'steps' | 'text'>('steps');
 </script>
 
 {#if guide}
-  <button class="btn sm howto" onclick={() => dlg.showModal()} aria-label={t('howto')}>
+  <button class="btn sm howto" onclick={() => { tab = 'steps'; open = true; dlg.showModal(); }} aria-label={t('howto')}>
     <span class="q" aria-hidden="true">?</span>{#if label}<span>{t('howto')}</span>{/if}
   </button>
-  <dialog bind:this={dlg} class="guide" onclick={(e) => e.target === dlg && dlg.close()}>
+  <dialog bind:this={dlg} class="guide" onclose={() => (open = false)} onclick={(e) => e.target === dlg && dlg.close()}>
     <div class="dlg">
       <header><h2>{t('howto')}</h2><button class="btn icon sm ghost" onclick={() => dlg.close()} aria-label={t('close')}>×</button></header>
+      {#if Steps}
+        <div class="tabs" role="tablist">
+          <button role="tab" class:on={tab === 'steps'} aria-selected={tab === 'steps'} onclick={() => (tab = 'steps')}>{settings.lang === 'de' ? 'Schritt für Schritt' : 'Step by step'}</button>
+          <button role="tab" class:on={tab === 'text'} aria-selected={tab === 'text'} onclick={() => (tab = 'text')}>{settings.lang === 'de' ? 'Alle Regeln' : 'All rules'}</button>
+        </div>
+      {/if}
+      {#if Steps && tab === 'steps'}
+        {#if open}<Steps ondone={() => dlg.close()} />{/if}
+      {:else}
       {#each settings.lang === 'de' ? guide.de : guide.en as s}
         <section>
           <h3 class="eyebrow">{s.h}</h3>
@@ -25,6 +40,7 @@
       {/each}
       {#if guide.ranks}
         <section><h3 class="eyebrow">{t('pk.ranks')}</h3><HandRanks /></section>
+      {/if}
       {/if}
     </div>
   </dialog>
@@ -41,4 +57,7 @@
   section p { margin: 0; color: var(--text); font-size: 0.92rem; }
   ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 0.92rem; }
   li::marker { color: var(--accent); }
+  .tabs { display: flex; padding: 3px; gap: 3px; border-radius: 999px; border: 1px solid var(--line-2); }
+  .tabs button { flex: 1; min-height: 34px; border: 0; background: none; border-radius: 999px; color: var(--muted); font-size: 0.85rem; }
+  .tabs button.on { background: var(--text); color: var(--bg); }
 </style>
