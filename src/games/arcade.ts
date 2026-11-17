@@ -85,6 +85,10 @@ export const TOWER = { easy: [4, 1], medium: [3, 1], hard: [2, 1], expert: [3, 2
 export type TowerLevel = keyof typeof TOWER;
 export const towerSafe = (lv: TowerLevel) => (TOWER[lv][0] - TOWER[lv][1]) / TOWER[lv][0];
 export const towerMult = (lv: TowerLevel, floors: number) => (floors === 0 ? 1 : r2(EDGE / towerSafe(lv) ** floors));
+/** Climb mode: 12 floors that get harder on the way up (easy, medium, hard, expert, three floors each). */
+export type Plan = readonly (readonly [number, number])[];
+export const CLIMB: Plan = (['easy', 'medium', 'hard', 'expert'] as const).flatMap((lv) => [TOWER[lv], TOWER[lv], TOWER[lv]]);
+export const planMult = (plan: Plan, floors: number) => (floors === 0 ? 1 : r2(EDGE / plan.slice(0, floors).reduce((a, [t, b]) => (a * (t - b)) / t, 1)));
 export function towerBombs(lv: TowerLevel) {
   const [tiles, bombs] = TOWER[lv];
   return Array.from({ length: FLOORS }, () => {

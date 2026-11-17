@@ -237,10 +237,12 @@ export const GUIDES: Record<string, Guide> = {
     de: [
       { h: 'Ziel', p: 'Klettere den Turm hoch. Auf jeder Etage ist mindestens ein Feld eine Falle.' },
       { h: 'Ablauf', li: ['Einsatz und Schwierigkeit wählen (mehr Fallen = höhere Multiplikatoren).', 'Pro Etage ein Feld wählen. Sicher? Eine Etage höher.', 'Jederzeit auszahlen; die Falle beendet die Runde ohne Gewinn.'] },
+      { h: 'Modus Aufstieg', p: '12 Etagen statt 8, und der Turm wird unterwegs schwerer: je drei Etagen Leicht (4 Felder, 1 Falle), Mittel (3/1), Schwer (2/1) und Experte (3 Felder, 2 Fallen). Wer die Krone ganz oben erreicht, gewinnt über ×1600.' },
     ],
     en: [
       { h: 'Goal', p: 'Climb the tower. Every floor has at least one trap tile.' },
       { h: 'Flow', li: ['Choose bet and difficulty (more traps = higher multipliers).', 'Pick one tile per floor. Safe? Up one floor.', 'Cash out any time; a trap ends the round with nothing.'] },
+      { h: 'Climb mode', p: '12 floors instead of 8, and the tower gets harder on the way: three floors each of easy (4 tiles, 1 trap), medium (3/1), hard (2/1) and expert (3 tiles, 2 traps). Reach the crown at the top and win over ×1600.' },
     ],
   },
   hilo: {

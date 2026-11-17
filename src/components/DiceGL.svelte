@@ -22,7 +22,7 @@
   let api: { show: (dice: Throw3[], boom?: boolean[]) => void; frame: (i: number, fr: Frame) => void } | null = null;
   type Throw3 = { frames: Frame[]; nums: number[] };
   let dispose = () => {};
-  let S: Solid = solid(faces, SIZE);
+  let S: Solid = solid(6, SIZE); // set to the chosen kind by the effects below
   let state: Throw3[] = [];
 
   onMount(async () => {
