@@ -10,8 +10,9 @@
 
   const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
   // Up to three balloons per round, each with its own stake (the bet), pump and cash-out.
-  // Very rarely the mountain bunker shoots a pumped balloon: that pays its value twice.
-  type B = { id: number; color: string; k: number; phase: 'play' | 'popped' | 'flown' | 'shot'; staked: number; won: number; push: number; busy: boolean };
+  // Very rarely the mountain bunker shoots a pumped balloon on its own: that pays its value ten times.
+  // Shot by the player from the captured bunker it simply pays out its value.
+  type B = { id: number; color: string; k: number; phase: 'play' | 'popped' | 'flown' | 'shot'; staked: number; won: number; push: number; busy: boolean; x?: number };
   let bet = $state(10);
   let risk = $state<Risk>('mid');
   let count = $state(1);
@@ -85,23 +86,27 @@
   }
   const cashAll = () => bs.forEach((_, i) => cashOut(i));
 
-  // the bunker asks where to aim: a random pumped balloon, in sky coordinates
-  function aim() {
-    const live = bs.map((b, i) => [b, i] as const).filter(([b]) => b.phase === 'play' && b.k >= 1 && !b.busy);
-    if (!live.length || !sky) return null;
-    const [b, i] = live[Math.floor(Math.random() * live.length)];
-    const r = els[i]?.getBoundingClientRect(), s = sky.getBoundingClientRect();
-    return r ? { id: b.id, x: r.left + r.width / 2 - s.left, y: r.top + r.height * 0.42 - s.top } : null;
+  // the pumped balloons in sky coordinates (the bunker aims at one, the player's shells can hit any)
+  function targets() {
+    if (!sky) return [];
+    const s = sky.getBoundingClientRect();
+    return bs.flatMap((b, i) => {
+      const r = els[i]?.getBoundingClientRect();
+      return b.phase === 'play' && b.k >= 1 && !b.busy && r ? [{ id: b.id, x: r.left + r.width / 2 - s.left, y: r.top + r.height * 0.42 - s.top, r: r.width * 0.42 }] : [];
+    });
   }
-  function hit(id: number) {
+  const aim = () => { const l = targets(); return l.length ? l[Math.floor(Math.random() * l.length)] : null; };
+  function hit(id: number, mine: boolean) {
     const b = bs.find((x) => x.id === id);
     if (!b || b.phase !== 'play' || b.k < 1) return;
-    b.won = Math.round(value(b) * 2 * 100) / 100;
+    const x = mine ? 1 : 10;
+    b.won = Math.round(value(b) * x * 100) / 100;
+    b.x = x;
     settle(b.won, b.won);
     b.phase = 'shot';
     sfx('pop');
-    setTimeout(() => sfx('big'), 250);
-    done(b, true, balloonMult(risk, b.k) * 2, true);
+    if (!mine) setTimeout(() => sfx('big'), 250);
+    done(b, true, balloonMult(risk, b.k) * x, !mine);
   }
 
   function key(e: KeyboardEvent) {
@@ -122,6 +127,7 @@
     if (skyArt?.tap(e.clientX - r.left, e.clientY - r.top)) return; // the bunker (or firing it) took the tap
     pump(playing ? Math.min(slots - 1, Math.floor(((e.clientX - r.left) / r.width) * slots)) : 0);
   }
+  function point(e: PointerEvent) { const r = sky.getBoundingClientRect(); skyArt?.point(e.clientX - r.left, e.clientY - r.top); }
   // rubber shreds for the pop
   const SHREDS = Array.from({ length: 14 }, (_, i) => ({ a: (i / 14) * Math.PI * 2 + Math.random() * 0.4, d: 90 + Math.random() * 90, r: Math.random() * 720 - 360, s: 0.6 + Math.random() * 0.8 }));
   const shown = $derived(bs.length ? bs : [{ id: 0, color: COLORS[0], k: 0, phase: 'play', staked: 0, won: 0, push: 0, busy: false } as B]);
@@ -167,14 +173,15 @@
       <div><span class="eyebrow">{L('Pumpstösse', 'Pumps')}</span><strong class="mono">{playing && cur ? cur.k : 0} / {max}</strong></div>
       <div><span class="eyebrow">{L('Maximal', 'Top')}</span><strong class="mono">×{balloonMult(risk, max).toFixed(2)}</strong></div>
     </div>
-    <p class="small muted">{L('Leertaste oder Tippen auf den Himmel pumpt, Enter zahlt aus, 1–3 oder Pfeiltasten wählen den Ballon. Ein voller Ballon steigt von allein auf. Ganz selten trifft der Bunker einen Ballon: das zahlt doppelt.', 'Space or a tap on the sky pumps, Enter cashes out, 1–3 or the arrow keys pick the balloon. A full balloon lifts off on its own. Very rarely the bunker hits a balloon: that pays double.')}</p>
+    <p class="small muted">{L('Leertaste oder Tippen auf den Himmel pumpt, Enter zahlt aus, 1–3 oder Pfeiltasten wählen den Ballon. Ein voller Ballon steigt von allein auf. Ganz selten trifft der Bunker einen Ballon: das zahlt zehnfach.', 'Space or a tap on the sky pumps, Enter cashes out, 1–3 or the arrow keys pick the balloon. A full balloon lifts off on its own. Very rarely the bunker hits a balloon: that pays ten times.')}</p>
   {/snippet}
 
-  <div class="sky" bind:this={sky} class:shake={bs.some((b) => b.phase === 'popped' || b.phase === 'shot')} role="presentation" onclick={tap} class:gunner onpointermove={(e) => { const r = sky.getBoundingClientRect(); skyArt?.point(e.clientX - r.left, e.clientY - r.top); }}>
-    <BalloonSky bind:this={skyArt} {launch} {aim} onhit={hit} oncontrol={(on) => (gunner = on)} />
+  <div class="sky" bind:this={sky} class:shake={bs.some((b) => b.phase === 'popped' || b.phase === 'shot')} role="presentation" onclick={tap} class:gunner onpointermove={point}
+    onpointerdown={(e) => { if (gunner && e.button === 0) { point(e); skyArt?.hold(true); } }} onpointerup={() => skyArt?.hold(false)} onpointerleave={() => skyArt?.hold(false)} onpointercancel={() => skyArt?.hold(false)}>
+    <BalloonSky bind:this={skyArt} {launch} {aim} {targets} onhit={hit} oncontrol={(on) => { gunner = on; if (!on) skyArt?.hold(false); }} />
     {#if gunner}
       <div class="gunhint" in:fly={{ y: -8 }}>
-        <span>💥 {L('Bunker gekapert! Tippe in den Himmel zum Schiessen', 'Bunker taken over! Tap the sky to fire')}</span>
+        <span>💥 {L('Bunker gekapert! Tippen schiesst, gedrückt halten für Dauerfeuer', 'Bunker taken over! Tap to fire, hold for rapid fire')}</span>
         <button class="btn sm" onclick={(e) => { e.stopPropagation(); skyArt?.exit(); }}>{L('Beenden', 'Leave')} · Esc</button>
       </div>
     {/if}
@@ -201,7 +208,7 @@
         {#if b.phase === 'popped' || b.phase === 'shot'}
           <div class="pop" style="--c:{b.color}">
             {#each SHREDS as sh}<i style="--x:{Math.cos(sh.a) * sh.d}px; --y:{Math.sin(sh.a) * sh.d}px; --r:{sh.r}deg; --k:{sh.s}"></i>{/each}
-            <b>{b.phase === 'shot' ? L('TREFFER! ×2', 'HIT! ×2') : 'POP!'}</b>
+            <b>{b.phase === 'shot' ? L('TREFFER!', 'HIT!') + (b.x === 10 ? ' ×10' : '') : 'POP!'}</b>
           </div>
         {/if}
         <!-- string from the knot down to the pump nozzle -->

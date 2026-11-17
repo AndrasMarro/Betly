@@ -8,17 +8,20 @@
   import teslaSrc from '../assets/space/tesla.webp';
   // aim: where a pumped balloon is (asked when the bunker fires); onhit: the bunker hit that balloon
   // oncontrol: the secret bunker control (tap the bunker 5 times) was switched on or off
-  let { launch, aim, onhit, oncontrol }: { launch?: { id: number; color: string }; aim?: () => { id: number; x: number; y: number } | null; onhit?: (id: number) => void; oncontrol?: (on: boolean) => void } = $props();
-  // set up in onMount, called by the page: tap (true if the sky used the tap), point (aiming), exit (leave control)
-  let api = { tap: (_x: number, _y: number) => false, point: (_x: number, _y: number) => {}, exit: () => {} };
+  // targets: the pumped balloons (for the player's own shells); onhit: a balloon was hit, mine = by the player
+  type Spot = { id: number; x: number; y: number; r: number };
+  let { launch, aim, targets, onhit, oncontrol }: { launch?: { id: number; color: string }; aim?: () => Spot | null; targets?: () => Spot[]; onhit?: (id: number, mine: boolean) => void; oncontrol?: (on: boolean) => void } = $props();
+  // set up in onMount, called by the page: tap (true if the sky used the tap), point (aiming), hold (rapid fire), exit (leave control)
+  let api = { tap: (_x: number, _y: number) => false, point: (_x: number, _y: number) => {}, hold: (_on: boolean) => {}, exit: () => {} };
   export const tap = (x: number, y: number) => api.tap(x, y);
   export const point = (x: number, y: number) => api.point(x, y);
+  export const hold = (on: boolean) => api.hold(on);
   export const exit = () => api.exit();
 
   let canvas: HTMLCanvasElement;
   type Cloud = { x: number; y: number; s: number; v: number; seed: number };
-  type Egg = { kind: 'jet' | 'tesla' | 'birds' | 'hot' | 'fighter'; x: number; y: number; dir: number; v: number; t: number; drop?: number; hit?: number };
-  type Trooper = { x: number; y: number; vy: number; t: number; open: boolean; c: string };
+  type Egg = { kind: 'jet' | 'tesla' | 'birds' | 'hot' | 'fighter'; x: number; y: number; dir: number; v: number; t: number; drop?: number; hit?: number; dead?: boolean[] };
+  type Trooper = { x: number; y: number; vy: number; t: number; open: boolean; c: string; cut?: boolean };
   type Bg = { x: number; y: number; color: string; s: number; t: number; drift: number };
   type Star = { x: number; y: number; r: number; tw: number };
   const bgs: Bg[] = [];
@@ -47,12 +50,17 @@
     // bunker: closed, opening, firing, closing; the shell flies up and bursts
     let bunker = { state: 0, t: 0, next: 30 + Math.random() * 25 };
     // shells in flight: aimed at a balloon (target), fired by the player (mine) or just into the sky
-    type Shell = { x: number; y: number; vx: number; vy: number; t: number; burst: number; T: number; target?: number; mine?: boolean };
+    type Shell = { x: number; y: number; vx: number; vy: number; t: number; burst: number; T: number; target?: number; mine?: boolean; big?: boolean };
     let shells: Shell[] = [];
     const smoke: { x: number; y: number; t: number }[] = [];
-    let gun = -0.75, gunTo = -0.75, flash = 0, controlling = false, taps: number[] = [], cool = 0;
+    let gun = -0.75, gunTo = -0.75, flash = 0, controlling = false, taps: number[] = [], cool = 0, holding = false;
+    const aimPt = { x: 0, y: 0 };
+    const falls: { x: number; y: number; vx: number; vy: number; t: number }[] = []; // birds that were shot
+    const BIRDS = [[0, 0], [-10, -5], [-20, 3], [-30, -7], [-40, 5]];
+    const eggY = (e: Egg) => e.y + Math.sin(e.t * 0.7) * (e.kind === 'birds' ? 6 : 1.5);
     const bpos = { x: 0, y: 0 };
     const G = 60; // gravity on the shells
+    const shoot_ = (x: number, y: number) => { gunTo = Math.atan2(y - bpos.y, x - bpos.x); fire(x, y, Math.max(0.35, Math.hypot(x - bpos.x, y - bpos.y) / 520), { mine: true }); };
     function fire(tx: number, ty: number, T: number, extra: Partial<Shell> = {}) {
       const x = bpos.x + Math.cos(gunTo) * 12, y = bpos.y + Math.sin(gunTo) * 12;
       const sh: Shell = { x, y, vx: (tx - x) / T, vy: (ty - y) / T - (G / 2) * T, t: 0, burst: 0, T, ...extra };
@@ -88,6 +96,8 @@
     // ---------- the land ----------
     const horizon = () => H * 0.74;
     const ridge = (x: number, amp: number, f: number, ph: number) => Math.sin(x * f + ph) * amp + Math.sin(x * f * 2.3 + ph * 1.7) * amp * 0.4;
+    // where the slope from a to b reaches the bottom edge, so the flanks run on into the ground instead of dropping straight down
+    const foot = (a: [number, number], b: [number, number]): [number, number] => [b[0] + ((b[0] - a[0]) / (b[1] - a[1])) * (H - b[1]), H];
     function mountains(light: number, haze: number[]) {
       const y0 = horizon();
       const dark = (c: number[], k: number) => mix(c, NIGHT, (1 - light) * k);
@@ -97,11 +107,12 @@
       // a row of snowy peaks
       const rock = dark(mix(hex('#8794a8'), haze, 0.3), 0.72), shade = mix(rock, NIGHT, 0.3), snow = dark(hex('#f4f7fb'), 0.6);
       for (const p of PEAKS) {
-        const top: [number, number] = [p.x, y0 - p.h], poly: [number, number][] = [[p.x - p.w, H], [p.x - p.w, y0], ...p.l, top, ...p.r, [p.x + p.w, y0], [p.x + p.w, H]];
+        const top: [number, number] = [p.x, y0 - p.h], L: [number, number] = [p.x - p.w, y0], R: [number, number] = [p.x + p.w, y0];
+        const poly: [number, number][] = [foot(p.l[0], L), L, ...p.l, top, ...p.r, R, foot(p.r[2], R)];
         const trace = () => { ctx.beginPath(); poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); };
         ctx.fillStyle = rgb(rock); trace(); ctx.fill();
         ctx.save(); trace(); ctx.clip();
-        ctx.fillStyle = rgb(shade); ctx.beginPath(); ctx.moveTo(...top); ctx.lineTo(p.x + p.w * 0.25, H); ctx.lineTo(p.x + p.w * 2, H); ctx.lineTo(p.x + p.w * 2, 0); ctx.fill();
+        ctx.fillStyle = rgb(shade); ctx.beginPath(); ctx.moveTo(...top); ctx.lineTo(p.x + p.w * 0.25, H); ctx.lineTo(p.x + p.w * 9, H); ctx.lineTo(p.x + p.w * 9, 0); ctx.fill();
         const sy = y0 - p.h * p.snow;
         ctx.fillStyle = rgb(snow); ctx.beginPath(); ctx.moveTo(p.x - p.w, 0); ctx.lineTo(p.x - p.w, sy);
         for (let k = -4; k <= 4; k++) ctx.lineTo(p.x + (k / 4) * p.w * 0.6, sy + (k % 2 ? p.h * 0.08 : -p.h * 0.02));
@@ -110,14 +121,14 @@
       }
       // the Matterhorn: steep pyramid, summit leaning east with its little hook, snow above the shoulder
       const mx = W * 0.72, mw = Math.min(W * 0.14, 160), mh = Math.min(H * 0.46, mw * 2.1), base = y0 + 4;
-      const P: [number, number][] = [[-1, -1], [-1, 0], [-0.62, 0.3], [-0.38, 0.5], [-0.2, 0.74], [-0.07, 0.92], [0.04, 1], [0.12, 0.985], [0.17, 0.95], [0.22, 0.955], [0.3, 0.84], [0.46, 0.6], [0.66, 0.36], [1, 0], [1, -1]];
+      const P: [number, number][] = [[-2.27, -1], [-1, 0], [-0.62, 0.3], [-0.38, 0.5], [-0.2, 0.74], [-0.07, 0.92], [0.04, 1], [0.12, 0.985], [0.17, 0.95], [0.22, 0.955], [0.3, 0.84], [0.46, 0.6], [0.66, 0.36], [1, 0], [1.94, -1]];
       const pt = ([u, v]: [number, number]): [number, number] => [mx + u * mw, base - v * mh];
       const mrock = dark(mix(hex('#7d8aa0'), haze, 0.2), 0.7);
       const outline = () => { ctx.beginPath(); P.forEach((q, i) => (i ? ctx.lineTo(...pt(q)) : ctx.moveTo(...pt(q)))); };
       ctx.fillStyle = rgb(mrock); outline(); ctx.fill();
       ctx.save(); outline(); ctx.clip();
       ctx.fillStyle = rgb(mix(mrock, NIGHT, 0.35));
-      ctx.beginPath(); ctx.moveTo(...pt([0.04, 1])); ctx.lineTo(...pt([0.15, -1])); ctx.lineTo(...pt([1.2, -1])); ctx.lineTo(...pt([1.2, 1.2])); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(...pt([0.04, 1])); ctx.lineTo(...pt([0.15, -1])); ctx.lineTo(...pt([2.2, -1])); ctx.lineTo(...pt([2.2, 1.2])); ctx.fill();
       ctx.fillStyle = rgb(snow);
       ctx.beginPath(); ctx.moveTo(...pt([-0.5, 0.42])); ctx.lineTo(...pt([-0.3, 0.6])); ctx.lineTo(...pt([-0.18, 0.55])); ctx.lineTo(...pt([-0.05, 0.7])); ctx.lineTo(...pt([0.1, 0.62]));
       ctx.lineTo(...pt([0.25, 0.7])); ctx.lineTo(...pt([0.42, 0.5])); ctx.lineTo(...pt([0.6, 0.38])); ctx.lineTo(...pt([0.6, 1.1])); ctx.lineTo(...pt([-0.5, 1.1])); ctx.fill();
@@ -129,10 +140,11 @@
       const bm = dark(mix(hex('#7a857f'), haze, 0.18), 0.72);
       const sx = bx - bw * 0.05, sy = base - bh; // summit
       ctx.fillStyle = rgb(bm);
-      ctx.beginPath(); ctx.moveTo(bx - bw, H); ctx.lineTo(bx - bw, base); ctx.lineTo(bx - bw * 0.6, base - bh * 0.42); ctx.lineTo(bx - bw * 0.36, base - bh * 0.7); ctx.lineTo(bx - bw * 0.2, base - bh * 0.84); ctx.lineTo(sx, sy);
-      ctx.lineTo(bx + bw * 0.14, base - bh * 0.86); ctx.lineTo(bx + bw * 0.4, base - bh * 0.55); ctx.lineTo(bx + bw * 0.66, base - bh * 0.3); ctx.lineTo(bx + bw, base); ctx.lineTo(bx + bw, H); ctx.fill();
+      const bl = foot([bx - bw * 0.6, base - bh * 0.42], [bx - bw, base]), br = foot([bx + bw * 0.66, base - bh * 0.3], [bx + bw, base]);
+      ctx.beginPath(); ctx.moveTo(...bl); ctx.lineTo(bx - bw, base); ctx.lineTo(bx - bw * 0.6, base - bh * 0.42); ctx.lineTo(bx - bw * 0.36, base - bh * 0.7); ctx.lineTo(bx - bw * 0.2, base - bh * 0.84); ctx.lineTo(sx, sy);
+      ctx.lineTo(bx + bw * 0.14, base - bh * 0.86); ctx.lineTo(bx + bw * 0.4, base - bh * 0.55); ctx.lineTo(bx + bw * 0.66, base - bh * 0.3); ctx.lineTo(bx + bw, base); ctx.lineTo(...br); ctx.fill();
       ctx.fillStyle = rgb(mix(bm, NIGHT, 0.3));
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(bx + bw * 0.14, base - bh * 0.86); ctx.lineTo(bx + bw * 0.4, base - bh * 0.55); ctx.lineTo(bx + bw * 0.66, base - bh * 0.3); ctx.lineTo(bx + bw, base); ctx.lineTo(bx + bw, H); ctx.lineTo(bx + bw * 0.15, H); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(bx + bw * 0.14, base - bh * 0.86); ctx.lineTo(bx + bw * 0.4, base - bh * 0.55); ctx.lineTo(bx + bw * 0.66, base - bh * 0.3); ctx.lineTo(bx + bw, base); ctx.lineTo(...br); ctx.lineTo(bx + bw * 0.15, H); ctx.fill();
       ctx.fillStyle = rgb(snow);
       ctx.beginPath(); ctx.moveTo(bx - bw * 0.2, base - bh * 0.84); ctx.lineTo(sx, sy); ctx.lineTo(bx + bw * 0.14, base - bh * 0.86); ctx.lineTo(bx + bw * 0.08, base - bh * 0.78);
       ctx.lineTo(bx + bw * 0.0, base - bh * 0.84); ctx.lineTo(bx - bw * 0.07, base - bh * 0.74); ctx.lineTo(bx - bw * 0.14, base - bh * 0.8); ctx.fill();
@@ -231,7 +243,7 @@
     }
 
     function trooper(p: Trooper) {
-      if (p.open) {
+      if (p.open && !p.cut) {
         ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y - 9, 6, Math.PI, 0); ctx.fill();
         ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.arc(p.x - 2, p.y - 10, 2.5, Math.PI, 0); ctx.fill();
         ctx.strokeStyle = 'rgba(40,40,40,.6)'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(p.x - 6, p.y - 9); ctx.lineTo(p.x, p.y - 1); ctx.lineTo(p.x + 6, p.y - 9); ctx.stroke();
@@ -243,7 +255,7 @@
       const r = Math.random(), dir = Math.random() < 0.5 ? 1 : -1;
       const kind: Egg['kind'] = r < 0.05 ? 'tesla' : r < 0.32 ? 'jet' : r < 0.56 ? 'birds' : r < 0.78 ? 'hot' : 'fighter';
       if (kind === 'hot') egg = { kind, x: W * (0.15 + Math.random() * 0.7), y: horizon() + 6, dir, v: 3 + Math.random() * 3, t: 0 };
-      else egg = { kind, x: dir > 0 ? -60 : W + 60, y: H * (kind === 'birds' ? 0.25 + Math.random() * 0.2 : 0.06 + Math.random() * 0.16), dir, v: kind === 'birds' ? 26 : kind === 'fighter' ? 80 : kind === 'jet' ? 46 : 30, t: 0, drop: W * (0.3 + Math.random() * 0.4) };
+      else egg = { kind, x: dir > 0 ? -60 : W + 60, y: H * (kind === 'birds' ? 0.25 + Math.random() * 0.2 : 0.06 + Math.random() * 0.16), dir, v: kind === 'birds' ? 26 : kind === 'fighter' ? 80 : kind === 'jet' ? 46 : 30, t: 0, drop: W * (0.3 + Math.random() * 0.4), dead: [] };
     }
 
     function frame(now: number) {
@@ -310,20 +322,21 @@
           }
         }
         if (egg && egg.kind !== 'hot') {
-          const y = egg.y + Math.sin(egg.t * 0.7) * (egg.kind === 'birds' ? 6 : 1.5);
+          const y = eggY(egg);
           if (egg.kind === 'jet' || egg.kind === 'tesla') {
             const img = egg.kind === 'jet' ? jet : tesla, w = egg.kind === 'jet' ? 26 : 20, h = w * (img.naturalHeight / img.naturalWidth || 0.4);
             // the pictures face left; the contrail starts at the engine, just above the picture's middle
             const tailX = egg.x - egg.dir * w * 0.5, tailY = y + h * (egg.kind === 'jet' ? 0.46 : 0.55);
-            if (egg.kind === 'jet') {
+            if (egg.kind === 'jet' && egg.hit === undefined) {
               const tg = ctx.createLinearGradient(tailX, 0, tailX - egg.dir * 150, 0);
               tg.addColorStop(0, `rgba(255,255,255,${0.75 * (0.3 + light * 0.7)})`); tg.addColorStop(1, 'rgba(255,255,255,0)');
               ctx.strokeStyle = tg; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(tailX - egg.dir * 150, tailY); ctx.stroke();
             }
-            ctx.save(); ctx.globalAlpha = 0.85; ctx.translate(egg.x, y); ctx.scale(-egg.dir, 1); ctx.drawImage(img, -w / 2, 0, w, h); ctx.restore();
+            ctx.save(); ctx.globalAlpha = 0.85; ctx.translate(egg.x, y); ctx.scale(-egg.dir, 1); if (egg.hit !== undefined) ctx.rotate(-Math.min(0.5, egg.hit * 0.3)); ctx.drawImage(img, -w / 2, 0, w, h); ctx.restore();
           } else if (egg.kind === 'birds') {
             ctx.strokeStyle = rgb(mix(hex('#2c3e57'), hex('#0a0f1a'), 1 - light)); ctx.lineWidth = 1.3;
-            for (const [dx, dy] of [[0, 0], [-10, -5], [-20, 3], [-30, -7], [-40, 5]]) {
+            for (const [k, [dx, dy]] of BIRDS.entries()) {
+              if (egg.dead?.[k]) continue;
               const bx = egg.x - egg.dir * dx, by = y + dy, f = Math.sin(clock * 9 + dx) * 3;
               ctx.beginPath(); ctx.moveTo(bx - 5, by - f); ctx.quadraticCurveTo(bx - 2.5, by - 3, bx, by); ctx.quadraticCurveTo(bx + 2.5, by - 3, bx + 5, by - f); ctx.stroke();
             }
@@ -336,6 +349,18 @@
           }
           if (egg.x < -80 || egg.x > W + 80) egg = null;
         }
+      }
+      // smoke of a crashing plane and the shot birds stay behind the mountains
+      for (let i = smoke.length - 1; i >= 0; i--) {
+        const q = smoke[i]; q.t += dt; q.y -= 6 * dt;
+        ctx.fillStyle = `rgba(90,90,95,${Math.max(0, 0.45 - q.t * 0.25)})`; ctx.beginPath(); ctx.arc(q.x, q.y, 2 + q.t * 5, 0, 7); ctx.fill();
+        if (q.t > 1.8) smoke.splice(i, 1);
+      }
+      for (let i = falls.length - 1; i >= 0; i--) {
+        const f = falls[i]; f.t += dt; f.vy += 90 * dt; f.x += f.vx * dt; f.y += f.vy * dt;
+        ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.t * 7); ctx.strokeStyle = rgb(mix(hex('#2c3e57'), hex('#0a0f1a'), 1 - light)); ctx.lineWidth = 1.3;
+        ctx.beginPath(); ctx.moveTo(-4, -1); ctx.lineTo(0, 1); ctx.lineTo(4, -1); ctx.stroke(); ctx.restore();
+        if (f.y > horizon()) falls.splice(i, 1);
       }
       mountains(light, bot);
       // the bunker: every 40 to 80 seconds the doors open, it fires once and closes again. Its target changes:
@@ -358,6 +383,9 @@
       }
       // the barrel turns towards its next target, the muzzle flash fades
       gun += (gunTo - gun) * Math.min(1, dt * 10); flash = Math.max(0, flash - dt); cool = Math.max(0, cool - dt);
+      // rapid fire while the button is held: faster, a little less accurate
+      if (controlling && holding && cool <= 0 && aimPt.y < bpos.y) { shoot_(aimPt.x + (Math.random() - 0.5) * 14, aimPt.y + (Math.random() - 0.5) * 14); cool = 0.11; }
+      const spots = shells.some((s) => s.mine && !s.burst) ? targets?.() ?? [] : [];
       for (let i = shells.length - 1; i >= 0; i--) {
         const sh = shells[i]; sh.t += dt;
         if (!sh.burst) {
@@ -368,28 +396,39 @@
             egg.hit = 0; sh.burst = 0.001;
             if (egg.kind === 'fighter' && egg.drop !== undefined) egg.drop = egg.x; // everyone bails out
           }
-          // the player's own shells can pop the balloons far away (never the ones being pumped)
-          if (sh.mine) for (let k = bgs.length - 1; k >= 0; k--) if (Math.hypot(sh.x - bgs[k].x, sh.y - bgs[k].y) < bgs[k].s + 4) { bgs.splice(k, 1); sh.burst = 0.001; }
-          if (!sh.burst && sh.t > sh.T) { sh.burst = 0.001; if (sh.target !== undefined) onhit?.(sh.target); }
+          // the hot-air balloon goes up in a fireball
+          if (egg?.kind === 'hot' && Math.hypot(sh.x - egg.x, sh.y - egg.y - 2) < 13) { sh.burst = 0.001; sh.big = true; sh.x = egg.x; sh.y = egg.y; egg = null; }
+          // birds: the one hit tumbles down
+          if (egg?.kind === 'birds') {
+            const ey = eggY(egg);
+            BIRDS.forEach(([dx, dy], k) => {
+              const bx = egg!.x - egg!.dir * dx, by = ey + dy;
+              if (!egg!.dead![k] && Math.hypot(sh.x - bx, sh.y - by) < 8) { egg!.dead![k] = true; sh.burst = 0.001; falls.push({ x: bx, y: by, vx: egg!.dir * egg!.v * 0.5, vy: -20, t: 0 }); }
+            });
+            if (egg.dead!.every(Boolean) && egg.dead!.length === BIRDS.length) egg = null;
+          }
+          // paratroopers: the canopy is gone and he drops
+          for (const p of troopers) if (!p.cut && p.t > 0 && Math.hypot(sh.x - p.x, sh.y - p.y + 5) < 9) { p.cut = true; sh.burst = 0.001; }
+          // the player's own shells pop the balloons far away and also the pumped ones (those still pay out)
+          if (sh.mine) {
+            for (let k = bgs.length - 1; k >= 0; k--) if (Math.hypot(sh.x - bgs[k].x, sh.y - bgs[k].y) < bgs[k].s + 4) { bgs.splice(k, 1); sh.burst = 0.001; }
+            for (const b of spots) if (!sh.burst && Math.hypot(sh.x - b.x, sh.y - b.y) < b.r) { sh.burst = 0.001; onhit?.(b.id, true); }
+          }
+          if (!sh.burst && sh.t > sh.T) { sh.burst = 0.001; if (sh.target !== undefined) onhit?.(sh.target, false); }
         } else {
           sh.burst += dt;
-          const k = sh.burst / 1.4, rr = 6 + k * 26;
+          const k = sh.burst / 1.4, rr = (6 + k * 26) * (sh.big ? 2.2 : 1);
           ctx.fillStyle = `rgba(255,200,120,${Math.max(0, 0.8 - k)})`; ctx.beginPath(); ctx.arc(sh.x, sh.y, rr * 0.5, 0, 7); ctx.fill();
           ctx.fillStyle = `rgba(150,150,150,${Math.max(0, 0.5 - k * 0.5)})`; ctx.beginPath(); ctx.arc(sh.x + 3, sh.y - 2, rr, 0, 7); ctx.fill();
           if (k >= 1) shells.splice(i, 1);
         }
-      }
-      for (let i = smoke.length - 1; i >= 0; i--) {
-        const q = smoke[i]; q.t += dt; q.y -= 6 * dt;
-        ctx.fillStyle = `rgba(90,90,95,${Math.max(0, 0.45 - q.t * 0.25)})`; ctx.beginPath(); ctx.arc(q.x, q.y, 2 + q.t * 5, 0, 7); ctx.fill();
-        if (q.t > 1.8) smoke.splice(i, 1);
       }
       // paratroopers drift down behind the hills
       for (let i = troopers.length - 1; i >= 0; i--) {
         const p = troopers[i]; p.t += dt;
         if (p.t < 0) continue;
         if (!p.open && p.t > 0.7) p.open = true;
-        p.vy = p.open ? Math.max(14, p.vy - 60 * dt) : p.vy + 120 * dt;
+        p.vy = p.open && !p.cut ? Math.max(14, p.vy - 60 * dt) : p.vy + 120 * dt;
         p.y += p.vy * dt; p.x += Math.sin(p.t * 1.3 + i) * 6 * dt;
         trooper(p);
         if (p.y > horizon() + H * 0.12) troopers.splice(i, 1);
@@ -409,7 +448,7 @@
       tap(x, y) {
         if (controlling) {
           // aim and fire where the player tapped; the shells only burst in the sky
-          if (cool <= 0 && y < bpos.y) { gunTo = Math.atan2(y - bpos.y, x - bpos.x); fire(x, y, Math.max(0.35, Math.hypot(x - bpos.x, y - bpos.y) / 520), { mine: true }); cool = 0.45; }
+          if (cool <= 0 && y < bpos.y) { shoot_(x, y); cool = 0.3; }
           return true;
         }
         if (Math.hypot(x - bpos.x, y - bpos.y) > 22) return false;
@@ -418,7 +457,8 @@
         if (taps.length >= 5) { taps = []; controlling = true; oncontrol?.(true); }
         return true;
       },
-      point(x, y) { if (controlling && y < bpos.y) gunTo = Math.max(-Math.PI + 0.1, Math.min(-0.1, Math.atan2(y - bpos.y, x - bpos.x))); },
+      point(x, y) { aimPt.x = x; aimPt.y = y; if (controlling && y < bpos.y) gunTo = Math.max(-Math.PI + 0.1, Math.min(-0.1, Math.atan2(y - bpos.y, x - bpos.x))); },
+      hold(on) { holding = on; },
       exit() { if (!controlling) return; controlling = false; bunker = { state: 3, t: 0, next: 0 }; oncontrol?.(false); },
     };
     raf = requestAnimationFrame(frame);
