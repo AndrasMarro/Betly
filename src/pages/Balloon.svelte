@@ -9,109 +9,172 @@
   import { t } from '../lib/i18n';
 
   const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
+  // Up to three balloons per round, each with its own stake (the bet), pump and cash-out.
+  // Very rarely the mountain bunker shoots a pumped balloon: that pays its value twice.
+  type B = { id: number; color: string; k: number; phase: 'play' | 'popped' | 'flown' | 'shot'; staked: number; won: number; push: number; busy: boolean };
   let bet = $state(10);
   let risk = $state<Risk>('mid');
-  let phase = $state<'idle' | 'play' | 'popped' | 'flown'>('idle');
-  let k = $state(0); // pumps so far
-  let staked = $state(0);
-  let won = $state(0);
-  let busy = $state(false);
-  let push = $state(0); // bumps the pump animation
-  let history = $state<{ m: number; ok: boolean; id: number }[]>([]);
+  let count = $state(1);
+  let bs = $state<B[]>([]);
+  let sel = $state(0); // the balloon the keyboard and the main button act on
+  let history = $state<{ m: number; ok: boolean; id: number; shot?: boolean }[]>([]);
   let n = 0;
-  let round = $state(0); // a fresh balloon element per round
+  let launch = $state<{ id: number; color: string }>();
+  let els: HTMLDivElement[] = $state([]);
+  let sky: HTMLDivElement;
   const COLORS = ['#e5484d', '#3d9bff', '#f2b01e', '#2fbf71', '#b05cff', '#ff7ab8'];
-  let color = $state(COLORS[0]);
 
   const max = $derived(RISK[risk].max);
-  const mult = $derived(balloonMult(risk, k));
-  const next = $derived(balloonMult(risk, k + 1));
-  // the balloon grows with every pump; full at the last pump
-  const size = $derived(phase === 'idle' ? 0.32 : 0.32 + 0.68 * Math.min(1, k / max));
+  const playing = $derived(bs.some((b) => b.phase === 'play'));
+  const cur = $derived(bs[sel]);
+  const roundWon = $derived(bs.reduce((a, b) => a + b.won, 0));
+  const size = (b: B) => 0.32 + 0.68 * Math.min(1, b.k / max); // grows with every pump, full at the last one
+  const value = (b: B) => Math.round(b.staked * balloonMult(risk, b.k) * 100) / 100;
 
-  async function pump() {
-    if (busy) return;
-    if (phase !== 'play') {
-      if (bet > wallet.balance || bet <= 0) return;
-      staked = bet;
-      stake(bet);
-      k = 0; won = 0;
-      color = COLORS[Math.floor(Math.random() * COLORS.length)];
-      phase = 'play';
-      round++;
-    }
-    busy = true;
-    push++;
+  function start() {
+    if (bet <= 0 || bet * count > wallet.balance) return false;
+    stake(bet * count);
+    const cols = [...COLORS].sort(() => Math.random() - 0.5);
+    bs = Array.from({ length: count }, (_, i) => ({ id: ++n, color: cols[i], k: 0, phase: 'play' as const, staked: bet, won: 0, push: 0, busy: false }));
+    sel = 0;
+    return true;
+  }
+  /** Next balloon still in play after one finished. */
+  function moveOn() {
+    if (cur?.phase === 'play') return;
+    const i = bs.findIndex((b) => b.phase === 'play');
+    if (i >= 0) sel = i;
+  }
+  function done(b: B, ok: boolean, m: number, shot = false) {
+    history = [{ m, ok, id: ++n, shot }, ...history].slice(0, 12);
+    moveOn();
+  }
+
+  async function pump(i = sel) {
+    if (!playing) { if (!start()) return; i = 0; }
+    const b = bs[i];
+    if (!b || b.phase !== 'play' || b.busy) return;
+    sel = i;
+    b.busy = true;
+    b.push++;
     sfx('pump');
     await new Promise((r) => setTimeout(r, 260));
+    if (b.phase !== 'play') return; // shot down meanwhile
+    b.busy = false;
     if (pops(risk)) {
-      phase = 'popped';
+      b.phase = 'popped';
       settle(0, 0);
       sfx('pop');
-      history = [{ m: balloonMult(risk, k + 1), ok: false, id: ++n }, ...history].slice(0, 12);
+      done(b, false, balloonMult(risk, b.k + 1));
     } else {
-      k++;
-      if (k >= max) cashOut(); // full balloon: it lifts off on its own
+      b.k++;
+      if (b.k >= max) cashOut(i); // full balloon: it lifts off on its own
     }
-    busy = false;
   }
-  function cashOut() {
-    if (phase !== 'play' || k < 1) return;
-    won = Math.round(staked * mult * 100) / 100;
-    settle(won, won);
-    phase = 'flown';
-    launch = { id: Date.now(), color }; // it shows up again far away in the sky
+  function cashOut(i = sel) {
+    const b = bs[i];
+    if (!b || b.phase !== 'play' || b.k < 1 || b.busy) return;
+    b.won = value(b);
+    settle(b.won, b.won);
+    b.phase = 'flown';
+    launch = { id: Date.now() + i, color: b.color }; // it shows up again far away in the sky
     sfx('cash');
-    history = [{ m: mult, ok: true, id: ++n }, ...history].slice(0, 12);
+    done(b, true, balloonMult(risk, b.k));
   }
+  const cashAll = () => bs.forEach((_, i) => cashOut(i));
+
+  // the bunker asks where to aim: a random pumped balloon, in sky coordinates
+  function aim() {
+    const live = bs.map((b, i) => [b, i] as const).filter(([b]) => b.phase === 'play' && b.k >= 1 && !b.busy);
+    if (!live.length || !sky) return null;
+    const [b, i] = live[Math.floor(Math.random() * live.length)];
+    const r = els[i]?.getBoundingClientRect(), s = sky.getBoundingClientRect();
+    return r ? { id: b.id, x: r.left + r.width / 2 - s.left, y: r.top + r.height * 0.42 - s.top } : null;
+  }
+  function hit(id: number) {
+    const b = bs.find((x) => x.id === id);
+    if (!b || b.phase !== 'play' || b.k < 1) return;
+    b.won = Math.round(value(b) * 2 * 100) / 100;
+    settle(b.won, b.won);
+    b.phase = 'shot';
+    sfx('pop');
+    setTimeout(() => sfx('big'), 250);
+    done(b, true, balloonMult(risk, b.k) * 2, true);
+  }
+
   function key(e: KeyboardEvent) {
     if ((e.target as HTMLElement).closest('input, select, textarea')) return;
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) pump(); }
     if (e.code === 'Enter') { e.preventDefault(); cashOut(); }
+    const d = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
+    if (d >= 0 && bs[d]?.phase === 'play') sel = d;
+    if ((e.code === 'ArrowLeft' || e.code === 'ArrowRight') && bs.length) {
+      const order = bs.map((_, i) => i).filter((i) => bs[i].phase === 'play');
+      if (order.length) sel = order[(order.indexOf(sel) + (e.code === 'ArrowLeft' ? -1 : 1) + order.length) % order.length] ?? order[0];
+    }
   }
-  let launch = $state<{ id: number; color: string }>();
-
+  // tapping the sky pumps the balloon in that part of the sky, so phones do not need the buttons
+  function tap(e: MouseEvent) {
+    const r = sky.getBoundingClientRect(), slots = Math.max(1, playing ? bs.length : count);
+    pump(playing ? Math.min(slots - 1, Math.floor(((e.clientX - r.left) / r.width) * slots)) : 0);
+  }
   // rubber shreds for the pop
   const SHREDS = Array.from({ length: 14 }, (_, i) => ({ a: (i / 14) * Math.PI * 2 + Math.random() * 0.4, d: 90 + Math.random() * 90, r: Math.random() * 720 - 360, s: 0.6 + Math.random() * 0.8 }));
+  const shown = $derived(bs.length ? bs : [{ id: 0, color: COLORS[0], k: 0, phase: 'play', staked: 0, won: 0, push: 0, busy: false } as B]);
+  const scaleFor = $derived(shown.length === 1 ? 1 : shown.length === 2 ? 0.8 : 0.64);
 </script>
 
 <svelte:window onkeydown={key} />
 
 <ArcadeLayout eyebrow={L('Arcade · Pumpen oder kassieren', 'Arcade · Pump or cash out')} title={L('Ballon', 'Balloon')}>
   {#snippet controls()}
-    {#if phase === 'play'}
-      <button class="btn big cash" disabled={k < 1 || busy} onclick={cashOut}>{t('a.cashout')} <span class="mono">{fmt(Math.round(staked * mult * 100) / 100)}</span></button>
+    {#if playing}
+      {#each bs as b, i (b.id)}
+        <div class="row" class:on={i === sel} class:out={b.phase !== 'play'}>
+          <button class="who" onclick={() => b.phase === 'play' && (sel = i)} aria-label={L('Ballon wählen', 'Select balloon') + ' ' + (i + 1)}>
+            <i style="background:{b.color}"></i><span class="mono">{b.phase === 'play' ? '×' + balloonMult(risk, b.k).toFixed(2) : b.phase === 'popped' ? L('Geplatzt', 'Popped') : '+' + fmt(b.won)}</span>
+          </button>
+          {#if b.phase === 'play'}
+            <button class="btn sm" disabled={b.busy} onclick={() => pump(i)}>{L('Pumpen', 'Pump')}</button>
+            <button class="btn sm cash" disabled={b.k < 1 || b.busy} onclick={() => cashOut(i)}>{fmt(value(b))}</button>
+          {/if}
+        </div>
+      {/each}
+      {#if bs.filter((b) => b.phase === 'play' && b.k > 0).length > 1}<button class="btn cashall" onclick={cashAll}>{L('Alle auszahlen', 'Cash out all')}</button>{/if}
+    {:else}
+      <button class="btn primary big" disabled={bet * count > wallet.balance} onclick={() => pump()}>{L('Spielen und pumpen', 'Play and pump')}</button>
     {/if}
-    <button class="btn primary big" disabled={busy || (phase !== 'play' && bet > wallet.balance)} onclick={pump}>
-      {phase === 'play' ? L('Pumpen', 'Pump') : L('Spielen und pumpen', 'Play and pump')}
-    </button>
-    <BetInput bind:value={bet} disabled={phase === 'play'} />
+    <BetInput bind:value={bet} disabled={playing} />
+    <div class="field">{L('Ballons', 'Balloons')} <span class="muted small">({L('Einsatz je Ballon', 'stake per balloon')})</span>
+      <div class="seg">
+        {#each [1, 2, 3] as c}<button class:on={count === c} disabled={playing} onclick={() => (count = c)}>{c}</button>{/each}
+      </div>
+    </div>
     <div class="field">{L('Risiko', 'Risk')}
       <div class="seg">
         {#each [['low', L('Tief', 'Low')], ['mid', L('Mittel', 'Medium')], ['high', L('Hoch', 'High')]] as [r, label]}
-          <button class:on={risk === r} disabled={phase === 'play'} onclick={() => (risk = r as Risk)}>{label}</button>
+          <button class:on={risk === r} disabled={playing} onclick={() => (risk = r as Risk)}>{label}</button>
         {/each}
       </div>
     </div>
     <div class="stats">
       <div><span class="eyebrow">{L('Platz-Chance', 'Pop chance')}</span><strong class="mono">{Math.round(RISK[risk].p * 100)} %</strong></div>
-      <div><span class="eyebrow">{L('Nächster', 'Next')}</span><strong class="mono">×{(phase === 'play' ? next : balloonMult(risk, 1)).toFixed(2)}</strong></div>
-      <div><span class="eyebrow">{L('Pumpstösse', 'Pumps')}</span><strong class="mono">{k} / {max}</strong></div>
+      <div><span class="eyebrow">{L('Nächster', 'Next')}</span><strong class="mono">×{balloonMult(risk, (playing && cur ? cur.k : 0) + 1).toFixed(2)}</strong></div>
+      <div><span class="eyebrow">{L('Pumpstösse', 'Pumps')}</span><strong class="mono">{playing && cur ? cur.k : 0} / {max}</strong></div>
       <div><span class="eyebrow">{L('Maximal', 'Top')}</span><strong class="mono">×{balloonMult(risk, max).toFixed(2)}</strong></div>
     </div>
-    <p class="small muted">{L('Leertaste oder Tippen auf den Himmel pumpt, Enter zahlt aus. Ist der Ballon voll, steigt er von allein auf und zahlt aus.', 'Space or a tap on the sky pumps, Enter cashes out. A full balloon lifts off and pays out on its own.')}</p>
+    <p class="small muted">{L('Leertaste oder Tippen auf den Himmel pumpt, Enter zahlt aus, 1–3 oder Pfeiltasten wählen den Ballon. Ein voller Ballon steigt von allein auf. Ganz selten trifft der Bunker einen Ballon: das zahlt doppelt.', 'Space or a tap on the sky pumps, Enter cashes out, 1–3 or the arrow keys pick the balloon. A full balloon lifts off on its own. Very rarely the bunker hits a balloon: that pays double.')}</p>
   {/snippet}
 
-  <!-- tapping the sky pumps too, so phones do not need to scroll to the button -->
-  <div class="sky" class:shake={phase === 'popped'} role="presentation" onclick={pump}>
-    <BalloonSky {launch} />
+  <div class="sky" bind:this={sky} class:shake={bs.some((b) => b.phase === 'popped' || b.phase === 'shot')} role="presentation" onclick={tap}>
+    <BalloonSky {launch} {aim} onhit={hit} />
     <div class="hist">
-      {#each history as h (h.id)}<span class="hc mono" class:ok={h.ok} in:fly={{ x: -16, duration: 260 }}>×{h.m.toFixed(2)}</span>{/each}
+      {#each history as h (h.id)}<span class="hc mono" class:ok={h.ok} class:shot={h.shot} in:fly={{ x: -16, duration: 260 }}>{h.shot ? '💥' : ''}×{h.m.toFixed(2)}</span>{/each}
     </div>
 
-    <div class="stage">
-      {#key round}
-        <div class="balloon" class:gone={phase === 'popped'} class:flown={phase === 'flown'} style="--s:{size}; --c:{color}">
+    {#each shown as b, i (b.id)}
+      <div class="stage" class:sel={playing && i === sel && bs.length > 1} style="left:{((i + 1) / (shown.length + 1)) * 100}%; --k:{scaleFor}; --km:{[1, 0.62, 0.46][shown.length - 1]}">
+        <div bind:this={els[i]} class="balloon" class:gone={b.phase === 'popped' || b.phase === 'shot'} class:flown={b.phase === 'flown'} style="--s:{bs.length ? size(b) : 0.32}; --c:{b.color}">
           <svg viewBox="0 0 200 260" aria-hidden="true">
             <defs>
               <radialGradient id="bshine" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".55" /><stop offset=".35" stop-color="#fff" stop-opacity="0" /></radialGradient>
@@ -123,37 +186,44 @@
             <ellipse cx="62" cy="58" rx="16" ry="26" fill="#fff" opacity=".35" transform="rotate(-25 62 58)" />
             <path d="M92 214 L108 214 L104 226 L96 226Z" fill="var(--c)" stroke="rgba(0,0,0,.25)" stroke-width="2" />
           </svg>
-          {#if phase !== 'idle'}<span class="m mono">×{(phase === 'popped' ? 0 : mult).toFixed(2)}</span>{/if}
+          {#if bs.length}<span class="m mono">×{(b.phase === 'popped' ? 0 : balloonMult(risk, b.k)).toFixed(2)}</span>{/if}
         </div>
-      {/key}
-      {#if phase === 'popped'}
-        <div class="pop" style="--c:{color}">
-          {#each SHREDS as sh}<i style="--x:{Math.cos(sh.a) * sh.d}px; --y:{Math.sin(sh.a) * sh.d}px; --r:{sh.r}deg; --k:{sh.s}"></i>{/each}
-          <b>POP!</b>
+        {#if b.phase === 'popped' || b.phase === 'shot'}
+          <div class="pop" style="--c:{b.color}">
+            {#each SHREDS as sh}<i style="--x:{Math.cos(sh.a) * sh.d}px; --y:{Math.sin(sh.a) * sh.d}px; --r:{sh.r}deg; --k:{sh.s}"></i>{/each}
+            <b>{b.phase === 'shot' ? L('TREFFER! ×2', 'HIT! ×2') : 'POP!'}</b>
+          </div>
+        {/if}
+        <!-- string from the knot down to the pump nozzle -->
+        <svg class="string" viewBox="0 0 40 200" preserveAspectRatio="none" aria-hidden="true" class:loose={b.phase !== 'play'}>
+          <path d="M20 0 C8 50 32 100 20 200" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" />
+        </svg>
+        <div class="pump">
+          {#key b.push}<div class="handle"><i></i></div>{/key}
+          <div class="barrel"><span class="mono">{b.phase === 'play' && bs.length ? b.k : ''}</span></div>
+          <div class="foot"></div>
         </div>
-      {/if}
-      <!-- string from the knot down to the pump nozzle -->
-      <svg class="string" viewBox="0 0 40 200" preserveAspectRatio="none" aria-hidden="true" class:loose={phase === 'flown' || phase === 'popped'}>
-        <path d="M20 0 C8 50 32 100 20 200" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" />
-      </svg>
-      <div class="pump">
-        {#key push}<div class="handle"><i></i></div>{/key}
-        <div class="barrel"><span class="mono">{phase === 'play' ? k : ''}</span></div>
-        <div class="foot"></div>
       </div>
-    </div>
+    {/each}
 
-    {#if phase === 'play' && k > 0}
-      <button class="btn skycash" disabled={busy} onclick={(e) => { e.stopPropagation(); cashOut(); }}>{t('a.cashout')} <span class="mono">{fmt(Math.round(staked * mult * 100) / 100)}</span></button>
+    {#if playing && cur?.phase === 'play' && cur.k > 0}
+      <button class="btn skycash" disabled={cur.busy} onclick={(e) => { e.stopPropagation(); cashOut(); }}>{t('a.cashout')}{bs.length > 1 ? ' ' + (sel + 1) : ''} <span class="mono">{fmt(value(cur))}</span></button>
     {/if}
-    {#if phase === 'flown'}<p class="result mono pos" in:fly={{ y: 10 }}>+{fmt(won)}</p>{/if}
-    {#if phase === 'popped'}<p class="result mono" in:fly={{ y: 10 }}>{L('Geplatzt', 'Popped')} · 0</p>{/if}
+    {#if bs.length && !playing}
+      <p class="result mono" class:pos={roundWon > 0} in:fly={{ y: 10 }}>{roundWon > 0 ? '+' + fmt(roundWon) : L('Geplatzt', 'Popped') + ' · 0'}</p>
+    {/if}
   </div>
 </ArcadeLayout>
 
 <style>
   .big { min-height: 54px; width: 100%; font-size: 1rem; }
   .cash:not(:disabled) { background: #2fbf71; color: #062a16; border-color: transparent; }
+  .row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px; padding: 6px; border-radius: 14px; border: 1px solid var(--line); }
+  .row.on { border-color: var(--accent); }
+  .row.out { opacity: 0.6; }
+  .who { display: flex; align-items: center; gap: 8px; border: 0; background: none; color: inherit; padding: 4px; text-align: left; }
+  .who i { width: 14px; height: 18px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; flex: none; }
+  .cashall { width: 100%; background: #2fbf71; color: #062a16; border-color: transparent; }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .stats div { background: var(--bg-2); border-radius: 14px; padding: 10px 12px; display: grid; gap: 4px; }
   .stats strong { font-size: 1.05rem; }
@@ -175,8 +245,12 @@
   .hist { position: absolute; top: 14px; left: 14px; right: 170px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 3; }
   .hc { padding: 4px 9px; border-radius: 999px; font-size: 0.75rem; background: rgba(20,24,40,.55); color: #ffb3b5; }
   .hc.ok { color: #8ff0bf; }
+  .hc.shot { color: #ffd84a; }
 
-  .stage { position: absolute; left: 50%; bottom: 0; width: 260px; height: 100%; translate: -50% 0; }
+  /* each balloon stands on its own pump; with several they shrink a little (--k) */
+  .stage { position: absolute; bottom: 0; width: 260px; height: 100%; translate: -50% 0; scale: var(--k); transform-origin: 50% 100%; }
+  @media (max-width: 600px) { .stage { scale: var(--km); } }
+  .stage.sel .pump { filter: drop-shadow(0 0 8px rgba(255,255,255,.8)); }
   .balloon {
     position: absolute; left: 50%; bottom: 150px; width: 220px; translate: -50% 0; transform-origin: 50% 100%;
     transform: scale(var(--s)); transition: transform 0.28s cubic-bezier(.3, 1.6, .5, 1); z-index: 2;
@@ -191,11 +265,11 @@
   .pop { position: absolute; left: 50%; bottom: 300px; z-index: 3; }
   .pop i { position: absolute; width: 16px; height: 10px; border-radius: 40% 60% 30% 70%; background: var(--c); animation: shred 0.9s cubic-bezier(.2, .7, .4, 1) forwards; }
   @keyframes shred { to { transform: translate(var(--x), calc(var(--y) + 120px)) rotate(var(--r)) scale(var(--k)); opacity: 0; } }
-  .pop b { position: absolute; translate: -50% -50%; font: 800 3rem/1 'Geist Variable', sans-serif; color: #fff; -webkit-text-stroke: 2px #1c1c22; animation: popword 0.7s cubic-bezier(.3, 1.6, .5, 1) both; }
+  .pop b { position: absolute; translate: -50% -50%; font: 800 3rem/1 'Geist Variable', sans-serif; color: #fff; -webkit-text-stroke: 2px #1c1c22; white-space: nowrap; animation: popword 0.9s cubic-bezier(.3, 1.6, .5, 1) both; }
   @keyframes popword { from { scale: 0.3; opacity: 0; } 30% { opacity: 1; } to { scale: 1.2; opacity: 0; } }
   .string { position: absolute; left: 50%; bottom: 96px; width: 20px; height: 58px; translate: -50% 0; z-index: 1; transition: opacity 0.3s; }
   .string.loose { opacity: 0; }
-  .pump { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; width: 70px; height: 96px; }
+  .pump { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; width: 70px; height: 96px; transition: filter 0.2s; }
   .barrel { position: absolute; left: 13px; bottom: 10px; width: 44px; height: 62px; border-radius: 10px 10px 4px 4px; background: linear-gradient(90deg, #c33a3a, #e8584f 40%, #a82a2a); box-shadow: inset 0 -6px 0 rgba(0,0,0,.2); display: grid; place-items: center; }
   .barrel span { color: #fff; font-size: 0.9rem; font-weight: 700; }
   .foot { position: absolute; left: 0; bottom: 0; width: 70px; height: 12px; border-radius: 6px; background: #3a3f4a; }
