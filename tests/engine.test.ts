@@ -1,8 +1,8 @@
 // One runnable check for the game math: node --experimental-strip-types tests/engine.test.ts
 import assert from 'node:assert/strict';
 import { spotAt, payout, OUTSIDE, ANNOUNCED } from '../src/games/roulette.ts';
-import { MACHINES as BASE_MACHINES, ARMORY, strips, spinGrid, evaluate } from '../src/games/slots.ts';
-const MACHINES = [...BASE_MACHINES, ...ARMORY];
+import { MACHINES as BASE_MACHINES, ARMORY, CARDS, strips, spinGrid, evaluate } from '../src/games/slots.ts';
+const MACHINES = [...BASE_MACHINES, CARDS, ...ARMORY];
 import { newTable, start, dealOrder, afterDeal, act, settle, total, dealerNeedsCard, PRESETS } from '../src/games/blackjack.ts';
 
 // Roulette: hotspots
