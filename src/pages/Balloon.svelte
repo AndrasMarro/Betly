@@ -22,6 +22,8 @@
   let launch = $state<{ id: number; color: string }>();
   let els: HTMLDivElement[] = $state([]);
   let sky: HTMLDivElement;
+  let skyArt: ReturnType<typeof BalloonSky> | undefined = $state();
+  let gunner = $state(false); // secret: tap the bunker 5 times to aim and fire it yourself
   const COLORS = ['#e5484d', '#3d9bff', '#f2b01e', '#2fbf71', '#b05cff', '#ff7ab8'];
 
   const max = $derived(RISK[risk].max);
@@ -104,6 +106,7 @@
 
   function key(e: KeyboardEvent) {
     if ((e.target as HTMLElement).closest('input, select, textarea')) return;
+    if (e.code === 'Escape') skyArt?.exit();
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) pump(); }
     if (e.code === 'Enter') { e.preventDefault(); cashOut(); }
     const d = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
@@ -116,6 +119,7 @@
   // tapping the sky pumps the balloon in that part of the sky, so phones do not need the buttons
   function tap(e: MouseEvent) {
     const r = sky.getBoundingClientRect(), slots = Math.max(1, playing ? bs.length : count);
+    if (skyArt?.tap(e.clientX - r.left, e.clientY - r.top)) return; // the bunker (or firing it) took the tap
     pump(playing ? Math.min(slots - 1, Math.floor(((e.clientX - r.left) / r.width) * slots)) : 0);
   }
   // rubber shreds for the pop
@@ -166,8 +170,14 @@
     <p class="small muted">{L('Leertaste oder Tippen auf den Himmel pumpt, Enter zahlt aus, 1–3 oder Pfeiltasten wählen den Ballon. Ein voller Ballon steigt von allein auf. Ganz selten trifft der Bunker einen Ballon: das zahlt doppelt.', 'Space or a tap on the sky pumps, Enter cashes out, 1–3 or the arrow keys pick the balloon. A full balloon lifts off on its own. Very rarely the bunker hits a balloon: that pays double.')}</p>
   {/snippet}
 
-  <div class="sky" bind:this={sky} class:shake={bs.some((b) => b.phase === 'popped' || b.phase === 'shot')} role="presentation" onclick={tap}>
-    <BalloonSky {launch} {aim} onhit={hit} />
+  <div class="sky" bind:this={sky} class:shake={bs.some((b) => b.phase === 'popped' || b.phase === 'shot')} role="presentation" onclick={tap} class:gunner onpointermove={(e) => { const r = sky.getBoundingClientRect(); skyArt?.point(e.clientX - r.left, e.clientY - r.top); }}>
+    <BalloonSky bind:this={skyArt} {launch} {aim} onhit={hit} oncontrol={(on) => (gunner = on)} />
+    {#if gunner}
+      <div class="gunhint" in:fly={{ y: -8 }}>
+        <span>💥 {L('Bunker gekapert! Tippe in den Himmel zum Schiessen', 'Bunker taken over! Tap the sky to fire')}</span>
+        <button class="btn sm" onclick={(e) => { e.stopPropagation(); skyArt?.exit(); }}>{L('Beenden', 'Leave')} · Esc</button>
+      </div>
+    {/if}
     <div class="hist">
       {#each history as h (h.id)}<span class="hc mono" class:ok={h.ok} class:shot={h.shot} in:fly={{ x: -16, duration: 260 }}>{h.shot ? '💥' : ''}×{h.m.toFixed(2)}</span>{/each}
     </div>
@@ -242,6 +252,10 @@
   .sky { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
   @keyframes shake { 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -4px); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } }
 
+  .sky.gunner { cursor: crosshair; }
+  .gunhint { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; border-radius: 999px;
+    background: rgba(20,24,30,.78); color: #fff; font-size: 0.82rem; backdrop-filter: blur(6px); white-space: nowrap; max-width: calc(100% - 20px); }
+  .gunhint span { overflow: hidden; text-overflow: ellipsis; }
   .hist { position: absolute; top: 14px; left: 14px; right: 170px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 3; }
   .hc { padding: 4px 9px; border-radius: 999px; font-size: 0.75rem; background: rgba(20,24,40,.55); color: #ffb3b5; }
   .hc.ok { color: #8ff0bf; }

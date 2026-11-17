@@ -7,11 +7,17 @@
   import jetSrc from '../assets/space/force.webp';
   import teslaSrc from '../assets/space/tesla.webp';
   // aim: where a pumped balloon is (asked when the bunker fires); onhit: the bunker hit that balloon
-  let { launch, aim, onhit }: { launch?: { id: number; color: string }; aim?: () => { id: number; x: number; y: number } | null; onhit?: (id: number) => void } = $props();
+  // oncontrol: the secret bunker control (tap the bunker 5 times) was switched on or off
+  let { launch, aim, onhit, oncontrol }: { launch?: { id: number; color: string }; aim?: () => { id: number; x: number; y: number } | null; onhit?: (id: number) => void; oncontrol?: (on: boolean) => void } = $props();
+  // set up in onMount, called by the page: tap (true if the sky used the tap), point (aiming), exit (leave control)
+  let api = { tap: (_x: number, _y: number) => false, point: (_x: number, _y: number) => {}, exit: () => {} };
+  export const tap = (x: number, y: number) => api.tap(x, y);
+  export const point = (x: number, y: number) => api.point(x, y);
+  export const exit = () => api.exit();
 
   let canvas: HTMLCanvasElement;
   type Cloud = { x: number; y: number; s: number; v: number; seed: number };
-  type Egg = { kind: 'jet' | 'tesla' | 'birds' | 'hot' | 'fighter'; x: number; y: number; dir: number; v: number; t: number; drop?: number };
+  type Egg = { kind: 'jet' | 'tesla' | 'birds' | 'hot' | 'fighter'; x: number; y: number; dir: number; v: number; t: number; drop?: number; hit?: number };
   type Trooper = { x: number; y: number; vy: number; t: number; open: boolean; c: string };
   type Bg = { x: number; y: number; color: string; s: number; t: number; drift: number };
   type Star = { x: number; y: number; r: number; tw: number };
@@ -40,7 +46,19 @@
     let shoot: { x: number; y: number; vx: number; vy: number; t: number } | null = null, nextShoot = 8;
     // bunker: closed, opening, firing, closing; the shell flies up and bursts
     let bunker = { state: 0, t: 0, next: 30 + Math.random() * 25 };
-    let shell: { x: number; y: number; vx: number; vy: number; t: number; burst: number; T: number; target?: number } | null = null;
+    // shells in flight: aimed at a balloon (target), fired by the player (mine) or just into the sky
+    type Shell = { x: number; y: number; vx: number; vy: number; t: number; burst: number; T: number; target?: number; mine?: boolean };
+    let shells: Shell[] = [];
+    const smoke: { x: number; y: number; t: number }[] = [];
+    let gun = -0.75, gunTo = -0.75, flash = 0, controlling = false, taps: number[] = [], cool = 0;
+    const bpos = { x: 0, y: 0 };
+    const G = 60; // gravity on the shells
+    function fire(tx: number, ty: number, T: number, extra: Partial<Shell> = {}) {
+      const x = bpos.x + Math.cos(gunTo) * 12, y = bpos.y + Math.sin(gunTo) * 12;
+      const sh: Shell = { x, y, vx: (tx - x) / T, vy: (ty - y) / T - (G / 2) * T, t: 0, burst: 0, T, ...extra };
+      gunTo = Math.atan2(sh.vy, sh.vx); flash = 0.15;
+      shells.push(sh);
+    }
     // the mountains, made once per size: a far jagged ridge and a row of snowy peaks in front of it
     let FAR: [number, number][] = [], PEAKS: { x: number; w: number; h: number; l: [number, number][]; r: [number, number][]; snow: number }[] = [];
 
@@ -106,40 +124,41 @@
       ctx.fillStyle = rgb(mix(snow, hex('#9fb0c8'), 0.35));
       ctx.beginPath(); ctx.moveTo(...pt([0.04, 1])); ctx.lineTo(...pt([0.6, 0.38])); ctx.lineTo(...pt([0.42, 0.5])); ctx.lineTo(...pt([0.25, 0.7])); ctx.lineTo(...pt([0.15, 0.62])); ctx.fill();
       ctx.restore();
-      // the bunker mountain on the left, closer, rocky with a few pines, reaching down behind the hills
-      const bx = W * 0.2, bw = Math.min(W * 0.18, 210), bh = H * 0.19;
-      const bm = dark(mix(hex('#6d7f72'), haze, 0.12), 0.72);
+      // the bunker mountain on the left, lower than the peaks, with a little snow; the bunker sits on its lit face
+      const bx = W * 0.2, bw = Math.min(W * 0.16, 190), bh = H * 0.12;
+      const bm = dark(mix(hex('#7a857f'), haze, 0.18), 0.72);
+      const sx = bx - bw * 0.05, sy = base - bh; // summit
       ctx.fillStyle = rgb(bm);
-      ctx.beginPath(); ctx.moveTo(bx - bw, H); ctx.lineTo(bx - bw, base); ctx.lineTo(bx - bw * 0.55, base - bh * 0.45); ctx.lineTo(bx - bw * 0.3, base - bh * 0.8); ctx.lineTo(bx - bw * 0.08, base - bh); ctx.lineTo(bx + bw * 0.12, base - bh * 0.92);
-      ctx.lineTo(bx + bw * 0.35, base - bh * 0.62); ctx.lineTo(bx + bw * 0.6, base - bh * 0.35); ctx.lineTo(bx + bw, base); ctx.lineTo(bx + bw, H); ctx.fill();
-      ctx.fillStyle = rgb(mix(bm, NIGHT, 0.3)); ctx.beginPath(); ctx.moveTo(bx - bw * 0.08, base - bh); ctx.lineTo(bx + bw * 0.12, base - bh * 0.92); ctx.lineTo(bx + bw * 0.35, base - bh * 0.62); ctx.lineTo(bx + bw * 0.6, base - bh * 0.35); ctx.lineTo(bx + bw, base); ctx.lineTo(bx + bw, H); ctx.lineTo(bx + bw * 0.1, H); ctx.fill();
-      ctx.fillStyle = rgb(dark(hex('#3f6a4a'), 0.75));
-      for (const [fx, fy] of [[-0.7, 0.2], [-0.62, 0.28], [-0.45, 0.4], [0.5, 0.3], [0.68, 0.18], [0.78, 0.12]]) { const tx = bx + bw * fx, ty = base - bh * fy; ctx.beginPath(); ctx.moveTo(tx, ty - 9); ctx.lineTo(tx - 3.5, ty); ctx.lineTo(tx + 3.5, ty); ctx.fill(); }
-      drawBunker(bx - bw * 0.02, base - bh * 0.62, light);
+      ctx.beginPath(); ctx.moveTo(bx - bw, H); ctx.lineTo(bx - bw, base); ctx.lineTo(bx - bw * 0.6, base - bh * 0.42); ctx.lineTo(bx - bw * 0.36, base - bh * 0.7); ctx.lineTo(bx - bw * 0.2, base - bh * 0.84); ctx.lineTo(sx, sy);
+      ctx.lineTo(bx + bw * 0.14, base - bh * 0.86); ctx.lineTo(bx + bw * 0.4, base - bh * 0.55); ctx.lineTo(bx + bw * 0.66, base - bh * 0.3); ctx.lineTo(bx + bw, base); ctx.lineTo(bx + bw, H); ctx.fill();
+      ctx.fillStyle = rgb(mix(bm, NIGHT, 0.3));
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(bx + bw * 0.14, base - bh * 0.86); ctx.lineTo(bx + bw * 0.4, base - bh * 0.55); ctx.lineTo(bx + bw * 0.66, base - bh * 0.3); ctx.lineTo(bx + bw, base); ctx.lineTo(bx + bw, H); ctx.lineTo(bx + bw * 0.15, H); ctx.fill();
+      ctx.fillStyle = rgb(snow);
+      ctx.beginPath(); ctx.moveTo(bx - bw * 0.2, base - bh * 0.84); ctx.lineTo(sx, sy); ctx.lineTo(bx + bw * 0.14, base - bh * 0.86); ctx.lineTo(bx + bw * 0.08, base - bh * 0.78);
+      ctx.lineTo(bx + bw * 0.0, base - bh * 0.84); ctx.lineTo(bx - bw * 0.07, base - bh * 0.74); ctx.lineTo(bx - bw * 0.14, base - bh * 0.8); ctx.fill();
+      bpos.x = bx - bw * 0.42; bpos.y = base - bh * 0.42;
+      drawBunker(bpos.x, bpos.y, light, bm);
     }
 
-    function drawBunker(x: number, y: number, light: number) {
-      const w = 22, h = 10, open = bunker.state === 1 ? bunker.t : bunker.state === 2 ? 1 : bunker.state === 3 ? 1 - bunker.t : 0;
-      const con = mix(hex('#9a9c98'), NIGHT, (1 - light) * 0.6);
-      ctx.fillStyle = rgb(con); ctx.beginPath(); ctx.roundRect(x - w / 2 - 3, y - h / 2 - 3, w + 6, h + 6, 2); ctx.fill();
-      ctx.fillStyle = '#14161a'; ctx.fillRect(x - w / 2, y - h / 2, w, h);
+    function drawBunker(x: number, y: number, light: number, rockCol: number[]) {
+      // camouflaged: a low concrete lip in the rock's colour, the doors barely darker
+      const w = 18, h = 8, open = controlling ? 1 : bunker.state === 1 ? bunker.t : bunker.state === 2 ? 1 : bunker.state === 3 ? 1 - bunker.t : 0;
+      ctx.fillStyle = rgb(mix(rockCol, hex('#9a9c98'), 0.12)); ctx.beginPath(); ctx.roundRect(x - w / 2 - 2, y - h / 2 - 2, w + 4, h + 4, 2); ctx.fill();
+      ctx.fillStyle = 'rgba(12,14,16,.85)'; ctx.fillRect(x - w / 2, y - h / 2, w, h);
       if (open > 0) {
-        // the gun barrel slides out, pointing up and to the right
-        ctx.save(); ctx.translate(x, y + 2); ctx.rotate(-0.75);
-        ctx.fillStyle = '#3c4148'; ctx.fillRect(-2, -2, 4 + 12 * open, 4);
+        ctx.save(); ctx.translate(x, y + 1); ctx.rotate(gun);
+        ctx.fillStyle = '#3c4148'; ctx.fillRect(-2, -1.6, 3 + 10 * open, 3.2);
         ctx.restore();
-        if (bunker.state === 2 && bunker.t < 0.18) {
-          const g = ctx.createRadialGradient(x + 10, y - 9, 0, x + 10, y - 9, 13);
+        if (flash > 0) {
+          const fx = x + Math.cos(gun) * 13, fy = y + Math.sin(gun) * 13, g = ctx.createRadialGradient(fx, fy, 0, fx, fy, 11);
           g.addColorStop(0, 'rgba(255,240,180,.95)'); g.addColorStop(1, 'rgba(255,140,40,0)');
-          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + 10, y - 9, 13, 0, 7); ctx.fill();
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(fx, fy, 11, 0, 7); ctx.fill();
         }
       }
-      // two blast doors sliding apart
-      ctx.fillStyle = rgb(mix(hex('#6d716f'), NIGHT, (1 - light) * 0.6));
+      ctx.fillStyle = rgb(mix(rockCol, hex('#3a3f3c'), 0.16));
       ctx.fillRect(x - w / 2, y - h / 2, (w / 2) * (1 - open), h);
       ctx.fillRect(x + (w / 2) * open, y - h / 2, (w / 2) * (1 - open), h);
-      ctx.fillStyle = light < 0.4 ? 'rgba(255,80,60,.9)' : 'rgba(255,80,60,.6)';
-      ctx.beginPath(); ctx.arc(x + w / 2 + 1, y - h / 2 - 1, 1.6, 0, 7); ctx.fill();
+      if (light < 0.4) { ctx.fillStyle = 'rgba(255,80,60,.7)'; ctx.beginPath(); ctx.arc(x + w / 2 + 1, y - h / 2 - 1, 1.1, 0, 7); ctx.fill(); }
     }
 
     function hills(light: number) {
@@ -283,6 +302,14 @@
         if (egg.kind === 'hot') { egg.y -= egg.v * dt; egg.x += egg.dir * 2.2 * dt; hotAir(egg.x, egg.y + Math.sin(egg.t * 0.8) * 1.5); if (egg.y < -30) egg = null; }
         else {
           egg.x += egg.dir * egg.v * dt;
+          if (egg.hit !== undefined) {
+            // hit: it trails smoke and sinks away behind the mountains
+            egg.hit += dt; egg.y += (10 + egg.hit * 14) * dt;
+            if (Math.random() < dt * 30) smoke.push({ x: egg.x - egg.dir * 10, y: egg.y + 4, t: 0 });
+            if (egg.y > horizon()) egg = null;
+          }
+        }
+        if (egg && egg.kind !== 'hot') {
           const y = egg.y + Math.sin(egg.t * 0.7) * (egg.kind === 'birds' ? 6 : 1.5);
           if (egg.kind === 'jet' || egg.kind === 'tesla') {
             const img = egg.kind === 'jet' ? jet : tesla, w = egg.kind === 'jet' ? 26 : 20, h = w * (img.naturalHeight / img.naturalWidth || 0.4);
@@ -311,34 +338,51 @@
         }
       }
       mountains(light, bot);
-      // the bunker: every 40 to 80 seconds the doors open, it fires once and closes again
-      if (!still) {
+      // the bunker: every 40 to 80 seconds the doors open, it fires once and closes again. Its target changes:
+      // the transport plane or the jet if one is passing, very rarely a pumped balloon (a hit pays double),
+      // otherwise somewhere into the sky
+      if (!still && !controlling) {
         if (bunker.state === 0) { bunker.next -= dt; if (bunker.next < 0) bunker = { state: 1, t: 0, next: 0 }; }
         else {
           bunker.t += dt / (bunker.state === 2 ? 1.6 : 1.2);
-          if (bunker.state === 2 && !shell && bunker.t < 0.1) {
-            const bw = Math.min(W * 0.18, 210), x = W * 0.2 - bw * 0.02 + 10, y = horizon() + 4 - H * 0.19 * 0.62 - 9;
-            // very rarely it aims at a pumped balloon (a hit pays double), otherwise it fires into the sky
-            const tg = Math.random() < 0.15 ? aim?.() : null, T = tg ? 0.75 : 0.85;
-            shell = tg ? { x, y, vx: (tg.x - x) / T, vy: (tg.y - y) / T - 30 * T, t: 0, burst: 0, T, target: tg.id }
-              : { x, y, vx: 160 + Math.random() * 80, vy: -(260 + Math.random() * 60), t: 0, burst: 0, T };
+          if (bunker.state === 2 && bunker.t > 0.25 && !bunker.next) {
+            bunker.next = 1;
+            const tg = Math.random() < 0.15 ? aim?.() : null;
+            const plane = egg && (egg.kind === 'fighter' || egg.kind === 'jet') && egg.hit === undefined && egg.x > 0 && egg.x < W ? egg : null;
+            if (tg) fire(tg.x, tg.y, 0.75, { target: tg.id });
+            else if (plane && Math.random() < 0.6) fire(plane.x + plane.dir * plane.v * 1.1, plane.y + 4, 1.1);
+            else { const a = -Math.PI * (0.15 + Math.random() * 0.7), d = H * (0.35 + Math.random() * 0.3); fire(bpos.x + Math.cos(a) * d * 1.4, bpos.y + Math.sin(a) * d, 0.8 + Math.random() * 0.3); }
           }
           if (bunker.t >= 1) bunker = bunker.state === 3 ? { state: 0, t: 0, next: 40 + Math.random() * 40 } : { state: bunker.state + 1, t: 0, next: 0 };
         }
       }
-      if (shell) {
-        shell.t += dt;
-        if (!shell.burst) {
-          shell.x += shell.vx * dt; shell.y += shell.vy * dt; shell.vy += 60 * dt;
-          ctx.strokeStyle = 'rgba(255,220,150,.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(shell.x, shell.y); ctx.lineTo(shell.x - shell.vx * 0.04, shell.y - shell.vy * 0.04); ctx.stroke();
-          if (shell.t > shell.T) { shell.burst = 0.001; if (shell.target !== undefined) onhit?.(shell.target); }
+      // the barrel turns towards its next target, the muzzle flash fades
+      gun += (gunTo - gun) * Math.min(1, dt * 10); flash = Math.max(0, flash - dt); cool = Math.max(0, cool - dt);
+      for (let i = shells.length - 1; i >= 0; i--) {
+        const sh = shells[i]; sh.t += dt;
+        if (!sh.burst) {
+          sh.x += sh.vx * dt; sh.y += sh.vy * dt; sh.vy += G * dt;
+          ctx.strokeStyle = 'rgba(255,220,150,.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(sh.x - sh.vx * 0.04, sh.y - sh.vy * 0.04); ctx.stroke();
+          // hits a plane or the roadster on the way
+          if (egg && egg.hit === undefined && (egg.kind === 'fighter' || egg.kind === 'jet' || egg.kind === 'tesla') && Math.hypot(sh.x - egg.x, sh.y - egg.y - 4) < 16) {
+            egg.hit = 0; sh.burst = 0.001;
+            if (egg.kind === 'fighter' && egg.drop !== undefined) egg.drop = egg.x; // everyone bails out
+          }
+          // the player's own shells can pop the balloons far away (never the ones being pumped)
+          if (sh.mine) for (let k = bgs.length - 1; k >= 0; k--) if (Math.hypot(sh.x - bgs[k].x, sh.y - bgs[k].y) < bgs[k].s + 4) { bgs.splice(k, 1); sh.burst = 0.001; }
+          if (!sh.burst && sh.t > sh.T) { sh.burst = 0.001; if (sh.target !== undefined) onhit?.(sh.target); }
         } else {
-          shell.burst += dt;
-          const k = shell.burst / 1.4, rr = 6 + k * 26;
-          ctx.fillStyle = `rgba(255,200,120,${Math.max(0, 0.8 - k)})`; ctx.beginPath(); ctx.arc(shell.x, shell.y, rr * 0.5, 0, 7); ctx.fill();
-          ctx.fillStyle = `rgba(150,150,150,${Math.max(0, 0.5 - k * 0.5)})`; ctx.beginPath(); ctx.arc(shell.x + 3, shell.y - 2, rr, 0, 7); ctx.fill();
-          if (k >= 1) shell = null;
+          sh.burst += dt;
+          const k = sh.burst / 1.4, rr = 6 + k * 26;
+          ctx.fillStyle = `rgba(255,200,120,${Math.max(0, 0.8 - k)})`; ctx.beginPath(); ctx.arc(sh.x, sh.y, rr * 0.5, 0, 7); ctx.fill();
+          ctx.fillStyle = `rgba(150,150,150,${Math.max(0, 0.5 - k * 0.5)})`; ctx.beginPath(); ctx.arc(sh.x + 3, sh.y - 2, rr, 0, 7); ctx.fill();
+          if (k >= 1) shells.splice(i, 1);
         }
+      }
+      for (let i = smoke.length - 1; i >= 0; i--) {
+        const q = smoke[i]; q.t += dt; q.y -= 6 * dt;
+        ctx.fillStyle = `rgba(90,90,95,${Math.max(0, 0.45 - q.t * 0.25)})`; ctx.beginPath(); ctx.arc(q.x, q.y, 2 + q.t * 5, 0, 7); ctx.fill();
+        if (q.t > 1.8) smoke.splice(i, 1);
       }
       // paratroopers drift down behind the hills
       for (let i = troopers.length - 1; i >= 0; i--) {
@@ -361,6 +405,22 @@
       hills(light);
       raf = requestAnimationFrame(frame);
     }
+    api = {
+      tap(x, y) {
+        if (controlling) {
+          // aim and fire where the player tapped; the shells only burst in the sky
+          if (cool <= 0 && y < bpos.y) { gunTo = Math.atan2(y - bpos.y, x - bpos.x); fire(x, y, Math.max(0.35, Math.hypot(x - bpos.x, y - bpos.y) / 520), { mine: true }); cool = 0.45; }
+          return true;
+        }
+        if (Math.hypot(x - bpos.x, y - bpos.y) > 22) return false;
+        const now = performance.now();
+        taps = [...taps.filter((t) => now - t < 3000), now];
+        if (taps.length >= 5) { taps = []; controlling = true; oncontrol?.(true); }
+        return true;
+      },
+      point(x, y) { if (controlling && y < bpos.y) gunTo = Math.max(-Math.PI + 0.1, Math.min(-0.1, Math.atan2(y - bpos.y, x - bpos.x))); },
+      exit() { if (!controlling) return; controlling = false; bunker = { state: 3, t: 0, next: 0 }; oncontrol?.(false); },
+    };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   });
