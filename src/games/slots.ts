@@ -157,9 +157,18 @@ export const ARMORY: Machine[] = [
 // ---------- Royal Cards: playing cards in the chosen deck, the joker is wild; same maths as Midnight Gems ----------
 const reskin = (base: Machine, id: string, name: string, map: Record<string, string>): Machine => {
   const r = (o: Record<string, any>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [map[k] ?? k, v]));
-  return { ...base, id, name, weights: base.weights.map(r), pays: r(base.pays), wild: map[base.wild!] ?? base.wild };
+  const scatter = base.scatter && { ...base.scatter, sym: map[base.scatter.sym] ?? base.scatter.sym };
+  return { ...base, id, name, weights: base.weights.map(r), pays: r(base.pays), wild: map[base.wild!] ?? base.wild, scatter };
 };
 /** Card symbols are 'card-<rank>-<suit>' (rank 1 = ace, suit 0♠ 1♥ 2♦ 3♣). */
 export const CARDS: Machine = reskin(MACHINES[1], 'cards', 'Royal Cards', {
   amethyst: 'card-10-3', emerald: 'card-11-2', sapphire: 'card-12-1', ruby: 'card-13-0', crown: 'card-1-0', wild: 'joker',
+});
+
+// ---------- the arcade games as machines, drawn with the games' own art (see lib/slotArt.ts) ----------
+export const CROSSY: Machine = reskin(MACHINES[2], 'crossy', 'Crossy Run', {
+  comet: 'cr-tree', moon: 'cr-car', planet: 'cr-taxi', ufo: 'cr-police', sun: 'cr-fire', wild: 'cr-duck', star: 'cr-coin',
+});
+export const SNAKE: Machine = reskin(MACHINES[1], 'snake', 'Snake Bite', {
+  amethyst: 'sn-wall', emerald: 'sn-poison', sapphire: 'sn-red', ruby: 'sn-gold', crown: 'sn-cosmic', wild: 'sn-head',
 });

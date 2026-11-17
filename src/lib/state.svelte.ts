@@ -1,5 +1,5 @@
 // Global persisted state: settings + play-money wallet (localStorage only, nothing leaves the browser).
-import { isDaily, DAILY_BONUS } from './daily';
+import { isDaily, dailySlot, DAILY_BONUS } from './daily';
 import type { Deck } from '../games/jass';
 const load = <T extends object>(key: string, def: T): T => {
   try {
@@ -89,7 +89,9 @@ $effect.root(() => {
 /** Apply the net result of a finished round (stake already included). The game of the day adds a bonus on payouts. */
 export function settle(net: number, won = 0) {
   if (!Number.isFinite(net) || !Number.isFinite(won) || won < 0) throw new Error('invalid result');
-  if (won > 0 && isDaily(location.hash.slice(2).split(/[/?]/)[0])) {
+  const [route, query = ''] = location.hash.slice(2).split('?');
+  const machine = route === 'slots' && new URLSearchParams(query).get('m');
+  if (won > 0 && (isDaily(route.split('/')[0]) || machine === dailySlot())) {
     const extra = Math.round(won * DAILY_BONUS * 100) / 100;
     net += extra;
     won += extra;

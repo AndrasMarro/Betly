@@ -30,7 +30,15 @@
       <div class="c2"><CardView card={{ r: 13, s: 1 }} /></div>
     </div>
   {:else if id === 'slots'}
-    <div class="syms">{#each ['seven', 'seven', 'seven'] as s}<div><SlotSymbol sym={s} /></div>{/each}</div>
+    <!-- a little one-armed bandit: on hover the lever drops and the reels spin, landing on 7 7 7 -->
+    <div class="bandit">
+      <div class="syms">
+        {#each [0, 1, 2] as i}
+          <div class="slotreel" style="--i:{i}"><div class="slotstrip">{#each ['seven', 'cherry', 'bell', 'bar', 'plum', 'lemon', 'seven'] as s}<div><SlotSymbol sym={s} /></div>{/each}</div></div>
+        {/each}
+      </div>
+      <div class="lever"><i></i></div>
+    </div>
   {:else if id === 'rocket'}
     <div class="stars"></div>
     <img class="planet" src={planet} alt="" />
@@ -265,9 +273,18 @@
   .c2 { transform: rotate(9deg) translateX(26px); }
   :global(.game:hover) .c1 { transform: rotate(-16deg) translateX(-40px) translateY(-6px); }
   :global(.game:hover) .c2 { transform: rotate(15deg) translateX(40px) translateY(-6px); }
-  .syms { display: flex; gap: 10px; padding: 18px; border-radius: 20px; background: #fbfaf6; box-shadow: inset 0 0 0 3px #d8b26a; }
-  .syms div { width: 64px; height: 64px; transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-  :global(.game:hover) .syms div:nth-child(2) { transform: translateY(-8px); }
+  .bandit { position: relative; padding: 14px; border-radius: 26px; background: linear-gradient(160deg, #4a2a14, #1d1008); box-shadow: inset 0 0 0 2px #d8b26a, 0 20px 40px -20px rgba(0,0,0,.8); }
+  .syms { display: flex; gap: 8px; padding: 8px; border-radius: 16px; background: #0b0b0c; }
+  .slotreel { width: 64px; height: 76px; overflow: hidden; border-radius: 10px; background: linear-gradient(180deg, #d9d4c7, #fbfaf6 25%, #fbfaf6 75%, #d9d4c7); }
+  .slotstrip { transform: translateY(-456px); }
+  .slotstrip div { width: 64px; height: 76px; padding: 8px 4px; }
+  :global(.game:hover) .slotstrip, :global(.dailycard:hover) .slotstrip, :global(.daily-slot:hover) .slotstrip { animation: reelspin calc(0.9s + var(--i) * 0.3s) cubic-bezier(.3, .1, .3, 1.08) both; }
+  @keyframes reelspin { from { transform: translateY(0); filter: blur(2px); } 70% { filter: blur(1px); } to { transform: translateY(-456px); filter: none; } }
+  .lever { position: absolute; right: -16px; top: 18px; width: 8px; height: 46px; border-radius: 4px; background: linear-gradient(90deg, #9aa0aa, #d9dde4); transform-origin: 50% 100%; transition: transform 0.25s; }
+  .lever i { position: absolute; left: -6px; top: -14px; width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a8f, #c3262c); }
+  :global(.game:hover) .lever, :global(.dailycard:hover) .lever, :global(.daily-slot:hover) .lever { animation: pull 0.6s ease-in-out; }
+  @keyframes pull { 40% { transform: scaleY(-1); } }
+  @media (prefers-reduced-motion: reduce) { .slotstrip { animation: none !important; } }
   .curve { position: absolute; inset: 0; width: 100%; height: 100%; }
   .curve .area { fill: url(#rkfill); stroke: none; }
   .curve .line { fill: none; stroke: #ff5a5f; stroke-width: 3.5; stroke-linecap: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 6px #ff5a5f); }

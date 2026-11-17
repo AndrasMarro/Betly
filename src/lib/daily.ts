@@ -22,3 +22,6 @@ export const dailyGame = (day = today()) => POOL[Math.floor(rng(day * 7 + 3)() *
 const CLASSICS = ['roulette', 'blackjack', 'slots', 'holdem', 'baccarat', 'threecard', 'jass', 'derby', 'durak'];
 export const dailyClassic = (day = today()) => CLASSICS[Math.floor(rng(day * 13 + 5)() * CLASSICS.length)];
 export const isDaily = (id: string) => id === dailyGame() || id === dailyClassic();
+// and one slot machine (ids from games/slots.ts)
+const SLOTS = ['classic', 'gems', 'cosmic', 'clover', 'cards', 'crossy', 'snake', 'arm-field', 'arm-arsenal', 'arm-proto'];
+export const dailySlot = (day = today()) => SLOTS[Math.floor(rng(day * 17 + 11)() * SLOTS.length)];

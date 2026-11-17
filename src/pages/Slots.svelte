@@ -8,10 +8,16 @@
   import CardView from '../components/Card.svelte';
   import DeckSelect from '../components/DeckSelect.svelte';
   import { FULL } from '../lib/decks';
-  import { MACHINES as BASE, ARMORY, CARDS, strips, spinGrid, evaluate, type Win, type Machine } from '../games/slots';
+  import { MACHINES as BASE, ARMORY, CARDS, CROSSY, SNAKE, strips, spinGrid, evaluate, type Win, type Machine } from '../games/slots';
   // weapon art from the cases, shown instead of drawn symbols on the Armory machine
   const ART = Object.fromEntries(Object.entries(import.meta.glob('../assets/cases/*.webp', { eager: true, import: 'default' })).map(([k, v]) => [k.split('/').pop()!.replace('.webp', ''), v as string]));
-  const MACHINES = [...BASE, CARDS, ...ARMORY];
+  import GameArt from '../components/GameArt.svelte';
+  import { slotArt } from '../lib/slotArt';
+  import { dailySlot } from '../lib/daily';
+  const MACHINES = [...BASE, CARDS, CROSSY, SNAKE, ...ARMORY];
+  const today = MACHINES.find((x) => x.id === dailySlot());
+  // the joker of the Russian Atlas deck, for every deck until the others have their own
+  import JOKER from '../assets/jass/ru/joker-red.webp';
   import { wallet, settle, fmt, settings } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
   import { t } from '../lib/i18n';
@@ -27,6 +33,8 @@
     gems: ['Edelsteine auf fünf Walzen, Wild und Freispiele ×2.', 'Gems on five reels, wild and free spins ×2.'],
     cosmic: ['Zwanzig Linien im All, Wild und Freispiele ×2.', 'Twenty lines in space, wild and free spins ×2.'],
     clover: ['Vier Reihen, zwanzig Linien, Glück aus Irland.', 'Four rows, twenty lines, luck of the Irish.'],
+    crossy: ['Die Ente, Autos, Polizei und Feuerwehr aus Retro Crossy Run. Die Ente ist Wild, Münzen geben Freispiele.', 'The duck, cars, police and fire engine from Retro Crossy Run. The duck is wild, coins give free spins.'],
+    snake: ['Äpfel, Giftäpfel und Mauern aus Snake, der Schlangenkopf ist Wild.', 'Apples, poison apples and walls from Snake, the snake head is wild.'],
     cards: ['Spielkarten im Kartenblatt deiner Wahl, der Joker ist Wild.', 'Playing cards in the deck of your choice, the joker is wild.'],
     'arm-field': ['Die Waffen aus den Kisten, kleine Einsätze.', 'The case weapons, small stakes.'],
     'arm-arsenal': ['Die Waffen aus den Kisten, mittlere Einsätze.', 'The case weapons, medium stakes.'],
@@ -61,7 +69,7 @@
     wins = []; win = 0; freeLeft = 0; autoLeft = 0;
   });
 
-  const lit = $derived(new Set(wins.flatMap((w) => m.lines[w.line].slice(0, w.count).map((row, reel) => reel + '-' + row))));
+  const lit = $derived(new Set(wins.flatMap((w) => (m.lines[w.line] ?? []).slice(0, w.count).map((row, reel) => reel + '-' + row))));
 
   async function spin() {
     if (spinning) return;
@@ -119,23 +127,13 @@
   }
 </script>
 
-<svelte:window onkeydown={(e) => !lobby && key(e)} onhashchange={() => { if (!spinning && !freeLeft) { mi = pick(); autoLeft = 0; } }} />
+<svelte:window onkeydown={(e) => !lobby && key(e)} onhashchange={() => { if (!spinning && !freeLeft) { wins = []; mi = pick(); autoLeft = 0; } }} />
 
 {#snippet symbol(sym: string)}
   {#if ART[sym]}<img class="weapon" src={ART[sym]} alt={sym} draggable="false" />
+  {:else if slotArt(sym)}<img class="gameart" src={slotArt(sym)} alt={sym} draggable="false" />
   {:else if sym.startsWith('card-')}{@const [, r, su] = sym.split('-')}<div class="pc"><CardView card={{ r: +r, s: +su }} /></div>
-  {:else if sym === 'joker'}
-    <div class="pc"><svg class="joker" viewBox="0 0 250 350" aria-label="Joker" role="img">
-      <rect width="250" height="350" rx="22" fill="#fffdf6" stroke="rgba(0,0,0,.12)" stroke-width="3" />
-      <rect x="16" y="16" width="218" height="318" rx="14" fill="none" stroke="#d8b26a" stroke-width="4" />
-      <path d="M125 120 L70 70 Q60 110 88 140 Z" fill="#e5484d" /><path d="M125 120 L180 70 Q190 110 162 140 Z" fill="#3d6bff" /><path d="M125 120 L125 52 Q100 90 108 138 Z M125 120 L125 52 Q150 90 142 138 Z" fill="#f2b01e" />
-      <circle cx="70" cy="70" r="11" fill="#f2b01e" /><circle cx="180" cy="70" r="11" fill="#f2b01e" /><circle cx="125" cy="50" r="11" fill="#e5484d" />
-      <circle cx="125" cy="182" r="46" fill="#f6d7b8" /><path d="M95 140 Q125 128 155 140 L150 152 Q125 142 100 152Z" fill="#7a3fb5" />
-      <circle cx="108" cy="176" r="6" fill="#1c1c22" /><circle cx="142" cy="176" r="6" fill="#1c1c22" /><circle cx="125" cy="192" r="7" fill="#e5484d" />
-      <path d="M102 204 Q125 226 148 204" stroke="#1c1c22" stroke-width="5" fill="none" stroke-linecap="round" />
-      <path d="M80 236 L100 224 L112 240 L125 224 L138 240 L150 224 L170 236 L160 252 L90 252Z" fill="#e5484d" />
-      <text x="125" y="300" text-anchor="middle" font-family="Geist Variable, sans-serif" font-weight="800" font-size="40" letter-spacing="6" fill="#1c1c22">JOKER</text>
-    </svg></div>
+  {:else if sym === 'joker'}<div class="pc"><img class="joker" src={JOKER} alt="Joker" draggable="false" /></div>
   {:else}<SlotSymbol {sym} />{/if}
 {/snippet}
 
@@ -147,6 +145,19 @@
       <div class="h1row"><h1>Slots</h1><HowTo id="slots" /></div>
     </div>
   </header>
+  {#if today}
+    <!-- slot of the day: the overview art, a bonus on every win in this machine -->
+    <button class="daily-slot" onclick={() => open(MACHINES.indexOf(today))}>
+      <div class="dart"><GameArt id="slots" /></div>
+      <div class="dtxt">
+        <span class="badge mono">{t('daily.badge')}</span>
+        <p class="eyebrow">{L('Slot des Tages', 'Slot of the day')}</p>
+        <h3>{today.name}</h3>
+        <p>{L(...BLURB[today.id])} {t('daily.text')}</p>
+        <span class="btn primary">{t('daily.play')} →</span>
+      </div>
+    </button>
+  {/if}
   <div class="machines">
     {#each MACHINES as x, i (x.id)}
       <button class="mcard {x.id}" class:armory={x.id.startsWith('arm')} onclick={() => open(i)}>
@@ -171,7 +182,7 @@
 <section class="wrap page">
   <header class="head">
     <div>
-      <p class="eyebrow">Slots · {m.lines.length} {t('s.lines')} · {m.weights.length}×{m.rows}</p>
+      <p class="eyebrow">Slots{#if m.id === today?.id}<span class="dbadge mono">{t('daily.badge')}</span>{/if} · {m.lines.length} {t('s.lines')} · {m.weights.length}×{m.rows}</p>
       <div class="h1row">
         <button class="btn sm back" disabled={spinning || freeLeft > 0} onclick={() => open(-1)}>← {L('Alle Automaten', 'All machines')}</button>
         <h1>{m.name}</h1><HowTo id="slots" />
@@ -248,7 +259,7 @@
       {/each}
       {#if m.scatter}
         <div class="payitem">
-          <div class="pi"><SlotSymbol sym={m.scatter.sym} /></div>
+          <div class="pi">{@render symbol(m.scatter.sym)}</div>
           <div class="mono">
             {#each Object.entries(m.scatter.pays).reverse() as [n, x]}<div><span class="muted">{n}×</span> {x * cost}</div>{/each}
           </div>
@@ -278,11 +289,32 @@
   .mtxt { padding: 18px 20px 20px; display: grid; gap: 6px; }
   .mtxt h3 { margin: 0; font-size: 1.35rem; letter-spacing: -0.03em; }
   .mtxt p { margin: 0; color: var(--muted); font-size: 0.88rem; }
-  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
-  .tags span { padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-2); font-size: 0.7rem; color: var(--muted); }
-  .pc { width: 100%; height: 100%; display: grid; place-items: center; --cw: 74%; }
-  .pc :global(.card) { width: 74%; }
-  .joker { width: 74%; aspect-ratio: 5 / 7; height: auto; display: block; border-radius: 6%; box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 8px 16px -8px rgba(0,0,0,.6); }
+  .mtxt { grid-template-rows: auto 1fr auto; height: 100%; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; align-self: end; }
+  .tags span { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line-2); font-size: 0.7rem; line-height: 1; color: var(--muted); }
+  .gameart { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .mcard.crossy .mart { background: linear-gradient(180deg, #8fd36b, #4c9f3e); }
+  .mcard.snake .mart { background: repeating-conic-gradient(#1d3b2a 0 25%, #21432f 0 50%) 0 0 / 26px 26px; }
+  .mcard.crossy .mcell, .mcard.snake .mcell { background: rgba(255,255,255,.14); }
+  .cabinet.crossy { --frame: #ffd84a; background: linear-gradient(160deg, #3f8f2a, #173d12); }
+  .cabinet.crossy .reel { background: linear-gradient(180deg, #3a3f4a, #4f5562 20%, #4f5562 80%, #3a3f4a); }
+  .cabinet.snake { --frame: #43c46e; background: linear-gradient(160deg, #123222, #06150d); }
+  .cabinet.snake .reel { background: repeating-conic-gradient(#1d3b2a 0 25%, #21432f 0 50%) 0 0 / 30px 30px; }
+  .daily-slot { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); width: 100%; margin-bottom: 18px; padding: 0; text-align: left; border-radius: 28px; overflow: hidden; color: inherit;
+    background: var(--surface); border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 10%, transparent); transition: transform 0.4s var(--ease-snap); }
+  .daily-slot:hover { transform: translateY(-4px); }
+  .dart { min-height: 230px; display: grid; }
+  .dart :global(.art) { height: 100%; }
+  .daily-slot .dtxt { display: grid; align-content: center; justify-items: start; gap: 8px; padding: clamp(18px, 3vw, 34px); }
+  .daily-slot h3 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.5rem); letter-spacing: -0.04em; line-height: 1; }
+  .daily-slot .dtxt p { margin: 0; color: var(--muted); }
+  .badge, .dbadge { padding: 4px 10px; border-radius: 999px; background: var(--gold); color: #1d1505; font-size: 0.75rem; font-weight: 700; }
+  .dbadge { margin-left: 8px; padding: 2px 8px; font-size: 0.65rem; letter-spacing: 0; }
+  @media (max-width: 720px) { .daily-slot { grid-template-columns: 1fr; } .dart { min-height: 180px; } }
+  /* cards are sized by height, so the taller decks (Atlas 2:3, Swiss 15:23) fit the square cell like the others */
+  .pc { width: 100%; height: 100%; display: grid; place-items: center; }
+  .pc :global(.card) { width: auto; height: 96%; }
+  .joker { width: 64%; height: auto; aspect-ratio: 2 / 3; display: block; border-radius: 6px; box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 8px 16px -8px rgba(0,0,0,.6); }
   .cabinet.cards { --frame: #e5c27a; background: radial-gradient(ellipse at 50% 0%, #2d6a4a, #0f2a1d 80%); }
   .cabinet.cards .reel { background: linear-gradient(180deg, #123524, #1d4a33 20%, #1d4a33 80%, #123524); }
   .cabinet.cards .cell { padding: 4%; }

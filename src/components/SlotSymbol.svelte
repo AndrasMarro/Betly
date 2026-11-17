@@ -25,7 +25,7 @@
     <rect x="10" y="32" width="80" height="36" rx="8" fill="#16161a" stroke="#d8b26a" stroke-width="4" />
     <text x="50" y="52" class="t" fill="#f4f2ee" font-size="24">BAR</text>
   {:else if sym === 'seven'}
-    <text x="50" y="56" class="t seven" font-size="84">7</text>
+    <text x="54" y="56" class="t seven" font-size="84">7</text>
   {:else if sym in gem}
     <polygon points="50,10 84,34 72,88 28,88 16,34" fill={gem[sym][1]} />
     <polygon points="50,10 84,34 50,44 16,34" fill={gem[sym][0]} />
