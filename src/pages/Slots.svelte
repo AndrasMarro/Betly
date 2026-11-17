@@ -209,7 +209,26 @@
           </div>
         </div>
       {/each}
-      {#if !spinning && wins.length}
+      {#if !spinning && wins.length && m.id === 'snake'}
+        <!-- Snake Bite: a winning line becomes a snake that slithers through the symbols and out of the machine -->
+        {@const R = reels.length * 100}
+        <svg class="lines snakes" viewBox="0 0 {R} {m.rows * 100}" preserveAspectRatio="none" aria-hidden="true">
+          {#each wins as w, i}
+            {@const ys = m.lines[w.line].map((row) => row * 100 + 50)}
+            {@const d = `M-70 ${ys[0]} ` + ys.map((y, r) => `L${r * 100 + 50} ${y}`).join(' ') + ` L${R + 14} ${ys.at(-1)}`}
+            <g style="--d:{i * 260}ms">
+              <path class="sbody" pathLength="1" d={d} stroke="#1f7a45" stroke-width="40" />
+              <path class="sbody" pathLength="1" d={d} stroke="#43c46e" stroke-width="32" />
+              <path class="sbody scales" d={d} stroke="#2f9a57" stroke-width="18" stroke-dasharray="4 14" />
+              <g class="shead" transform="translate({R + 14} {ys.at(-1)})">
+                <path class="tongue" d="M24 0 h18 l6 -5 M42 0 l6 5" stroke="#e5484d" stroke-width="4" fill="none" stroke-linecap="round" />
+                <ellipse cx="0" cy="0" rx="34" ry="26" fill="#1f7a45" /><ellipse cx="2" cy="-2" rx="30" ry="22" fill="#4fd17b" />
+                <circle cx="12" cy="-11" r="7" fill="#fff" /><circle cx="12" cy="11" r="7" fill="#fff" /><circle cx="15" cy="-11" r="3.5" fill="#111" /><circle cx="15" cy="11" r="3.5" fill="#111" />
+              </g>
+            </g>
+          {/each}
+        </svg>
+      {:else if !spinning && wins.length}
         <svg class="lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {#each wins as w, i}
             <polyline pathLength="1" style="animation-delay:{i * 120}ms" points={pts(m.lines[w.line])} stroke={LINE_COLORS[w.line % LINE_COLORS.length]} />
@@ -356,6 +375,13 @@
   .cell.dim { opacity: 0.35; }
   @keyframes pulse { to { transform: scale(1.1); } }
   .lines { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); pointer-events: none; }
+  .snakes { overflow: visible; z-index: 2; }
+  .sbody { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.9s var(--ease-snap) forwards; animation-delay: var(--d); }
+  .sbody.scales { stroke-dasharray: 4 14; stroke-dashoffset: 0; opacity: 0; animation: fadein 0.3s forwards; animation-delay: calc(var(--d) + 0.8s); }
+  .shead { opacity: 0; animation: fadein 0.25s forwards; animation-delay: calc(var(--d) + 0.75s); }
+  .tongue { animation: flick 0.5s steps(2) infinite; }
+  @keyframes fadein { to { opacity: 1; } }
+  @keyframes flick { 50% { opacity: 0; } }
   .lines polyline { fill: none; vector-effect: non-scaling-stroke; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; filter: drop-shadow(0 0 4px rgba(0,0,0,.6)); stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.6s var(--ease-snap) forwards; }
   @keyframes draw { to { stroke-dashoffset: 0; } }
   .readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: min(100%, 440px); gap: 12px; padding: 18px 6px 2px; color: #f4f2ee; }

@@ -41,8 +41,12 @@
     <defs><linearGradient id="wildg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5ea8" /><stop offset="1" stop-color="#7a3fb5" /></linearGradient></defs>
     <text x="50" y="52" class="t" fill="#fff" font-size="26">WILD</text>
   {:else if sym === 'star'}
-    <polygon points="50,8 61,38 93,38 67,57 77,89 50,70 23,89 33,57 7,38 39,38" fill="#f2c046" stroke="#a7781c" stroke-width="3" stroke-linejoin="round" />
-    <polygon points="50,22 56,40 44,40" fill="#fff" opacity=".5" />
+    <!-- the scatter is the Betly logo: red ring, dark gap, red dot, on a gold rim -->
+    <circle cx="50" cy="50" r="44" fill="#f2c046" stroke="#a7781c" stroke-width="3" />
+    <circle cx="50" cy="50" r="36" fill="#e5484d" />
+    <circle cx="50" cy="50" r="22" fill="#16161a" />
+    <circle cx="50" cy="50" r="15" fill="#e5484d" />
+    <path d="M22 36 A32 32 0 0 1 44 18" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".45" />
   {:else if sym === 'comet'}
     <defs><linearGradient id="{uid}-tail" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6ad5ff" stop-opacity="0" /><stop offset="1" stop-color="#6ad5ff" /></linearGradient></defs>
     <path d="M10 14 L62 54 L50 66 Z" fill="url(#{uid}-tail)" /><path d="M24 10 L66 50 L58 58 Z" fill="url(#{uid}-tail)" opacity=".6" />
