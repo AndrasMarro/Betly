@@ -223,6 +223,32 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Payout', p: 'The less likely the bet, the higher the multiplier. Chance and multiplier are shown next to the button.' },
     ],
   },
+  keno: {
+    de: [
+      { h: 'Ziel', p: 'Wähle 1 bis 10 der Zahlen 1–40. Danach werden 10 Zahlen gezogen; jede gezogene Zahl auf deinem Tipp ist ein Treffer.' },
+      { h: 'Auszahlung', li: ['Unter dem Feld steht für jede Trefferzahl der Multiplikator und die Chance.', 'Mehr gewählte Zahlen brauchen mehr Treffer, zahlen dafür ganz oben deutlich mehr.', 'Risiko Tief zahlt oft kleine Beträge, Hoch selten, dann aber sehr hohe.'] },
+      { h: 'Tipps', li: ['«Zufall» füllt den Tipp (mit so vielen Zahlen wie gewählt, sonst 10).', 'Nach einer Ziehung bleibt der Tipp stehen: Leertaste spielt ihn nochmal.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Pick 1 to 10 of the numbers 1–40. Then 10 numbers are drawn; every drawn number on your ticket is a hit.' },
+      { h: 'Payout', li: ['Below the board you see the multiplier and the chance for each number of hits.', 'More picked numbers need more hits but pay much more at the top.', 'Low risk pays small amounts often, high rarely but a lot.'] },
+      { h: 'Tips', li: ['"Quick pick" fills the ticket (as many numbers as picked, otherwise 10).', 'After a draw the ticket stays: space plays it again.'] },
+    ],
+  },
+  lotto: {
+    de: [
+      { h: 'Ziel', p: 'Tippe 6 der Zahlen 1–42 und eine Glückszahl 1–6. Gezogen werden 6 Zahlen und eine Glückszahl.' },
+      { h: 'Ablauf', li: ['Zahlen ankreuzen oder Quick-Tipp, dann «Tipp hinzufügen». Bis zu 6 Tipps pro Ziehung.', 'Einsatz gilt pro Tipp. «Abgeben» bezahlt, «Zurücknehmen» gibt ihn vor der Ziehung zurück.', 'Wer den Tisch eröffnet hat, startet die Ziehung.'] },
+      { h: 'Gewinnränge', li: ['6 Richtige + Glückszahl: Jackpot', '6, 5 + ★, 5, 4 + ★, 4, 3 + ★, 3 Richtige', '2 Richtige + Glückszahl'] },
+      { h: 'Mehrspieler', p: 'Eröffne einen Raum und teile den Code. Alle sehen dieselbe Ziehung, am Ende zeigt die Rangliste die Gewinne. Bots spielen mit, wenn sie eingeschaltet sind.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Pick 6 of the numbers 1–42 and a lucky number 1–6. The draw is 6 numbers and one lucky number.' },
+      { h: 'Flow', li: ['Mark numbers or take a quick pick, then "Add ticket". Up to 6 tickets per draw.', 'The stake is per ticket. "Hand in" pays, "Take back" refunds before the draw.', 'Whoever opened the table starts the draw.'] },
+      { h: 'Prize ranks', li: ['6 right + lucky number: jackpot', '6, 5 + ★, 5, 4 + ★, 4, 3 + ★, 3 right', '2 right + lucky number'] },
+      { h: 'Multiplayer', p: 'Open a room and share the code. Everyone sees the same draw and the leaderboard shows the wins. Bots join in when switched on.' },
+    ],
+  },
   hop: {
     de: [
       { h: 'Ziel', p: 'Bring das Huhn über die Strasse. Jede überquerte Spur erhöht den Multiplikator.' },

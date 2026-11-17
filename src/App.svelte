@@ -38,6 +38,8 @@
     derby: () => import('./pages/Derby.svelte'),
     durak: () => import('./pages/Durak.svelte'),
     holdem: () => import('./pages/Poker.svelte'),
+    keno: () => import('./pages/Keno.svelte'),
+    lotto: () => import('./pages/Lotto.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),
     soon: () => import('./pages/Soon.svelte'),

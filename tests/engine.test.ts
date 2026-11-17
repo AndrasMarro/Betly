@@ -555,3 +555,20 @@ import { newGame as dkNew, act as dkAct, bot as dkBot, legal as dkLegal, beats a
   assert(dkPay(2) === 1.94 && dkPay(6) === 1.16, 'payout');
   console.log('durak checks passed', { losers, draws, transfers });
 }
+
+// ---------- Keno and Lotto ----------
+{
+  const { kenoTable, KENO_RISK, KENO_N, KENO_D, hyper, LOTTO_TABLE, RANKS, rankProb, lottoRank } = await import('../src/games/lotto.ts');
+  for (const risk of Object.keys(KENO_RISK) as (keyof typeof KENO_RISK)[]) for (let k = 1; k <= 10; k++) {
+    const tb = kenoTable(k, risk), ev = tb.reduce((a, m, h) => a + m * hyper(KENO_N, KENO_D, k, h), 0);
+    assert.ok(ev <= 0.97 + 1e-9 && ev > 0.93, `keno ${risk} ${k}: ${ev}`);
+  }
+  let p = 0, ev = 0;
+  RANKS.forEach((r, i) => { p += rankProb(r); ev += rankProb(r) * LOTTO_TABLE[i]; });
+  assert.ok(ev <= 0.97 + 1e-9 && ev > 0.93, 'lotto ev ' + ev);
+  assert.equal(lottoRank([1, 2, 3, 4, 5, 6], 3, [1, 2, 3, 4, 5, 6], 3), 0);
+  assert.equal(lottoRank([1, 2, 3, 10, 11, 12], 1, [1, 2, 3, 4, 5, 6], 2), 7);
+  assert.equal(lottoRank([1, 2, 30, 10, 11, 12], 2, [1, 2, 3, 4, 5, 6], 2), 8);
+  assert.equal(lottoRank([1, 2, 30, 10, 11, 12], 1, [1, 2, 3, 4, 5, 6], 2), -1);
+  console.log('keno classic 10:', kenoTable(10, 'classic').join(' '), '| lotto:', LOTTO_TABLE.join(' '), '| win chance', p.toFixed(3));
+}

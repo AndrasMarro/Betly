@@ -160,6 +160,10 @@
     <span class="bp p">P</span><span class="bp b">B</span>
   {:else if id === 'holdem'}
     <div class="flop">{#each [{ r: 1, s: 0 }, { r: 13, s: 0 }, { r: 12, s: 0 }, { r: 11, s: 0 }, { r: 10, s: 0 }] as c, i}<div style="--i:{i}"><CardView card={c} /></div>{/each}</div>
+  {:else if id === 'keno'}
+    <div class="kn">{#each Array(20) as _, i}<i class:p={[2, 6, 9, 13, 17].includes(i)} class:h={[6, 13].includes(i)} style="--i:{i}">{i + 1}</i>{/each}</div>
+  {:else if id === 'lotto'}
+    <div class="lt">{#each [7, 14, 23, 31, 38, 42] as n, i}<b style="--i:{i}">{n}</b>{/each}<b class="g" style="--i:6">5</b></div>
   {:else if id === 'scratch'}
     <div class="tk">{#each ['seven', 'seven', 'seven'] as s, i}<i class:foil={i === 2}><SlotSymbol sym={s} /></i>{/each}</div>
   {/if}
@@ -182,6 +186,16 @@
   .dkc:first-child { margin-left: 0; }
   :global(.game:hover) .dkc, :global(.dailycard:hover) .dkc { rotate: calc((var(--i) - 1) * 20deg); }
   .dkhat { position: absolute; left: 50%; top: -14px; width: 56px; translate: -50% 0; rotate: -10deg; filter: drop-shadow(0 4px 6px rgba(0,0,0,.4)); }
+  .art.keno { background: radial-gradient(ellipse at 50% 0%, #1f3a5c, #0c1626 75%); }
+  .kn { display: grid; grid-template-columns: repeat(5, 34px); gap: 6px; }
+  .kn i { height: 28px; border-radius: 7px; display: grid; place-items: center; font: 600 0.75rem 'Geist Mono Variable', monospace; font-style: normal; color: #dfe7f5; background: #2e4766; transition: background 0.3s calc(var(--i) * 25ms), transform 0.3s calc(var(--i) * 25ms); }
+  .kn i.p { background: #7a4ff0; color: #fff; }
+  :global(.game:hover) .kn i.h, :global(.dailycard:hover) .kn i.h { background: #2fbf71; color: #052a18; transform: scale(1.15); }
+  .art.lotto { background: radial-gradient(ellipse at 50% 0%, #1d4b8f, #0b1b38 70%); }
+  .lt { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 230px; }
+  .lt b { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font: 800 0.95rem 'Geist Mono Variable', monospace; color: #1d1d22; background: radial-gradient(circle at 35% 30%, #fff, #cfd5e2); box-shadow: 0 6px 12px rgba(0,0,0,.4); transition: transform 0.5s var(--spring-snappy) calc(var(--i) * 60ms); }
+  .lt b.g { background: radial-gradient(circle at 35% 30%, #fff1b8, #e0a92a); }
+  :global(.game:hover) .lt b, :global(.dailycard:hover) .lt b { transform: translateY(-8px) rotate(-12deg); }
   .art.dice { background: radial-gradient(ellipse at 50% 30%, var(--felt), var(--felt-2)); }
   .dice3 { position: absolute; inset: 0; display: grid; align-content: center; }
   .art.hop { background: #2c2f36; }
