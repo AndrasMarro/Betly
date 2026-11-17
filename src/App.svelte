@@ -147,7 +147,14 @@
       </nav>
     </div>
     <p>{t('footer.note')}</p>
-    <p class="muted">{t('footer.help')}</p>
+    <details class="help">
+      <summary>{t('footer.helpTitle')}</summary>
+      <p class="muted">{t('footer.helpText')}</p>
+      <ul>
+        <li><a href="https://www.sos-spielsucht.ch" target="_blank" rel="noopener noreferrer">sos-spielsucht.ch</a> · <a href="tel:0800040080">0800 040 080</a> (CH, {t('footer.free')})</li>
+        <li><a href="https://www.check-dein-spiel.de" target="_blank" rel="noopener noreferrer">check-dein-spiel.de</a> (DE)</li>
+      </ul>
+    </details>
   </div>
 </footer>
 
@@ -201,6 +208,13 @@
   .foot nav a:hover { color: var(--text); }
   .foot p { margin: 4px 0; }
   .muted { color: var(--muted); }
+  .help { margin-top: 6px; color: var(--muted); }
+  .help summary { cursor: pointer; width: fit-content; list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+  .help summary::-webkit-details-marker { display: none; }
+  .help summary::after { content: '›'; transition: transform 0.2s; }
+  .help[open] summary::after { transform: rotate(90deg); }
+  .help ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+  .help a { color: var(--text); }
 
   @media (max-width: 760px) {
     :global(:root) { --nav-h: 112px; }

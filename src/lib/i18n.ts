@@ -93,7 +93,7 @@ const de = {
   's.spin': 'Spin', 's.auto': 'Auto', 's.stop': 'Stopp', 's.turbo': 'Turbo', 's.lineBet': 'Einsatz pro Linie', 's.lines': 'Linien', 's.free': 'Freispiele', 's.paytable': 'Gewinntabelle',
   's.scatter': '3+ Sterne irgendwo: Freispiele mit doppeltem Gewinn', 's.wild': 'Wild ersetzt alle Symbole ausser dem Stern',
   'notEnough': 'Nicht genug Credits',
-  'footer.note': 'Nur Unterhaltung. Spielgeld ohne Wert. Kein Geldspiel im Sinne des Geldspielgesetzes.', 'footer.help': 'Geldspiele können süchtig machen. Hilfe: sos-spielsucht.ch · 0800 040 080 (CH) · check-dein-spiel.de (DE)',
+  'footer.note': 'Nur Unterhaltung. Spielgeld ohne Wert. Kein Geldspiel im Sinne des Geldspielgesetzes.', 'footer.helpTitle': 'Geldspiele können süchtig machen – Hilfe', 'footer.helpText': 'Anonyme und kostenlose Beratung, auch für Angehörige:', 'footer.free': 'gratis',
   'legal.imprint': 'Impressum', 'legal.privacy': 'Datenschutz', 'legal.disclaimer': 'Haftung & Distanzierung',
 };
 
@@ -190,7 +190,7 @@ const en: typeof de = {
   's.spin': 'Spin', 's.auto': 'Auto', 's.stop': 'Stop', 's.turbo': 'Turbo', 's.lineBet': 'Bet per line', 's.lines': 'Lines', 's.free': 'Free spins', 's.paytable': 'Paytable',
   's.scatter': '3+ stars anywhere: free spins with double wins', 's.wild': 'Wild substitutes for every symbol except the star',
   'notEnough': 'Not enough credits',
-  'footer.note': 'Entertainment only. Play money with no value. No gambling for money.', 'footer.help': 'Gambling can be addictive. Help: sos-spielsucht.ch · 0800 040 080 (CH) · check-dein-spiel.de (DE)',
+  'footer.note': 'Entertainment only. Play money with no value. No gambling for money.', 'footer.helpTitle': 'Gambling can be addictive — get help', 'footer.helpText': 'Anonymous, free advice, also for family and friends:', 'footer.free': 'free',
   'legal.imprint': 'Imprint', 'legal.privacy': 'Privacy', 'legal.disclaimer': 'Liability & disclaimer',
 };
 
