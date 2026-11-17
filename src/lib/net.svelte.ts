@@ -1,19 +1,15 @@
-// Serverless multiplayer: WebRTC peer-to-peer via PeerJS. The host's browser is the authoritative table.
-import Peer, { type DataConnection, type PeerOptions } from 'peerjs';
+// Multiplayer over Supabase Realtime: every room is a broadcast channel on the Betly project, so it works
+// across any network (mobile data, NAT, firewalls), which direct WebRTC did not. The host's browser stays the
+// authoritative table; presence tells who is in the room and when someone leaves.
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { sb } from './account.svelte';
 
-const PREFIX = 'betly-v1-';
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({ length: 5 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
-
-// ?peer=host:port lets you point at a self-hosted PeerServer (used for local testing).
-function peerOpts(): PeerOptions {
-  const p = new URLSearchParams(location.search).get('peer');
-  if (!p) return {};
-  const [host, port] = p.split(':');
-  return { host, port: +port || 9000, path: '/', secure: false };
-}
+const newId = () => 'p' + Math.random().toString(36).slice(2, 10);
 
 export type Handler = (msg: any, from: string) => void;
+type Packet = { to: string; from: string; d: any }; // to: 'host', a player id or '*'
 
 export class Room {
   role = $state<'solo' | 'host' | 'guest'>('solo');
@@ -22,13 +18,9 @@ export class Room {
   error = $state('');
   myId = $state('me');
   guests = $state(0);
-  #peer?: Peer;
-  #conns = new Map<string, DataConnection>();
-  #host?: DataConnection;
-  // Heartbeat: WebRTC often reports a vanished peer late or never, so both sides ping
-  // every 2 s and treat 7 s of silence as "left". Otherwise a table would wait forever.
-  #seen = new Map<string, number>();
-  #beat?: ReturnType<typeof setInterval>;
+  #ch?: RealtimeChannel;
+  #hostId = '';
+  #ids = new Set<string>(); // guests at the table (host only)
 
   constructor(
     private game: string,
@@ -38,81 +30,70 @@ export class Room {
     addEventListener('pagehide', () => this.leave());
   }
 
-  #heartbeat() {
-    clearInterval(this.#beat);
-    this.#beat = setInterval(() => {
-      const now = Date.now();
-      if (this.#host) {
-        this.#host.send({ t: '_ping' });
-        if (now - (this.#seen.get('host') ?? now) > 7000) this.#fail('Host left the room');
-      }
-      for (const [id, c] of this.#conns) {
-        c.send({ t: '_ping' });
-        if (now - (this.#seen.get(id) ?? now) > 7000) c.close(), this.#drop(id);
-      }
-    }, 2000);
-  }
-
-  #recv(d: any, from: string) {
-    this.#seen.set(from, Date.now());
-    if (d?.t !== '_ping') this.onMsg(d, from);
-  }
-
-  #drop(id: string) {
-    if (!this.#conns.delete(id)) return;
-    this.guests = this.#conns.size;
-    this.onLeave(id);
-  }
-
   get online() {
     return this.role !== 'solo';
   }
 
-  create() {
+  #add(id: string) {
+    if (id === this.myId || this.#ids.has(id)) return;
+    this.#ids.add(id);
+    this.guests = this.#ids.size;
+  }
+  #drop(id: string) {
+    if (!this.#ids.delete(id)) return;
+    this.guests = this.#ids.size;
+    this.onLeave(id);
+  }
+
+  async #open(code: string, host: boolean) {
     this.leave();
     this.status = 'connecting';
-    this.code = newCode();
-    const peer = (this.#peer = new Peer(PREFIX + this.game + '-' + this.code, peerOpts()));
-    peer.on('open', (id) => {
-      this.myId = id;
-      this.#heartbeat();
-      this.role = 'host';
-      this.status = 'open';
+    this.code = code;
+    const me = newId();
+    let ch: RealtimeChannel;
+    try {
+      ch = (await sb()).channel(`betly-${this.game}-${code}`, { config: { broadcast: { self: false }, presence: { key: me } } });
+    } catch {
+      return this.#fail('No connection');
+    }
+    if (this.status !== 'connecting' || this.code !== code) return; // left or switched while loading
+    this.#ch = ch;
+    const hosts = () => Object.entries(ch.presenceState()).filter(([, v]) => (v as any[]).some((p) => p.host)).map(([k]) => k);
+
+    ch.on('broadcast', { event: 'm' }, ({ payload: p }: { payload: Packet }) => {
+      if (this.role === 'host' && p.to === 'host') { this.#add(p.from); this.onMsg(p.d, p.from); }
+      else if (this.role === 'guest' && p.from === this.#hostId && (p.to === me || p.to === '*')) this.onMsg(p.d, 'host');
     });
-    peer.on('connection', (c) => {
-      c.on('open', () => {
-        this.#conns.set(c.peer, c);
-        this.#seen.set(c.peer, Date.now());
-        this.guests = this.#conns.size;
-      });
-      c.on('data', (d) => this.#recv(d, c.peer));
-      const gone = () => this.#drop(c.peer);
-      c.on('close', gone);
-      c.on('error', gone);
+    ch.on('presence', { event: 'join' }, ({ key }) => { if (this.role === 'host' && key !== me) this.#add(key); });
+    ch.on('presence', { event: 'leave' }, ({ key }) => {
+      if (this.role === 'host') this.#drop(key);
+      else if (this.role === 'guest' && key === this.#hostId) this.#fail('Host left the room');
     });
-    peer.on('error', (e) => this.#fail(e.type === 'unavailable-id' ? 'Code collision, try again' : e.message));
+
+    ch.subscribe(async (st) => {
+      if (st === 'SUBSCRIBED' && this.#ch === ch && this.status === 'connecting') {
+        if (host) {
+          await ch.track({ host: true });
+          Object.assign(this, { myId: me, role: 'host', status: 'open' });
+          return;
+        }
+        // a guest needs a host: presence arrives with the first sync, give it a few seconds
+        for (let i = 0; i < 25 && !hosts().length && this.#ch === ch; i++) await new Promise((r) => setTimeout(r, 200));
+        if (this.#ch !== ch) return;
+        if (!hosts().length) return this.#fail('Room not found');
+        this.#hostId = hosts()[0];
+        await ch.track({});
+        Object.assign(this, { myId: me, role: 'guest', status: 'open' });
+      } else if ((st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') && this.#ch === ch && this.status === 'connecting') this.#fail('No connection');
+    });
+  }
+
+  create() {
+    this.#open(newCode(), true);
   }
 
   join(code: string) {
-    this.leave();
-    code = code.trim().toUpperCase();
-    this.status = 'connecting';
-    this.code = code;
-    const peer = (this.#peer = new Peer(peerOpts()));
-    peer.on('open', (id) => {
-      this.myId = id;
-      const c = peer.connect(PREFIX + this.game + '-' + code, { reliable: true });
-      c.on('open', () => {
-        this.#host = c;
-        this.#seen.set('host', Date.now());
-        this.#heartbeat();
-        this.role = 'guest';
-        this.status = 'open';
-      });
-      c.on('data', (d) => this.#recv(d, 'host'));
-      c.on('close', () => this.#fail('Host left the room'));
-    });
-    peer.on('error', (e) => this.#fail(e.type === 'peer-unavailable' ? 'Room not found' : e.message));
+    this.#open(code.trim().toUpperCase(), false);
   }
 
   #fail(msg: string) {
@@ -121,36 +102,40 @@ export class Room {
     this.error = msg;
   }
 
+  #post(to: string, d: any) {
+    this.#ch?.send({ type: 'broadcast', event: 'm', payload: { to, from: this.myId, d: $state.snapshot(d) } });
+  }
+
   /** Guest → host. On host/solo the message is handled locally as if sent by ourselves. */
   send(msg: any) {
-    if (this.role === 'guest') this.#host?.send(msg);
+    if (this.role === 'guest') this.#post('host', msg);
     else this.onMsg(msg, this.myId);
   }
 
   broadcast(msg: any) {
-    for (const c of this.#conns.values()) c.send(msg);
+    if (this.role === 'host' && this.#ids.size) this.#post('*', msg);
   }
 
   /** Is this player id still at the table (ourselves, or a connected guest)? */
   has(id: string | null) {
-    return id === this.myId || (id !== null && this.#conns.has(id));
+    return id === this.myId || (id !== null && this.#ids.has(id));
   }
 
   /** Ids of connected guests (host only). */
   peers() {
-    return [...this.#conns.keys()];
+    return [...this.#ids];
   }
 
   sendTo(id: string, msg: any) {
-    this.#conns.get(id)?.send(msg);
+    if (this.role === 'host') this.#post(id, msg);
   }
 
   leave() {
-    clearInterval(this.#beat);
-    this.#seen.clear();
-    this.#peer?.destroy();
-    this.#peer = this.#host = undefined;
-    this.#conns.clear();
+    const ch = this.#ch;
+    this.#ch = undefined;
+    if (ch) ch.unsubscribe().then(() => ch.teardown?.()).catch(() => {});
+    this.#ids.clear();
+    this.#hostId = '';
     Object.assign(this, { role: 'solo', status: 'idle', code: '', error: '', myId: 'me', guests: 0 });
   }
 }

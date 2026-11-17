@@ -21,16 +21,15 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
     "@supabase/supabase-js": "^2.119.0",
-    "peerjs": "^1.5.5",
     "three": "^0.170.0"
   },
-  "description": "Betly: free play-money casino in the browser. Classic table games, slots and arcade games with serverless multiplayer and bots. No real money.",
+  "description": "Betly: free play-money casino in the browser. Classic table games, slots and arcade games with online multiplayer and bots. No real money.",
   "homepage": "https://andrasmarro.github.io/Betly/",
   "keywords": [
     "casino",
     "play-money",
     "svelte",
-    "webrtc",
+    "realtime",
     "multiplayer",
     "poker",
     "blackjack",

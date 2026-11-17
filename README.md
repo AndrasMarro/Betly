@@ -34,7 +34,7 @@ Weitere Spiele sind als *Demnächst* angelegt (Craps, Video Poker, Sic Bo, Keno,
 
 ## Features
 
-- **Mehrspieler ohne Server**: Raum öffnen, Code oder Link teilen. Die Verbindung läuft direkt von Browser zu Browser (WebRTC über PeerJS). Der Browser des Hosts führt den Tisch; beim Poker sieht jeder nur seine eigenen Karten. Ein Heartbeat erkennt Spieler, die verschwinden, und abwesende Plätze werden automatisch weitergespielt.
+- **Mehrspieler**: Raum öffnen, Code oder Link teilen. Die Nachrichten laufen über Supabase Realtime (Broadcast-Kanal pro Raum), das klappt in jedem Netz, auch über Mobilfunk. Der Browser des Hosts führt den Tisch; beim Poker sieht jeder nur seine eigenen Karten. Presence erkennt Spieler, die verschwinden, und abwesende Plätze werden automatisch weitergespielt.
 - **Bots an/aus** pro Tisch, inklusive Anzahl.
 - **Spiel des Tages**: Jeden Tag zahlt ein anderes Arcade-Spiel +20 % auf jeden Gewinn (auf der Startseite hervorgehoben).
 - **Anleitungen** für jedes Spiel (ausser ganz einfachen wie dem Münzwurf), auf Deutsch und Englisch.
@@ -68,7 +68,7 @@ Beim Poker spielen die Bots gegeneinander und gegen dich; die Engine ist mit 400
 
 - [Svelte 5](https://svelte.dev) + [Vite](https://vite.dev), TypeScript
 - Statische Seite, Hash-Routing, Spiele werden erst beim Öffnen geladen
-- [PeerJS](https://peerjs.com) für WebRTC-Mehrspieler
+- [Supabase Realtime](https://supabase.com/docs/guides/realtime) für die Mehrspieler-Räume
 - Lokal eingebundene Schriften (Geist, Geist Mono, Instrument Serif)
 - Deployment über GitHub Actions auf GitHub Pages
 

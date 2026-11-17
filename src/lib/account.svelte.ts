@@ -17,7 +17,7 @@ export const account = $state({ user: null as null | { id: string; email?: strin
 export const hasSession = () => { try { return !!localStorage.getItem(TOKEN); } catch { return false; } };
 
 let client: Promise<SupabaseClient> | null = null;
-const sb = () =>
+export const sb = () =>
   (client ??= import('@supabase/supabase-js').then(({ createClient }) => {
     const c = createClient(SB_URL, KEY, { auth: { flowType: 'pkce' } });
     c.auth.onAuthStateChange((_, s) => {
