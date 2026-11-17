@@ -23,8 +23,8 @@
     10: [[C[0], R[0]], [C[2], R[0]], [C[1], 100], [C[0], 140], [C[2], 140], [C[0], 210], [C[2], 210], [C[1], 250], [C[0], R[6]], [C[2], R[6]]],
   };
   const COURT: Record<number, string> = { 11: 'J', 12: 'Q', 13: 'K' };
-  // a picture deck replaces the drawn cards it has pictures for: the Russian Atlas deck all 52 and a back,
-  // the Swiss French and international ones only 6 to ace, so 2 to 5 and the back stay drawn
+  // a picture deck replaces the drawn cards: the Russian Atlas, Swiss French and international decks have all 52
+  // (2 to 5 of the last two rebuilt from extract sheets); a missing picture or back stays drawn
   const PICS = import.meta.glob('../assets/jass/*/*.webp', { eager: true, import: 'default' }) as Record<string, string>;
   const SU = ['schaufel', 'herz', 'ecke', 'kreuz'], RK: Record<number, string> = { 1: 'ass', 11: 'bauer', 12: 'dame', 13: 'koenig' };
   const pics = $derived(deck !== 'classic' && deck !== 'de');

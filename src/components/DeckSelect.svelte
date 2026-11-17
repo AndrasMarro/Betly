@@ -17,7 +17,7 @@
 <label class="decksel">
   <span class="ic"><JassCard icon card={{ s: 0, r: 6 }} deck={deck === 'classic' ? 'fr' : deck} /></span>
   <select value={deck} onchange={(e) => choose((e.currentTarget as HTMLSelectElement).value as Deck)} aria-label={lang === 'ru' ? 'Колода' : lang === 'en' ? 'Deck' : 'Kartenblatt'}>
-    {#each list as d}<option value={d.id}>{d[lang]}{which === 'cards52' && (d.id === 'fr' || d.id === 'intl') ? (lang === 'de' ? ' (2–5 Standard)' : lang === 'ru' ? ' (2–5 стандарт)' : ' (2–5 standard)') : ''}</option>{/each}
+    {#each list as d}<option value={d.id}>{d[lang]}</option>{/each}
   </select>
   <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
 </label>
