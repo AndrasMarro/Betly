@@ -60,3 +60,9 @@ export function settle3(r: Round, ante: number, pairPlus: number, played: boolea
   else result = 'lose';
   return { back: a + pl + bonus + pp, result, ante: a, play: pl, bonus, pp };
 }
+
+/** One deck for a whole table: the dealer's hand and one hand per seat. */
+export function dealTable(seats: number): { dealer: Card[]; hands: Card[][] } {
+  const deck = shuffle(Array.from({ length: 52 }, (_, i) => ({ r: (i % 13) + 1, s: Math.floor(i / 13) })));
+  return { dealer: deck.slice(0, 3), hands: Array.from({ length: seats }, (_, i) => deck.slice(3 + i * 3, 6 + i * 3)) };
+}
