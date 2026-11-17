@@ -60,7 +60,8 @@
     const hit = k === 'mine' ? !boom : diceWins(pickd, vals, f);
     const win = hit ? Math.round(b * m * 100) / 100 : 0;
     settle(win, win);
-    sfx(boom ? 'boom' : win ? 'win' : 'lose');
+    if (boom) vals.forEach((_, i) => setTimeout(() => sfx('boom'), i * 160)); // every die blows up, one after another
+    else sfx(win ? 'win' : 'lose');
     const sum = vals.reduce((a, v) => a + v, 0);
     last = { sum, boom, win };
     history = [{ s: boom ? '💥' : k === 'mine' ? '✓' : String(sum), win: win > 0, id: Date.now() }, ...history].slice(0, 16);

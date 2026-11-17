@@ -1,6 +1,6 @@
 <script lang="ts">
   // The dice as real 3D models (three.js) on a wooden table with a purple velvet mat, like the coin toss.
-  // Each die is its polyhedron with chamfered, softly shaded edges, so it looks rounded instead of boxy.
+  // The W6 is a rounded box; W8 and W10 are their polyhedra with chamfered, softly shaded edges.
   // The throw itself comes from diceSim (the same one the CSS fallback uses). three.js loads only here.
   import { onDestroy, onMount, untrack } from 'svelte';
   import { resting, simulate, solid, spread, type Frame, type M, type Solid, type V } from '../games/diceSim';
@@ -11,9 +11,9 @@
 
   const SIZE = 96, K = 1 / 48; // the simulation works in "pixels" of a 96 px die; the scene in units of 48 px
   const PIPS: Record<number, [number, number][]> = {
-    1: [[50, 50]], 2: [[28, 28], [72, 72]], 3: [[26, 26], [50, 50], [74, 74]],
-    4: [[28, 28], [72, 28], [28, 72], [72, 72]], 5: [[26, 26], [74, 26], [50, 50], [26, 74], [74, 74]],
-    6: [[28, 24], [72, 24], [28, 50], [72, 50], [28, 76], [72, 76]],
+    1: [[50, 50]], 2: [[31, 31], [69, 69]], 3: [[30, 30], [50, 50], [70, 70]],
+    4: [[31, 31], [69, 31], [31, 69], [69, 69]], 5: [[30, 30], [70, 30], [50, 50], [30, 70], [70, 70]],
+    6: [[31, 29], [69, 29], [31, 50], [69, 50], [31, 71], [69, 71]],
   };
   const COLORS: Record<number, [string, string]> = { 6: ['#f7f4ec', '#1d1d22'], 8: ['#2c55c9', '#fff4d6'], 10: ['#1d8f5c', '#fff4d6'] };
 
@@ -28,6 +28,7 @@
   onMount(async () => {
     try {
       const THREE = await import('three');
+      const { RoundedBoxGeometry } = await import('three/examples/jsm/geometries/RoundedBoxGeometry.js');
       if (!alive) return;
       let w = Math.max(200, host.clientWidth), h = Math.max(200, host.clientHeight);
       const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -133,13 +134,13 @@
         const cv = document.createElement('canvas'); cv.width = cv.height = 256;
         const g = cv.getContext('2d')!, [bg, ink] = COLORS[f];
         g.fillStyle = bg; g.fillRect(0, 0, 256, 256);
-        if (bomb) { g.font = '120px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('💣', 128, 136); }
+        if (bomb) { g.font = '96px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('💣', 128, 136); }
         else if (f === 6) {
           // the square face spans the whole picture
           for (const [x, y] of PIPS[n]) {
-            const gr = g.createRadialGradient(x * 2.56 - 4, y * 2.56 - 4, 2, x * 2.56, y * 2.56, 22);
+            const gr = g.createRadialGradient(x * 2.56 - 3, y * 2.56 - 3, 2, x * 2.56, y * 2.56, n === 1 ? 24 : 17);
             gr.addColorStop(0, n === 1 ? '#e8454a' : '#3a3a42'); gr.addColorStop(1, n === 1 ? '#a3161c' : '#0e0e12');
-            g.fillStyle = gr; g.beginPath(); g.arc(x * 2.56, y * 2.56, 21, 0, 7); g.fill();
+            g.fillStyle = gr; g.beginPath(); g.arc(x * 2.56, y * 2.56, n === 1 ? 23 : 16, 0, 7); g.fill();
           }
         } else {
           g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -155,17 +156,28 @@
       }
       type D = { mesh: THREE.Mesh; mats: THREE.MeshPhysicalMaterial[] };
       let dice: D[] = [], geo: THREE.BufferGeometry | null = null, geoFor = 0;
+      let order: number[] = []; // material slot -> face of S (the rounded box has its own face order)
       const sparks: { m: THREE.Mesh; v: THREE.Vector3; t: number }[] = [];
       const sparkGeo = new THREE.SphereGeometry(0.12, 8, 8);
-      let booms: { d: D; t: number }[] = [];
+      let booms: { d: D; t: number; fired: boolean }[] = [];
       const flash = new THREE.PointLight(0xff9a3a, 0, 12);
       scene.add(flash);
       function build(n: number) {
-        if (geoFor !== S.f) { geo?.dispose(); geo = geometry(S); geoFor = S.f; }
+        if (geoFor !== S.f) {
+          geo?.dispose();
+          if (S.f === 6) {
+            // a rounded box: its six groups face +x, -x, +y, -y, +z, -z; the flat part of each face keeps the pips
+            geo = new RoundedBoxGeometry(2, 2, 2, 6, 0.36);
+            const axes = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].map(([x, y, z]) => new THREE.Vector3(x, y, z));
+            order = axes.map((a) => S.faces.findIndex((fc) => to3(fc.n).normalize().dot(a) > 0.99));
+          } else { geo = geometry(S); order = S.faces.map((_, i) => i); }
+          geoFor = S.f;
+        }
         for (const d of dice) { scene.remove(d.mesh); d.mats.forEach((m) => m.dispose()); }
         dice = Array.from({ length: n }, () => {
           const [bg] = COLORS[S.f];
-          const mats = [...S.faces.map(() => new THREE.MeshPhysicalMaterial({ roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.25 })), new THREE.MeshPhysicalMaterial({ color: bg, roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.25 })];
+          const mat = () => new THREE.MeshPhysicalMaterial({ roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.25 });
+          const mats = [...order.map(mat), Object.assign(mat(), { color: new THREE.Color(bg) })];
           const mesh = new THREE.Mesh(geo!, mats);
           mesh.castShadow = true;
           scene.add(mesh);
@@ -181,18 +193,13 @@
             const d = dice[i];
             d.mesh.visible = true; d.mesh.scale.setScalar(1);
             d.mats.forEach((m) => { m.opacity = 1; m.transparent = false; });
-            S.faces.forEach((_, fi) => { d.mats[fi].map = faceTex(S.f, t.nums[fi], mines > 0 && t.nums[fi] > 6 - mines); d.mats[fi].needsUpdate = true; });
+            order.forEach((fi, slot) => { d.mats[slot].map = faceTex(S.f, t.nums[fi], mines > 0 && t.nums[fi] > 6 - mines); d.mats[slot].needsUpdate = true; });
             api!.frame(i, t.frames[0]);
-            if (boom?.[i]) booms.push({ d, t: 0 });
           });
-          for (const b of booms) {
-            for (let k = 0; k < 26; k++) {
-              const m = new THREE.Mesh(sparkGeo, new THREE.MeshBasicMaterial({ color: k % 3 ? 0xffa53a : 0x666670, transparent: true }));
-              m.position.copy(b.d.mesh.position);
-              scene.add(m);
-              sparks.push({ m, v: new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.9 + 0.3, Math.random() - 0.5).normalize().multiplyScalar(5 + Math.random() * 5), t: 0 });
-            }
-            flash.position.copy(b.d.mesh.position).add(new THREE.Vector3(0, 1, 0)); flash.intensity = 60;
+          // one bomb is enough: every die blows up, the bombs first, the others a moment later
+          if (boom?.some(Boolean)) {
+            const seq = dice.map((d, i) => ({ d, hit: boom[i] })).sort((a, b) => +b.hit - +a.hit);
+            booms = seq.map(({ d }, k) => ({ d, t: -k * 0.16, fired: false }));
           }
         },
         frame(i, fr) {
@@ -209,6 +216,18 @@
         const dt = Math.min(0.05, (now - last) / 1000); last = now;
         for (const b of booms) {
           b.t += dt;
+          if (b.t < 0) continue;
+          if (!b.fired) {
+            b.fired = true;
+            const at = new THREE.Vector3().setFromMatrixPosition(b.d.mesh.matrix); // the mesh is placed by its matrix, not .position
+            for (let k = 0; k < 30; k++) {
+              const m = new THREE.Mesh(sparkGeo, new THREE.MeshBasicMaterial({ color: k % 3 ? 0xffa53a : k % 2 ? 0xffe08a : 0x666670, transparent: true }));
+              m.position.copy(at);
+              scene.add(m);
+              sparks.push({ m, v: new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.9 + 0.3, Math.random() - 0.5).normalize().multiplyScalar(5 + Math.random() * 5), t: 0 });
+            }
+            flash.position.copy(at).add(new THREE.Vector3(0, 1.2, 0)); flash.intensity = 70;
+          }
           const k = Math.min(1, b.t / 0.35);
           b.d.mats.forEach((m) => { m.transparent = true; m.opacity = 1 - k; });
           b.d.mesh.matrix.multiply(new THREE.Matrix4().makeScale(1 + dt * 2, 1 + dt * 2, 1 + dt * 2));

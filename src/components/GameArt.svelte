@@ -13,12 +13,12 @@
   import { coinFace } from '../lib/coinface';
   import JassCard from './JassCard.svelte';
   import { settings } from '../lib/state.svelte';
-  import Dice3D from './Dice3D.svelte';
+  import diceArt from '../assets/dice-art.webp';
+  import lottoDrum from '../assets/lotto-drum.webp';
   const coinCache: Record<string, string> = {};
   const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 512).toDataURL('image/png'));
   const CASE_ART = [[deepTide, '#8847ff'], [golden, '#e4ae39'], [voidPulse, '#eb4b4b']] as const;
   let { id }: { id: string } = $props();
-  let dice = $state<[number, number]>([5, 2]), rolls = $state(0);
 </script>
 
 <div class="art {id}" aria-hidden="true">
@@ -55,8 +55,8 @@
       {#each [0, 1, 2, 3, 4, 5, 6, 7, 8] as i}<div class="tile" class:open={i !== 4 && i % 2 === 0}>{#if i === 4}<Sprite kind="bomb" />{:else if i % 2 === 0}<Sprite kind="gem" />{/if}</div>{/each}
     </div>
   {:else if id === 'dice'}
-    <!-- the real 3D dice from the game: they roll again whenever the pointer comes over the card -->
-    <div class="dice3" role="presentation" onpointerenter={() => { dice = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]; rolls++; }}><Dice3D values={dice} {rolls} size={58} /></div>
+    <!-- a still of the real 3D dice on their velvet table -->
+    <img class="diceimg" src={diceArt} alt="" loading="lazy" />
   {:else if id === 'hop'}
     <!-- road with a fixed lane width, so the card looks right at any width -->
     <div class="hs">
@@ -163,7 +163,10 @@
   {:else if id === 'keno'}
     <div class="kn">{#each Array(20) as _, i}<i class:p={[2, 6, 9, 13, 17].includes(i)} class:h={[6, 13].includes(i)} style="--i:{i}">{i + 1}</i>{/each}</div>
   {:else if id === 'lotto'}
-    <div class="lt">{#each [7, 14, 23, 31, 38, 42] as n, i}<b style="--i:{i}">{n}</b>{/each}<b class="g" style="--i:6">5</b></div>
+    <div class="lt">
+      <img class="drum" src={lottoDrum} alt="" loading="lazy" />
+      <div class="ltb">{#each [[7, '#3d7cf0'], [23, '#22b06c'], [38, '#f2a922']] as [n, c], i}<b style="--i:{i}; --c:{c}">{n}</b>{/each}<b class="g" style="--i:3">★5</b></div>
+    </div>
   {:else if id === 'scratch'}
     <div class="tk">{#each ['seven', 'seven', 'seven'] as s, i}<i class:foil={i === 2}><SlotSymbol sym={s} /></i>{/each}</div>
   {/if}
@@ -192,12 +195,18 @@
   .kn i.p { background: #7a4ff0; color: #fff; }
   :global(.game:hover) .kn i.h, :global(.dailycard:hover) .kn i.h { background: #2fbf71; color: #052a18; transform: scale(1.15); }
   .art.lotto { background: radial-gradient(ellipse at 50% 0%, #1d4b8f, #0b1b38 70%); }
-  .lt { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 230px; }
-  .lt b { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font: 800 0.95rem 'Geist Mono Variable', monospace; color: #1d1d22; background: radial-gradient(circle at 35% 30%, #fff, #cfd5e2); box-shadow: 0 6px 12px rgba(0,0,0,.4); transition: transform 0.5s var(--spring-snappy) calc(var(--i) * 60ms); }
-  .lt b.g { background: radial-gradient(circle at 35% 30%, #fff1b8, #e0a92a); }
-  :global(.game:hover) .lt b, :global(.dailycard:hover) .lt b { transform: translateY(-8px) rotate(-12deg); }
-  .art.dice { background: radial-gradient(ellipse at 50% 30%, var(--felt), var(--felt-2)); }
-  .dice3 { position: absolute; inset: 0; display: grid; align-content: center; }
+  .art.lotto { background: radial-gradient(ellipse at 40% 20%, #1d3c84, #0a1636 75%); box-shadow: inset 0 0 0 3px rgba(216,178,106,.55); }
+  .lt { position: absolute; inset: 0; }
+  .lt .drum { position: absolute; left: 50%; top: 8%; height: 88%; translate: -72% 0; filter: drop-shadow(0 14px 16px rgba(0,0,0,.5)); transition: transform 0.6s var(--spring-smooth); }
+  .ltb { position: absolute; right: 8%; bottom: 14%; display: flex; gap: 5px; }
+  .ltb b { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 800 0.72rem 'Geist Mono Variable', monospace; color: #16161c;
+    background: radial-gradient(circle at 50% 54%, #fbfbf7 0 42%, transparent 44%), radial-gradient(circle at 32% 28%, #fff, var(--c) 30%, var(--c) 70%, #1a1a24); box-shadow: 0 6px 12px rgba(0,0,0,.45); transition: transform 0.5s var(--spring-snappy) calc(var(--i) * 70ms); }
+  .ltb b.g { background: radial-gradient(circle at 35% 30%, #fff1b8, #e0a92a 70%, #9a6b10); font-size: 0.66rem; }
+  :global(.game:hover) .ltb b, :global(.dailycard:hover) .ltb b { transform: translateY(-14px); }
+  :global(.game:hover) .lt .drum, :global(.dailycard:hover) .lt .drum { transform: rotate(-4deg) scale(1.04); }
+  .art.dice { background: #2a1640; }
+  .diceimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s var(--spring-smooth); }
+  :global(.game:hover) .diceimg, :global(.dailycard:hover) .diceimg { transform: scale(1.08) rotate(-1.5deg); }
   .art.hop { background: #2c2f36; }
   .art.tower { background: linear-gradient(180deg, #1d1838, #0f1424); }
   .art.coinflip { background: repeating-linear-gradient(90deg, #6b4126 0 54px, #5e3820 54px 56px, #744830 56px 110px, #5e3820 110px 112px); perspective: 700px; }

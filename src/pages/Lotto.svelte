@@ -13,7 +13,7 @@
   import { LOTTO_N, LOTTO_K, LUCKY, LOTTO_TABLE, DAILY_PRIZE, RANKS, draw, lottoRank } from '../games/lotto';
   import * as daily from '../lib/dailyLotto';
   import { wallet, settle, stake, credit, fmt, settings } from '../lib/state.svelte';
-  import { sfx } from '../lib/sfx';
+  import { sfx, drumNoise } from '../lib/sfx';
   import { t } from '../lib/i18n';
 
   const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
@@ -43,15 +43,20 @@
   let shown = $state(0); // balls revealed so far (LOTTO_K + 1 = all, lucky included)
   let drawing = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let noise: { stop(): void } | null = null;
+  /** Balls on my tickets (whichever mode is showing), so a drawn one of them gets an extra sparkle. */
+  const myNums = () => new Set((mode === 'room' ? tickets : [dTicket, ...(dPrev ? [dPrev.ticket] : [])]).flatMap((tk) => tk.nums));
   function reveal(d: Draw, done: () => void) {
     stage = d; shown = 0; drawing = true;
     clearTimeout(timer);
+    noise?.stop(); noise = drumNoise();
     const fast = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const next = () => {
       shown++;
-      sfx(shown === LOTTO_K + 1 ? 'big' : 'tick');
+      if (shown > LOTTO_K) sfx('lucky');
+      else { sfx('ball'); if (myNums().has(stage.nums[shown - 1])) setTimeout(() => sfx('gem'), 500); }
       if (shown <= LOTTO_K) timer = setTimeout(next, fast ? 30 : BALL_MS);
-      else { drawing = false; done(); }
+      else { drawing = false; noise?.stop(); noise = null; setTimeout(done, fast ? 0 : 700); }
     };
     timer = setTimeout(next, fast ? 30 : 1400);
   }
@@ -110,7 +115,7 @@
   });
 
   const canEdit = $derived(!paid && share.phase === 'bet');
-  function setTicket(i: number, tk: Ticket) { if (canEdit) { tickets[i] = tk; sfx('click'); } }
+  function setTicket(i: number, tk: Ticket) { if (canEdit) { tickets[i] = tk; sfx('mark'); } }
   function addTicket() { if (canEdit && tickets.length < MAX_TICKETS) { tickets.push(blank()); sfx('chip'); } }
   /** Throw away all tickets (and take the stake back if they were already handed in). */
   function clearAll() {
@@ -225,6 +230,7 @@
       dTicket = daily.mine()[d] ?? blank();
       dIn = !!daily.mine()[d];
       setTimeout(async () => {
+        await daily.getDraw(daily.prevDay(d)).catch(() => {}); // draw it now, even if nobody here played
         await settleDaily();
         await loadDaily();
         // nobody here played: still show the draw that just happened
@@ -256,9 +262,10 @@
   let tick: ReturnType<typeof setInterval>;
   onMount(() => {
     tick = setInterval(() => (now = Date.now()), 1000);
-    loadDaily().then(settleDaily);
+    // make sure yesterday's draw exists, so the list always shows it
+    daily.getDraw(daily.prevDay(daily.openDay())).catch(() => {}).then(loadDaily).then(settleDaily);
   });
-  onDestroy(() => { clearTimeout(timer); clearInterval(tick); if (paid && share.phase === 'bet') credit(paid); room.leave(); });
+  onDestroy(() => { clearTimeout(timer); noise?.stop(); clearInterval(tick); if (paid && share.phase === 'bet') credit(paid); room.leave(); });
 </script>
 
 <section class="lt">
@@ -268,17 +275,19 @@
       <span class="eyebrow">{L('6 aus 42 · Glückszahl 1–6', '6 of 42 · lucky number 1–6')}</span>
       <HowTo id="lotto" />
     </div>
-    <div class="tabs" role="tablist">
+    <div class="tabs" role="tablist" aria-label="Modus">
       <button role="tab" aria-selected={mode === 'daily'} class:on={mode === 'daily'} disabled={room.role !== 'solo' || drawing} onclick={() => setMode('daily')}>☀ {L('Tageslotto', 'Daily draw')}</button>
       <button role="tab" aria-selected={mode === 'room'} class:on={mode === 'room'} disabled={drawing} onclick={() => setMode('room')}>🎱 {L('Runde', 'Round')}</button>
     </div>
-    {#if mode === 'room'}
-      <RoomBar {room}>
-        {#snippet extra()}
-          {#if isHost}<label class="switch mini"><span>{t('bots')}</span><input type="checkbox" bind:checked={settings.bots} /></label>{/if}
-        {/snippet}
-      </RoomBar>
-    {/if}
+    <div class="right">
+      {#if mode === 'room'}
+        <RoomBar {room}>
+          {#snippet extra()}
+            {#if isHost}<label class="switch mini"><span>{t('bots')}</span><input type="checkbox" bind:checked={settings.bots} /></label>{/if}
+          {/snippet}
+        </RoomBar>
+      {/if}
+    </div>
   </header>
 
   <div class="rail">
@@ -408,7 +417,7 @@
     {:else}
       <div class="cards">
         <LottoCard ticket={dTicket} label={dIn ? L('Im Topf', 'In the draw') + ' ✓' : L('Dein Gratis-Schein', 'Your free ticket')} edit={!dIn} result={dIn ? dateName(day) + ' 20:00' : ''}
-          onchange={(x) => { dTicket = x; sfx('click'); }} onquick={() => { dTicket = quickTicket(); sfx('chip'); }} />
+          onchange={(x) => { dTicket = x; sfx('mark'); }} onquick={() => { dTicket = quickTicket(); sfx('chip'); }} />
         {#if dPrev}
           {@const live = same(stage.nums, dPrev.draw.nums)}
           <LottoCard ticket={dPrev.ticket} label={drawDate(dPrev.day)} drawn={live ? drawnShown : dPrev.draw.nums} lucky={live ? luckyShown : dPrev.draw.lucky}
@@ -428,7 +437,10 @@
 
 <style>
   .lt { width: min(100%, 1400px); margin-inline: auto; padding: 0 20px 48px; display: grid; gap: 14px; }
-  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 4px 0; }
+  .head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px 16px; padding: 12px 4px 0; min-height: 64px; }
+  .right { display: flex; justify-content: flex-end; min-width: 0; }
+  @media (max-width: 1100px) { .head { grid-template-columns: 1fr auto; } .right { grid-column: 1 / -1; justify-content: flex-start; } .right:empty { display: none; } }
+  @media (max-width: 640px) { .head { grid-template-columns: 1fr; } .tabs { justify-self: start; } }
   .h1row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.4rem); letter-spacing: -0.04em; line-height: 1; }
   .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); }

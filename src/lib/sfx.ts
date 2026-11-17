@@ -173,6 +173,24 @@ const recipes = {
   // balloon: a puff of air through the pump, and the pop
   pump: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.22, vary(900, 0.15), 1.4, 0.16, 'bandpass', 2200); tone(c, o, vary(140), t + 0.02, 0.12, 'sine', 0.05, 220); },
   pop: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.12, 6000, 0.6, 0.5, 'highpass'); burst(c, o, t, 0.25, 1600, 0.8, 0.3, 'lowpass', 200); tone(c, o, 520, t, 0.08, 'square', 0.06, 90); },
+  // lotto: a ball leaves the drum (clack), rolls down the tube and lands in its cup with a little chime
+  ball: (c: AudioContext, o: AudioNode, t: number) => {
+    burst(c, o, t, 0.03, vary(3000), 2, 0.22); tone(c, o, vary(1300), t, 0.05, 'sine', 0.05, 900);
+    burst(c, o, t + 0.05, 0.4, 900, 1.6, 0.07, 'bandpass', 350);
+    for (let i = 0; i < 3; i++) burst(c, o, t + 0.42 + i * (0.09 - i * 0.02), 0.025, vary(2400), 2.5, 0.16 / (i + 1));
+    tone(c, o, 170, t + 0.42, 0.14, 'sine', 0.13, 95);
+    bell(c, o, note(12 + PENTA[Math.floor(Math.random() * 6)]), t + 0.45, 0.7, 0.045);
+  },
+  // the golden lucky ball: same landing, then a bright chord
+  lucky: (c: AudioContext, o: AudioNode, t: number) => {
+    burst(c, o, t, 0.03, 3000, 2, 0.22);
+    burst(c, o, t + 0.05, 0.4, 900, 1.6, 0.07, 'bandpass', 350);
+    tone(c, o, 170, t + 0.42, 0.14, 'sine', 0.13, 95);
+    [12, 16, 19, 24].forEach((s, i) => bell(c, o, note(s), t + 0.45 + i * 0.07, 1.1, 0.06));
+    burst(c, o, t + 0.45, 0.9, 8000, 0.7, 0.04, 'highpass');
+  },
+  // filling in a ticket: a soft pen tick
+  mark: (c: AudioContext, o: AudioNode, t: number) => { burst(c, o, t, 0.035, vary(2600, 0.1), 3, 0.09); tone(c, o, vary(900), t, 0.04, 'sine', 0.04, 700); },
   dice: (c: AudioContext, o: AudioNode, t: number) => {
     for (let i = 0; i < 10; i++) { const at = t + i * 0.05 + Math.random() * 0.03; burst(c, o, at, 0.02, 1800 + Math.random() * 2600, 3, 0.26 - i * 0.02); tone(c, o, vary(900, 0.2), at, 0.03, 'sine', 0.04); }
   },
@@ -231,6 +249,31 @@ export function rolling() {
       g.gain.setTargetAtTime(0.0001, c.currentTime, 0.08);
       s.stop(c.currentTime + 0.5);
       lfo.stop(c.currentTime + 0.5);
+    },
+  };
+}
+
+/** The lotto drum: rushing air plus balls clattering against the glass, while it mixes. */
+export function drumNoise() {
+  if (!settings.sound) return { stop() {} };
+  const c = ac(), out = outs(c).fx;
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = noise(c); s.loop = true;
+  f.type = 'bandpass'; f.frequency.value = 650; f.Q.value = 0.8;
+  g.gain.setValueAtTime(0.0001, c.currentTime);
+  g.gain.setTargetAtTime(0.05, c.currentTime, 0.25);
+  s.connect(f).connect(g).connect(out);
+  s.start();
+  const clatter = setInterval(() => {
+    const t = c.currentTime;
+    for (let i = 0; i < 3; i++) if (Math.random() < 0.7) burst(c, out, t + Math.random() * 0.12, 0.018, vary(2600, 0.3), 3, 0.03 + Math.random() * 0.05);
+  }, 120);
+  return {
+    stop() {
+      clearInterval(clatter);
+      g.gain.cancelScheduledValues(c.currentTime);
+      g.gain.setTargetAtTime(0.0001, c.currentTime, 0.2);
+      s.stop(c.currentTime + 1);
     },
   };
 }
