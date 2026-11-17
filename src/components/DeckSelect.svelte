@@ -3,15 +3,20 @@
   import JassCard from './JassCard.svelte';
   import { settings } from '../lib/state.svelte';
   import { decksFor, pickDeck } from '../lib/decks';
-  import type { Choice } from '../lib/decks';
-  let { supported, lang = settings.lang }: { supported: Choice[]; lang?: 'de' | 'en' | 'ru' } = $props();
+  import type { Deck } from '../games/jass';
+  // which: the 36-card games share settings.cards, the 52-card games settings.cards52
+  let { supported, lang = settings.lang, which = 'cards' }: { supported: Deck[]; lang?: 'de' | 'en' | 'ru'; which?: 'cards' | 'cards52' } = $props();
   const list = $derived(decksFor(supported));
-  const deck = $derived(pickDeck(settings.cards, supported));
+  const deck = $derived(pickDeck(settings[which], supported));
+  function choose(d: Deck) {
+    if (which === 'cards52') settings.cards52 = d === 'ru' ? 'ru' : 'classic';
+    else settings.cards = d;
+  }
 </script>
 
 <label class="decksel">
   <span class="ic"><JassCard icon card={{ s: 0, r: 6 }} deck={deck === 'classic' ? 'fr' : deck} /></span>
-  <select value={deck} onchange={(e) => (settings.cards = (e.currentTarget as HTMLSelectElement).value as Choice)} aria-label={lang === 'ru' ? 'Колода' : lang === 'en' ? 'Deck' : 'Kartenblatt'}>
+  <select value={deck} onchange={(e) => choose((e.currentTarget as HTMLSelectElement).value as Deck)} aria-label={lang === 'ru' ? 'Колода' : lang === 'en' ? 'Deck' : 'Kartenblatt'}>
     {#each list as d}<option value={d.id}>{d[lang]}</option>{/each}
   </select>
   <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>

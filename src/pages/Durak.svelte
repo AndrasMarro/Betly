@@ -12,7 +12,7 @@
   import type { Card, Durak, Action, Opts } from '../games/durak';
   import { Room } from '../lib/net.svelte';
   import { settings, wallet, stake, settle, fmt } from '../lib/state.svelte';
-  import { pickDeck } from '../lib/decks';
+  import { pickDeck, DURAK } from '../lib/decks';
   import { tr, type DLang, type TKey } from '../lib/durakText';
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
@@ -22,7 +22,7 @@
   let lang = $state<DLang>((LS('betly:durak-lang') as DLang) || settings.lang);
   $effect(() => { LS('betly:durak-lang', lang); });
   const t = (k: TKey) => tr(k, lang);
-  const deck = $derived(pickDeck(settings.cards, ['fr', 'intl', 'ru']));
+  const deck = $derived(pickDeck(settings.cards, DURAK));
   const BACK: Card = { s: 0, r: 0 };
 
   // ---------- table settings ----------
@@ -224,7 +224,7 @@
       <div class="langs" role="group" aria-label="Language">
         {#each [['de', 'DE'], ['en', 'EN'], ['ru', 'RU']] as [l, label]}<button class:on={lang === l} onclick={() => (lang = l as DLang)}>{label}</button>{/each}
       </div>
-      <DeckSelect supported={['fr', 'intl', 'ru']} {lang} />
+      <DeckSelect supported={DURAK} {lang} />
     </div>
   </header>
   <RoomBar {room} />

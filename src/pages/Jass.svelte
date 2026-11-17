@@ -16,7 +16,7 @@
   import * as J from '../games/jass';
   import type { JCard, Mode, Play, Weis, Deck } from '../games/jass';
   import { wallet, settle, stake, settings, fmt } from '../lib/state.svelte';
-  import { pickDeck } from '../lib/decks';
+  import { pickDeck, JASS } from '../lib/decks';
   import DeckSelect from '../components/DeckSelect.svelte';
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
@@ -25,7 +25,7 @@
   const load = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
   const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
 
-  const deck = $derived<Deck>(pickDeck(settings.cards, ['de', 'fr', 'intl', 'ru']));
+  const deck = $derived<Deck>(pickDeck(settings.cards, JASS));
   let target = $state(+load('betly:jass-target', '1000') || 1000);
   $effect(() => { save('betly:jass-target', String(target)); });
   let bet = $state(100);
@@ -326,7 +326,7 @@
       <p class="eyebrow">Schieber · {L('2 gegen 2', '2 against 2')}</p>
       <div class="h1row"><h1>Jass</h1><HowTo id="jass" /></div>
     </div>
-    <DeckSelect supported={['de', 'fr', 'intl', 'ru']} lang={settings.lang} />
+    <DeckSelect supported={JASS} lang={settings.lang} />
   </header>
   <RoomBar {room} />
 

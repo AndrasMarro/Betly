@@ -24,7 +24,7 @@
   // the Russian Atlas deck (all 52 cards and a back) replaces the drawn cards when it is the chosen deck
   const ATLAS = import.meta.glob('../assets/jass/ru/*.webp', { eager: true, import: 'default' }) as Record<string, string>;
   const SU = ['schaufel', 'herz', 'ecke', 'kreuz'], RK: Record<number, string> = { 1: 'ass', 11: 'bauer', 12: 'dame', 13: 'koenig' };
-  const atlas = $derived(settings.cards === 'ru');
+  const atlas = $derived(settings.cards52 === 'ru');
   const pic = $derived(atlas && card.r ? ATLAS[`../assets/jass/ru/${SU[card.s]}-${RK[card.r] ?? card.r}.webp`] : null);
   const backPic = $derived(atlas ? ATLAS['../assets/jass/ru/back.webp'] : null);
 </script>

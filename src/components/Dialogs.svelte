@@ -3,6 +3,7 @@
   import { t } from '../lib/i18n';
   import { sfx } from '../lib/sfx';
   import DeckSelect from './DeckSelect.svelte';
+  import { JASS, FULL } from '../lib/decks';
   import { account, signIn, signOut, deleteAccount, exportData } from '../lib/account.svelte';
 
   let credits: HTMLDialogElement, prefs: HTMLDialogElement, gate: HTMLDialogElement, acct: HTMLDialogElement;
@@ -114,8 +115,10 @@
       </div>
     </div>
     <div class="field">{settings.lang === 'de' ? 'Kartenblatt' : 'Card deck'}
-      <DeckSelect supported={['classic', 'de', 'fr', 'intl', 'ru']} lang={settings.lang} />
-      <span class="small muted">{settings.lang === 'de' ? 'Gilt für alle Kartenspiele. Ein Blatt, das ein Spiel nicht kennt, ersetzt es durch sein eigenes; das russische hat alle 52 Karten und passt überall.' : 'Used by every card game. A game that cannot use the chosen deck falls back to its own; the Russian one has all 52 cards and fits everywhere.'}</span>
+      <span class="small muted">Jass &amp; Durak</span>
+      <DeckSelect supported={JASS} lang={settings.lang} />
+      <span class="small muted">Blackjack, Hold'em, Baccarat, Three Card, Hi-Lo</span>
+      <DeckSelect supported={FULL} which="cards52" lang={settings.lang} />
     </div>
     <label class="switch"><span>{t('settings.bots')}</span><input type="checkbox" bind:checked={settings.bots} /></label>
     <label class="switch"><span>{t('settings.sound')}</span><input type="checkbox" bind:checked={settings.sound} /></label>

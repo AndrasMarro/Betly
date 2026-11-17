@@ -13,8 +13,8 @@
   import { coinFace } from '../lib/coinface';
   import JassCard from './JassCard.svelte';
   import { settings } from '../lib/state.svelte';
-  import { pickDeck } from '../lib/decks';
-  const dkDeck = $derived(pickDeck(settings.cards, ['fr', 'intl', 'ru']));
+  import { pickDeck, DURAK } from '../lib/decks';
+  const dkDeck = $derived(pickDeck(settings.cards, DURAK));
   import Dice3D from './Dice3D.svelte';
   const coinCache: Record<string, string> = {};
   const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 512).toDataURL('image/png'));

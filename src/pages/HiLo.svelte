@@ -74,7 +74,7 @@
 </script>
 
 <ArcadeLayout eyebrow="Arcade · A low, K high" title="Hi-Lo">
-  {#snippet top()}<DeckSelect supported={FULL} />{/snippet}
+  {#snippet top()}<DeckSelect supported={FULL} which="cards52" />{/snippet}
   {#snippet controls()}
     {#if phase === 'play'}
       <button class="btn big cash" disabled={!probs.length || busy} onclick={cashout}>{t('a.cashout')} <span class="mono">{fmt(Math.round(stakeNow * mult * 100) / 100)}</span></button>

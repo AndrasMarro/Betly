@@ -365,7 +365,7 @@
 <section class="pk">
   <header class="head">
     <div class="ttl">
-      <div class="h1row"><h1>Texas Hold'em</h1><HowTo id="holdem" label={false} /><button class="btn sm" class:on={showRanks} onclick={() => (showRanks = !showRanks)} aria-expanded={showRanks}>{t('pk.ranks')}</button><DeckSelect supported={FULL} /></div>
+      <div class="h1row"><h1>Texas Hold'em</h1><HowTo id="holdem" label={false} /><button class="btn sm" class:on={showRanks} onclick={() => (showRanks = !showRanks)} aria-expanded={showRanks}>{t('pk.ranks')}</button><DeckSelect supported={FULL} which="cards52" /></div>
       <span class="mono blinds">{view.sb}/{view.bb}</span>
     </div>
     <RoomBar {room}>

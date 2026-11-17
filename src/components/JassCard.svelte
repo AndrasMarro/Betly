@@ -8,10 +8,11 @@
   let { card, deck = 'de', down = false, icon = false }: { card: JCard; deck?: Deck; down?: boolean; icon?: boolean } = $props();
   const SCANS = import.meta.glob('../assets/jass/*/*.webp', { eager: true, import: 'default' }) as Record<string, string>;
   const FR_SUITS = ['herz', 'schaufel', 'kreuz', 'ecke'], FR_RANKS: Record<number, string> = { 11: 'bauer', 12: 'dame', 13: 'koenig', 14: 'ass' };
-  const SUIT_FILE: Record<Deck, string[]> = { fr: FR_SUITS, intl: FR_SUITS, ru: FR_SUITS, de: ['rosen', 'schilten', 'eicheln', 'schellen'] };
-  const RANK_FILE: Record<Deck, Record<number, string>> = { fr: FR_RANKS, intl: FR_RANKS, ru: FR_RANKS, de: { 10: 'banner', 11: 'under', 12: 'ober', 13: 'koenig', 14: 'ass' } };
+  const SUIT_FILE: Record<Deck, string[]> = { classic: FR_SUITS, fr: FR_SUITS, intl: FR_SUITS, ru: FR_SUITS, de: ['rosen', 'schilten', 'eicheln', 'schellen'] };
+  const RANK_FILE: Record<Deck, Record<number, string>> = { classic: FR_RANKS, fr: FR_RANKS, intl: FR_RANKS, ru: FR_RANKS, de: { 10: 'banner', 11: 'under', 12: 'ober', 13: 'koenig', 14: 'ass' } };
   const name = $derived(`${SUIT_FILE[deck][card.s]}-${RANK_FILE[deck][card.r] ?? card.r}`);
-  const scan = $derived(SCANS[`../assets/jass/${deck}/${name}.webp`]);
+  // the standard deck has no pictures: it is the drawn poker card below
+  const scan = $derived(deck === 'classic' ? undefined : SCANS[`../assets/jass/${deck}/${name}.webp`]);
   const backScan = $derived(SCANS[`../assets/jass/${deck}/back.webp`]);
   const deIcon = $derived(SCANS[`../assets/jass/icons/${SUIT_FILE.de[card.s]}.webp`]);
   // engine suit -> poker suit (0♠ 1♥ 2♦ 3♣): Herz, Schaufel, Kreuz, Ecken

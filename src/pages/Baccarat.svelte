@@ -105,7 +105,7 @@
   <header class="head rise">
     <div>
       <p class="eyebrow">Punto Banco · 8 decks</p>
-      <div class="h1row"><h1>Baccarat</h1><HowTo id="baccarat" /><DeckSelect supported={FULL} /></div>
+      <div class="h1row"><h1>Baccarat</h1><HowTo id="baccarat" /><DeckSelect supported={FULL} which="cards52" /></div>
     </div>
     <div class="stats mono">
       <span class="p">P {counts.player}</span><span class="b">B {counts.banker}</span><span class="tt">T {counts.tie}</span>

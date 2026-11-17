@@ -296,7 +296,7 @@
   <header class="head">
     <div>
       <p class="eyebrow">{presetName === 'custom' ? t('bj.custom') : t(('preset.' + presetName) as Key)} · {st.rules.decks} {t('bj.decks')}</p>
-      <div class="h1row"><h1>Blackjack</h1><HowTo id="blackjack" /><DeckSelect supported={FULL} /></div>
+      <div class="h1row"><h1>Blackjack</h1><HowTo id="blackjack" /><DeckSelect supported={FULL} which="cards52" /></div>
     </div>
     <RoomBar {room}>
       {#snippet extra()}

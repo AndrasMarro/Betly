@@ -24,6 +24,8 @@ export const settings = $state(
     accepted: false,
     // card deck for Jass and Durak (older saves: the Jass choice)
     cards: ((): 'classic' | 'de' | 'fr' | 'intl' | 'ru' => { try { return (localStorage.getItem('betly:jass-deck') as 'de') || 'de'; } catch { return 'de'; } })(),
+    // the 52-card games have their own choice and start on the drawn standard cards
+    cards52: 'classic' as 'classic' | 'ru',
   }),
 );
 
