@@ -333,12 +333,16 @@ export const GUIDES: Record<string, Guide> = {
     de: [
       { h: 'Klassisch', p: 'Kratze das ganze Los frei. Drei gleiche Symbole gewinnen den angezeigten Multiplikator.' },
       { h: 'Glücksgriff', p: 'Kratze genau drei der neun Felder frei. Sind alle drei gleich, gewinnst du. Fängst du ein viertes Feld an, ist das Los ungültig.' },
-      { h: 'Tipp', p: 'Mit Maus oder Finger rubbeln. «Alles aufdecken» zeigt das klassische Los sofort.' },
+      { h: 'Diamant', p: 'Zwei Schichten: Unter dem Silber liegt eine harte Goldschicht, die erst nach mehrmaligem Rubbeln verschwindet. Darunter: drei gleiche Symbole und ein Bonusfeld (×1 bis ×10), das deinen Gewinn multipliziert. Bis ×500.' },
+      { h: 'Zahlenglück', p: 'Oben zwei Gewinnzahlen, unten acht deiner Zahlen mit je einem Betrag. Steht eine Gewinnzahl bei deinen Zahlen, gewinnst du den Betrag darunter (bis ×100).' },
+      { h: 'Tipp', p: 'Mit Maus oder Finger rubbeln. «Alles aufdecken» zeigt das Los sofort (ausser beim Glücksgriff).' },
     ],
     en: [
       { h: 'Classic', p: 'Scratch the whole ticket. Three matching symbols win the multiplier shown.' },
       { h: 'Lucky pick', p: 'Scratch exactly three of the nine fields. All three equal and you win. Start a fourth field and the ticket is void.' },
-      { h: 'Tip', p: 'Scratch with mouse or finger. "Reveal all" uncovers the classic ticket at once.' },
+      { h: 'Diamond', p: 'Two layers: below the silver lies a tough gold layer that only comes off after scratching several times. Underneath: three alike and a bonus box (×1 to ×10) that multiplies your win. Up to ×500.' },
+      { h: 'Lucky Numbers', p: 'Two winning numbers on top, eight of your numbers below, each with a prize. If a winning number is among yours, you win the prize below it (up to ×100).' },
+      { h: 'Tip', p: 'Scratch with mouse or finger. "Reveal all" uncovers the ticket at once (except Pick 3).' },
     ],
   },
 };

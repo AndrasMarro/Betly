@@ -259,6 +259,20 @@ import { score5, bestHand, newTable as pkTable, startHand, act as pkAct, legal a
 import { SCRATCH3, pick3Symbols } from '../src/games/arcade.ts';
 {
   assert.ok(Math.abs(SCRATCH3.reduce((a, x) => a + x.mult * x.p, 0) - 0.97) < 1e-9, 'pick-3 scratch RTP');
+  {
+    const { DIAMOND, DIAMOND_BONUS, diamondCard, NUMBERS, numbersCard } = await import('../src/games/arcade.ts');
+    const mean = DIAMOND_BONUS.reduce((a, b) => a + b.m * b.p, 0);
+    assert.ok(Math.abs(DIAMOND.reduce((a, x) => a + x.mult * x.p, 0) * mean - 0.97) < 1e-9, 'diamond RTP');
+    assert.ok(Math.abs(NUMBERS.reduce((a, x) => a + x.mult * x.p, 0) - 0.97) < 1e-9, 'numbers RTP');
+    for (let i = 0; i < 3000; i++) {
+      const d = diamondCard();
+      const triples = [...new Set(d.cells)].filter((s) => d.cells.filter((c) => c === s).length >= 3);
+      assert.deepEqual(triples, d.prize ? [d.prize.sym] : [], 'diamond layout');
+      const n = numbersCard(), hits = n.yours.filter((y) => n.winning.includes(y.n));
+      assert.equal(hits.reduce((a, y) => a + y.mult, 0), n.prize, 'numbers layout');
+      assert.equal(new Set(n.yours.map((y) => y.n)).size, 8, 'numbers distinct');
+    }
+  }
   for (let i = 0; i < 500; i++) { const s = pick3Symbols(null); assert.ok(!(s[0] === s[1] && s[1] === s[2]), 'losing pick never shows a triple'); }
   console.log('pick-3 checks passed');
 }

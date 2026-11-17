@@ -159,6 +159,10 @@ const SYMS = ['seven', 'bar', 'bell', 'plum', 'cherry', 'lemon'];
 export function scratchCard(u = Math.random()) {
   let acc = 0;
   const prize = SCRATCH.find((x) => (acc += x.p) > u) ?? null;
+  return { cells: cardFor(prize), prize };
+}
+/** A 3x3 card with the prize symbol exactly three times, or no triple at all. */
+function cardFor(prize: { sym: string } | null) {
   const cells: string[] = prize ? [prize.sym, prize.sym, prize.sym] : [];
   const count = (s: string) => cells.filter((c) => c === s).length;
   while (cells.length < 9) {
@@ -169,7 +173,7 @@ export function scratchCard(u = Math.random()) {
     const j = Math.floor(Math.random() * (i + 1));
     [cells[i], cells[j]] = [cells[j], cells[i]];
   }
-  return { cells, prize };
+  return cells;
 }
 
 // ---------- Cases (open a case, a reel spins and lands on one item) ----------
@@ -223,6 +227,30 @@ export function pick3Symbols(prize: { sym: string } | null) {
   return [a, b, c];
 }
 export const randomSym = () => SYMS[Math.floor(Math.random() * SYMS.length)];
+
+/** Diamond: two foil layers and a bonus box that multiplies a win. The triples are rarer to pay for the bonus. */
+export const DIAMOND_BONUS = [{ m: 1, p: 0.7 }, { m: 2, p: 0.2 }, { m: 5, p: 0.08 }, { m: 10, p: 0.02 }];
+const bonusMean = DIAMOND_BONUS.reduce((a, b) => a + b.m * b.p, 0);
+export const DIAMOND = SCRATCH.map((x) => ({ ...x, p: x.p / bonusMean }));
+export function diamondCard(u = Math.random(), v = Math.random()) {
+  let acc = 0;
+  const prize = DIAMOND.find((x) => (acc += x.p) > u) ?? null;
+  acc = 0;
+  return { cells: cardFor(prize), prize, bonus: (DIAMOND_BONUS.find((x) => (acc += x.p) > v) ?? DIAMOND_BONUS[0]).m };
+}
+
+/** Lucky numbers: two winning numbers, eight of yours with a prize each; a match wins the prize under it. */
+export const NUMBERS = [{ mult: 100, p: 0.002 }, { mult: 20, p: 0.01 }, { mult: 5, p: 0.04 }, { mult: 2, p: 0.1 }, { mult: 1, p: 0.17 }];
+export function numbersCard(u = Math.random()) {
+  let acc = 0;
+  const prize = NUMBERS.find((x) => (acc += x.p) > u)?.mult ?? 0;
+  const pool = Array.from({ length: 30 }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+  const winning = pool.slice(0, 2), mine = pool.slice(2, 10);
+  const decoy = () => NUMBERS[Math.floor(Math.random() * NUMBERS.length)].mult;
+  const yours = mine.map((n) => ({ n, mult: decoy() }));
+  if (prize) yours[Math.floor(Math.random() * 8)] = { n: winning[Math.floor(Math.random() * 2)], mult: prize };
+  return { winning, yours, prize };
+}
 
 // Classic cases: official drop rates, item values like the real thing (the case is a losing bet on average).
 // Items carry an `img` slug (artwork in src/assets/cases). The neon "prototype" set sits mostly in the top tiers.
