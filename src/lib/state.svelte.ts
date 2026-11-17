@@ -22,6 +22,8 @@ export const settings = $state(
     musicVol: 0.5,
     name: 'Player-' + Math.floor(1000 + Math.random() * 9000),
     accepted: false,
+    // card deck for Jass and Durak (older saves: the Jass choice)
+    cards: ((): 'de' | 'fr' | 'intl' | 'ru' => { try { return (localStorage.getItem('betly:jass-deck') as 'de') || 'de'; } catch { return 'de'; } })(),
   }),
 );
 

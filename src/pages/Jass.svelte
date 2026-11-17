@@ -16,17 +16,18 @@
   import * as J from '../games/jass';
   import type { JCard, Mode, Play, Weis, Deck } from '../games/jass';
   import { wallet, settle, stake, settings, fmt } from '../lib/state.svelte';
+  import { pickDeck } from '../lib/decks';
+  import DeckSelect from '../components/DeckSelect.svelte';
   import { sfx } from '../lib/sfx';
   import { pop } from '../lib/motion';
 
   const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
-  const DECKS: [Deck, string, string][] = [['de', 'Deutsch', 'Swiss German'], ['fr', 'Französisch', 'Swiss French'], ['intl', 'International', 'International']];
   const load = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
   const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
 
-  let deck = $state<Deck>(DECKS.find(([d]) => d === load('betly:jass-deck', 'de'))?.[0] ?? 'de');
+  const deck = $derived<Deck>(pickDeck(settings.cards, ['de', 'fr', 'intl', 'ru']));
   let target = $state(+load('betly:jass-target', '1000') || 1000);
-  $effect(() => { save('betly:jass-deck', deck); save('betly:jass-target', String(target)); });
+  $effect(() => { save('betly:jass-target', String(target)); });
   let bet = $state(100);
 
   const SUIT_NAMES = $derived(deck === 'de' ? L('Rosen Schilten Eicheln Schellen', 'Roses Shields Acorns Bells').split(' ') : L('Herz Schaufel Kreuz Ecken', 'Hearts Spades Clubs Diamonds').split(' '));
@@ -325,9 +326,7 @@
       <p class="eyebrow">Schieber · {L('2 gegen 2', '2 against 2')}</p>
       <div class="h1row"><h1>Jass</h1><HowTo id="jass" /></div>
     </div>
-    <div class="seg" role="group" aria-label={L('Kartenblatt', 'Deck')}>
-      {#each DECKS as [d, de, en]}<button class:on={deck === d} onclick={() => (deck = d)}><JassCard icon card={{ s: 0, r: 6 }} deck={d} /> {L(de, en)}</button>{/each}
-    </div>
+    <DeckSelect supported={['de', 'fr', 'intl', 'ru']} lang={settings.lang} />
   </header>
   <RoomBar {room} />
 
@@ -446,8 +445,6 @@
   h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; }
   .h1row h1 { margin: 0; }
   .seg { display: flex; padding: 3px; gap: 3px; border-radius: 999px; border: 1px solid var(--line-2); }
-  .seg button { display: flex; align-items: center; gap: 6px; padding: 0 14px; min-height: 36px; border: 0; background: none; border-radius: 999px; color: var(--muted); font-size: 0.85rem; }
-  .seg button.on { background: var(--text); color: var(--bg); }
 
   .score { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; margin-bottom: 12px; }
   .team { display: grid; gap: 2px; padding: 10px 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
@@ -522,7 +519,6 @@
     .head { padding: 12px 0 8px; align-items: center; }
     .head .eyebrow { display: none; }
     h1 { font-size: 2rem; }
-    .seg button { padding: 0 10px; font-size: 0.8rem; }
     .score { gap: 6px; margin-bottom: 8px; }
     .who, .mid .mono { display: none; }
     .team { padding: 6px 10px; border-radius: 14px; }

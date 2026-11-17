@@ -2,6 +2,7 @@
   import { settings, wallet, ui, claimBonus, bonusReadyIn, resetWallet, fmt, BROKE, type Theme } from '../lib/state.svelte';
   import { t } from '../lib/i18n';
   import { sfx } from '../lib/sfx';
+  import DeckSelect from './DeckSelect.svelte';
   import { account, signIn, signOut, deleteAccount, exportData } from '../lib/account.svelte';
 
   let credits: HTMLDialogElement, prefs: HTMLDialogElement, gate: HTMLDialogElement, acct: HTMLDialogElement;
@@ -111,6 +112,9 @@
           </button>
         {/each}
       </div>
+    </div>
+    <div class="field">{settings.lang === 'de' ? 'Kartenblatt (Jass, Durak)' : 'Card deck (Jass, Durak)'}
+      <DeckSelect supported={['de', 'fr', 'intl', 'ru']} lang={settings.lang} />
     </div>
     <label class="switch"><span>{t('settings.bots')}</span><input type="checkbox" bind:checked={settings.bots} /></label>
     <label class="switch"><span>{t('settings.sound')}</span><input type="checkbox" bind:checked={settings.sound} /></label>
