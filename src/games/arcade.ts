@@ -49,22 +49,28 @@ export function placeMines(mines: number) {
   return new Set(idx.slice(0, mines));
 }
 
-// ---------- Dice (two dice) ----------
-const ways = (s: number) => 6 - Math.abs(s - 7); // combinations for sum s
-export const DICE_BETS: Record<string, (a: number, b: number) => boolean> = {
-  under: (a, b) => a + b < 7,
-  seven: (a, b) => a + b === 7,
-  over: (a, b) => a + b > 7,
-  double: (a, b) => a === b,
-  ...Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`s${i + 2}`, (a: number, b: number) => a + b === i + 2])),
-};
-export function diceProb(bet: string) {
-  if (bet === 'under' || bet === 'over') return 15 / 36;
-  if (bet === 'seven' || bet === 'double') return 6 / 36;
-  return ways(+bet.slice(1)) / 36;
+// ---------- Dice (1 to 3 dice with 6, 8 or 10 faces, or mine dice) ----------
+/** Bets: under / mid / over the middle sum, all dice the same, or an exact sum ('s7'). */
+export const diceMid = (n: number, f: number) => (n * (f + 1)) / 2;
+export function diceWins(bet: string, vals: number[], f: number) {
+  const sum = vals.reduce((a, b) => a + b, 0), mid = diceMid(vals.length, f);
+  if (bet === 'under') return sum < mid;
+  if (bet === 'mid') return sum === mid;
+  if (bet === 'over') return sum > mid;
+  if (bet === 'same') return vals.length > 1 && vals.every((v) => v === vals[0]);
+  return sum === +bet.slice(1);
 }
-export const diceMult = (bet: string) => r2(EDGE / diceProb(bet));
-export const roll = () => 1 + Math.floor(Math.random() * 6);
+/** Exact chance by going through every throw (at most 10^3). */
+export function diceProb(bet: string, n = 2, f = 6) {
+  let hit = 0;
+  const go = (vals: number[]): void => { if (vals.length === n) { if (diceWins(bet, vals, f)) hit++; return; } for (let v = 1; v <= f; v++) go([...vals, v]); };
+  go([]);
+  return hit / f ** n;
+}
+export const diceMult = (bet: string, n = 2, f = 6) => r2(EDGE / diceProb(bet, n, f));
+/** Mine dice: `mines` of the six faces are bombs, every one of the `n` dice has to miss them. */
+export const mineMult = (mines: number, n: number) => r2(EDGE / ((6 - mines) / 6) ** n);
+export const roll = (f = 6) => 1 + Math.floor(Math.random() * f);
 
 // ---------- Hop Street (cross the road, cash out any time) ----------
 export const LANES = 15;

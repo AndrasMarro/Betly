@@ -73,7 +73,7 @@ for (const m of MACHINES) {
 console.log('all engine checks passed');
 
 // Arcade: every strategy returns ~97 %
-import { crashPoint, minesMult, diceMult, DICE_BETS, hopMult, LEVELS, TILES } from '../src/games/arcade.ts';
+import { crashPoint, minesMult, diceMult, diceProb, mineMult, hopMult, LEVELS, TILES } from '../src/games/arcade.ts';
 {
   const N = 400_000;
   let ret = 0;
@@ -86,10 +86,18 @@ import { crashPoint, minesMult, diceMult, DICE_BETS, hopMult, LEVELS, TILES } fr
     for (let i = 0; i < k; i++) p *= (TILES - mines - i) / (TILES - i);
     assert.ok(p * minesMult(mines, k) <= 0.97 + 1e-9 && p * minesMult(mines, k) > 0.95, `mines ${mines}/${k}`);
   }
-  for (const bet of Object.keys(DICE_BETS)) {
-    let ev = 0;
-    for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) if (DICE_BETS[bet](a, b)) ev += diceMult(bet) / 36;
-    assert.ok(ev <= 0.97 + 1e-9 && ev > 0.95, 'dice ' + bet);
+  for (const n of [1, 2, 3]) for (const f of [6, 8, 10]) {
+    for (const bet of ['under', 'mid', 'over', 'same', ...Array.from({ length: n * f - n + 1 }, (_, i) => 's' + (n + i))]) {
+      const p = diceProb(bet, n, f);
+      if (!p) continue; // not offered (no exact middle, one die has no doubles)
+      const ev = p * diceMult(bet, n, f);
+      assert.ok(ev <= 0.97 + 1e-9 && ev > 0.9, `dice ${n}W${f} ${bet} ${ev}`);
+    }
+    assert.ok(Math.abs(diceProb('under', n, f) - diceProb('over', n, f)) < 1e-9, 'dice symmetric');
+  }
+  for (let m = 1; m <= 5; m++) for (let n = 1; n <= 3; n++) {
+    const ev = ((6 - m) / 6) ** n * mineMult(m, n);
+    assert.ok(ev <= 0.97 + 1e-9 && ev > 0.95, `mine dice ${m}/${n}`);
   }
   for (const [lv, q] of Object.entries(LEVELS)) for (let k = 1; k <= 15; k++) {
     const ev = q ** k * hopMult(lv as any, k);

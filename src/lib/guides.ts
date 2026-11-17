@@ -211,13 +211,15 @@ export const GUIDES: Record<string, Guide> = {
   },
   dice: {
     de: [
-      { h: 'Ziel', p: 'Zwei Würfel werden geworfen. Tippe auf das Ergebnis, bevor sie fallen.' },
-      { h: 'Wetten', li: ['Unter 7 (2–6) oder Über 7 (8–12)', 'Genau 7', 'Pasch (beide Würfel gleich)', 'Eine bestimmte Summe von 2 bis 12'] },
+      { h: 'Ziel', p: 'Ein, zwei oder drei Würfel werden geworfen. Tippe auf das Ergebnis, bevor sie fallen.' },
+      { h: 'Würfel', li: ['W6, W8 oder W10: sechs, acht oder zehn Seiten.', 'Minenwürfel (💣): W6 mit 1 bis 5 Bombenseiten. Landet ein Würfel auf einer Bombe, explodiert er und der Einsatz ist weg.'] },
+      { h: 'Wetten', li: ['Tief oder Hoch: die Summe liegt unter oder über der Mitte', 'Genau die Mitte (wenn sie eine ganze Zahl ist, z. B. 7 bei 2 × W6)', 'Pasch oder Drilling: alle Würfel gleich', 'Eine bestimmte Summe'] },
       { h: 'Auszahlung', p: 'Je unwahrscheinlicher die Wette, desto höher der Multiplikator. Chance und Multiplikator stehen neben dem Knopf.' },
     ],
     en: [
-      { h: 'Goal', p: 'Two dice are thrown. Call the result before they land.' },
-      { h: 'Bets', li: ['Under 7 (2–6) or over 7 (8–12)', 'Exactly 7', 'Doubles (both dice equal)', 'A specific sum from 2 to 12'] },
+      { h: 'Goal', p: 'One, two or three dice are thrown. Call the result before they land.' },
+      { h: 'Dice', li: ['D6, D8 or D10: six, eight or ten faces.', 'Mine dice (💣): D6 with 1 to 5 bomb faces. If a die lands on a bomb it explodes and the stake is lost.'] },
+      { h: 'Bets', li: ['Low or high: the sum is below or above the middle', 'Exactly the middle (when it is a whole number, e.g. 7 with 2 × D6)', 'Doubles or triples: all dice equal', 'A specific sum'] },
       { h: 'Payout', p: 'The less likely the bet, the higher the multiplier. Chance and multiplier are shown next to the button.' },
     ],
   },
