@@ -153,3 +153,13 @@ export const ARMORY: Machine[] = [
   armory('arm-arsenal', 'Armory · Arsenal', ['field-kit', 'night-ops', 'blackout', 'deep-tide', 'crimson-web', 'golden-edge'], [5, 10, 25, 50, 100]),
   armory('arm-proto', 'Armory · Prototype', ['rust-tech', 'glitch-trigger', 'night-phantom', 'cyber-sting', 'void-pulse', 'quantum-edge'], [25, 50, 100, 250, 500]),
 ];
+
+// ---------- Royal Cards: playing cards in the chosen deck, the joker is wild; same maths as Midnight Gems ----------
+const reskin = (base: Machine, id: string, name: string, map: Record<string, string>): Machine => {
+  const r = (o: Record<string, any>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [map[k] ?? k, v]));
+  return { ...base, id, name, weights: base.weights.map(r), pays: r(base.pays), wild: map[base.wild!] ?? base.wild };
+};
+/** Card symbols are 'card-<rank>-<suit>' (rank 1 = ace, suit 0♠ 1♥ 2♦ 3♣). */
+export const CARDS: Machine = reskin(MACHINES[1], 'cards', 'Royal Cards', {
+  amethyst: 'card-10-3', emerald: 'card-11-2', sapphire: 'card-12-1', ruby: 'card-13-0', crown: 'card-1-0', wild: 'joker',
+});

@@ -5,18 +5,36 @@
   import { fly, scale } from 'svelte/transition';
   import SlotSymbol from '../components/SlotSymbol.svelte';
   import HowTo from '../components/HowTo.svelte';
-  import { MACHINES as BASE, ARMORY, strips, spinGrid, evaluate, type Win } from '../games/slots';
+  import CardView from '../components/Card.svelte';
+  import DeckSelect from '../components/DeckSelect.svelte';
+  import { FULL } from '../lib/decks';
+  import { MACHINES as BASE, ARMORY, CARDS, strips, spinGrid, evaluate, type Win, type Machine } from '../games/slots';
   // weapon art from the cases, shown instead of drawn symbols on the Armory machine
   const ART = Object.fromEntries(Object.entries(import.meta.glob('../assets/cases/*.webp', { eager: true, import: 'default' })).map(([k, v]) => [k.split('/').pop()!.replace('.webp', ''), v as string]));
-  const MACHINES = [...BASE, ...ARMORY];
-  const TABS = [...BASE.map((m, i) => ({ name: m.name, i })), { name: 'Armory', i: BASE.length }];
-  import { wallet, settle, fmt } from '../lib/state.svelte';
+  const MACHINES = [...BASE, CARDS, ...ARMORY];
+  import { wallet, settle, fmt, settings } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
   import { t } from '../lib/i18n';
 
-  let mi = $state(0);
-  const armoryOn = $derived(mi >= BASE.length);
-  const m = $derived(MACHINES[mi]);
+  const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
+  // the machine lobby: #/slots shows all machines, #/slots?m=<id> one of them (so the back button returns to the lobby)
+  const pick = () => Math.max(-1, MACHINES.findIndex((x) => x.id === new URLSearchParams(location.hash.split('?')[1]).get('m')));
+  let mi = $state(pick());
+  const lobby = $derived(mi < 0);
+  const open = (i: number) => { location.hash = '#/slots' + (i < 0 ? '' : '?m=' + MACHINES[i].id); };
+  const BLURB: Record<string, [string, string]> = {
+    classic: ['Der Klassiker: drei Walzen, Früchte, BAR und die Sieben.', 'The classic: three reels, fruit, BAR and the seven.'],
+    gems: ['Edelsteine auf fünf Walzen, Wild und Freispiele ×2.', 'Gems on five reels, wild and free spins ×2.'],
+    cosmic: ['Zwanzig Linien im All, Wild und Freispiele ×2.', 'Twenty lines in space, wild and free spins ×2.'],
+    clover: ['Vier Reihen, zwanzig Linien, Glück aus Irland.', 'Four rows, twenty lines, luck of the Irish.'],
+    cards: ['Spielkarten im Kartenblatt deiner Wahl, der Joker ist Wild.', 'Playing cards in the deck of your choice, the joker is wild.'],
+    'arm-field': ['Die Waffen aus den Kisten, kleine Einsätze.', 'The case weapons, small stakes.'],
+    'arm-arsenal': ['Die Waffen aus den Kisten, mittlere Einsätze.', 'The case weapons, medium stakes.'],
+    'arm-proto': ['Die seltensten Waffen, hohe Einsätze.', 'The rarest weapons, high stakes.'],
+  };
+  /** The three best-paying symbols, for the lobby card. */
+  const top3 = (x: Machine) => Object.entries(x.pays).sort((a, b) => Math.max(...Object.values(b[1])) - Math.max(...Object.values(a[1]))).slice(0, 3).map(([k]) => k);
+  const m = $derived(MACHINES[Math.max(0, mi)]);
   const reelStrips = $derived(strips(m));
   let betIdx = $state(1);
   const lineBet = $derived(m.bets[Math.min(betIdx, m.bets.length - 1)]);
@@ -101,40 +119,69 @@
   }
 </script>
 
-<svelte:window onkeydown={key} />
+<svelte:window onkeydown={(e) => !lobby && key(e)} onhashchange={() => { if (!spinning && !freeLeft) { mi = pick(); autoLeft = 0; } }} />
 
 {#snippet symbol(sym: string)}
-  {#if ART[sym]}<img class="weapon" src={ART[sym]} alt={sym} draggable="false" />{:else}<SlotSymbol {sym} />{/if}
+  {#if ART[sym]}<img class="weapon" src={ART[sym]} alt={sym} draggable="false" />
+  {:else if sym.startsWith('card-')}{@const [, r, su] = sym.split('-')}<div class="pc"><CardView card={{ r: +r, s: +su }} /></div>
+  {:else if sym === 'joker'}
+    <div class="pc"><svg class="joker" viewBox="0 0 250 350" aria-label="Joker" role="img">
+      <rect width="250" height="350" rx="22" fill="#fffdf6" stroke="rgba(0,0,0,.12)" stroke-width="3" />
+      <rect x="16" y="16" width="218" height="318" rx="14" fill="none" stroke="#d8b26a" stroke-width="4" />
+      <path d="M125 120 L70 70 Q60 110 88 140 Z" fill="#e5484d" /><path d="M125 120 L180 70 Q190 110 162 140 Z" fill="#3d6bff" /><path d="M125 120 L125 52 Q100 90 108 138 Z M125 120 L125 52 Q150 90 142 138 Z" fill="#f2b01e" />
+      <circle cx="70" cy="70" r="11" fill="#f2b01e" /><circle cx="180" cy="70" r="11" fill="#f2b01e" /><circle cx="125" cy="50" r="11" fill="#e5484d" />
+      <circle cx="125" cy="182" r="46" fill="#f6d7b8" /><path d="M95 140 Q125 128 155 140 L150 152 Q125 142 100 152Z" fill="#7a3fb5" />
+      <circle cx="108" cy="176" r="6" fill="#1c1c22" /><circle cx="142" cy="176" r="6" fill="#1c1c22" /><circle cx="125" cy="192" r="7" fill="#e5484d" />
+      <path d="M102 204 Q125 226 148 204" stroke="#1c1c22" stroke-width="5" fill="none" stroke-linecap="round" />
+      <path d="M80 236 L100 224 L112 240 L125 224 L138 240 L150 224 L170 236 L160 252 L90 252Z" fill="#e5484d" />
+      <text x="125" y="300" text-anchor="middle" font-family="Geist Variable, sans-serif" font-weight="800" font-size="40" letter-spacing="6" fill="#1c1c22">JOKER</text>
+    </svg></div>
+  {:else}<SlotSymbol {sym} />{/if}
 {/snippet}
+
+{#if lobby}
+<section class="wrap page">
+  <header class="head">
+    <div>
+      <p class="eyebrow">Classic · {MACHINES.length} {L('Automaten', 'machines')}</p>
+      <div class="h1row"><h1>Slots</h1><HowTo id="slots" /></div>
+    </div>
+  </header>
+  <div class="machines">
+    {#each MACHINES as x, i (x.id)}
+      <button class="mcard {x.id}" class:armory={x.id.startsWith('arm')} onclick={() => open(i)}>
+        <div class="mart">
+          {#each top3(x) as sym, k}<div class="mcell" style="--k:{k}">{@render symbol(sym)}</div>{/each}
+        </div>
+        <div class="mtxt">
+          <h3>{x.name}</h3>
+          <p>{L(...BLURB[x.id])}</p>
+          <div class="tags mono">
+            <span>{x.weights.length}×{x.rows}</span><span>{x.lines.length} {t('s.lines')}</span>
+            {#if x.wild}<span>Wild</span>{/if}{#if x.scatter}<span>{t('s.free')} ×{x.scatter.mult}</span>{/if}
+            <span>{fmt(x.bets[0] * x.lines.length)}–{fmt(x.bets.at(-1)! * x.lines.length)}</span>
+          </div>
+        </div>
+      </button>
+    {/each}
+  </div>
+</section>
+{:else}
 
 <section class="wrap page">
   <header class="head">
     <div>
-      <p class="eyebrow">{m.lines.length} {t('s.lines')} · {m.weights.length}×{m.rows}</p>
-      <div class="h1row"><h1>Slots</h1><HowTo id="slots" /></div>
-    </div>
-    <div class="tabs" role="tablist">
-      {#each TABS as tb}
-        {@const on = tb.i === BASE.length ? armoryOn : mi === tb.i}
-        <button role="tab" aria-selected={on} class:on disabled={spinning || freeLeft > 0} onclick={() => { if (!on) mi = tb.i; }}>{tb.name}</button>
-      {/each}
+      <p class="eyebrow">Slots · {m.lines.length} {t('s.lines')} · {m.weights.length}×{m.rows}</p>
+      <div class="h1row">
+        <button class="btn sm back" disabled={spinning || freeLeft > 0} onclick={() => open(-1)}>← {L('Alle Automaten', 'All machines')}</button>
+        <h1>{m.name}</h1><HowTo id="slots" />
+        {#if m.id === 'cards'}<DeckSelect supported={FULL} which="cards52" />{/if}
+      </div>
     </div>
   </header>
 
-  {#if armoryOn}
-    <div class="sets" role="radiogroup" aria-label="Armory" in:fly={{ y: -6, duration: 220 }}>
-      {#each ARMORY as a, k}
-        {@const wild = a.wild!}
-        <button class="set" class:on={mi === BASE.length + k} disabled={spinning || freeLeft > 0} onclick={() => { mi = BASE.length + k; betIdx = 1; sfx('click'); }}>
-          <img src={ART[wild]} alt="" />
-          <span>{a.name.split('· ')[1]}</span>
-          <span class="mono">{fmt(a.bets[0] * a.lines.length)}–{fmt(a.bets.at(-1)! * a.lines.length)}</span>
-        </button>
-      {/each}
-    </div>
-  {/if}
 
-  <div class="cabinet {m.id}" class:armory={armoryOn}>
+  <div class="cabinet {m.id}" class:armory={m.id.startsWith('arm')}>
     <div class="marquee">
       <span class="serif">{m.name}</span>
       {#if freeLeft > 0}<span class="free mono" in:scale>{t('s.free')}: {freeLeft} · ×{m.scatter?.mult}</span>{/if}
@@ -211,34 +258,45 @@
     {#if m.scatter}<p class="muted small">{t('s.scatter')}. {t('s.wild')}.</p>{/if}
   </section>
 </section>
+{/if}
 
 <style>
+  .back { margin-right: 4px; }
+  .machines { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding-bottom: 40px; }
+  .mcard { display: grid; grid-template-rows: 190px auto; padding: 0; text-align: left; border-radius: 28px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); color: inherit; transition: transform 0.4s var(--ease-snap), border-color 0.3s; }
+  .mcard:hover { transform: translateY(-4px); border-color: var(--line-2); }
+  .mart { display: flex; justify-content: center; align-items: center; gap: 8px; background: linear-gradient(160deg, #26180e, #120b07); }
+  .mcard.gems .mart { background: linear-gradient(160deg, #1b1340, #0a0820); }
+  .mcard.cosmic .mart { background: radial-gradient(ellipse at 70% 0%, #2a1f5c, #07061a 70%); }
+  .mcard.clover .mart { background: linear-gradient(160deg, #0f4a2e, #062316); }
+  .mcard.cards .mart { background: radial-gradient(ellipse at 50% 30%, #2d6a4a, #173a2a 80%); }
+  .mcard.armory .mart { background: linear-gradient(160deg, #1c1f2b, #0b0d14); }
+  .mcell { width: 78px; height: 78px; padding: 10px; border-radius: 14px; background: rgba(255,255,255,.92); box-shadow: inset 0 0 0 2px rgba(216,178,106,.5); transition: transform 0.5s var(--spring-snappy, ease); }
+  .mcard.gems .mcell, .mcard.cosmic .mcell, .mcard.armory .mcell { background: rgba(255,255,255,.08); }
+  .mcard.cards .mcell { background: none; box-shadow: none; padding: 0; }
+  .mcard:hover .mcell { transform: translateY(calc(-6px + var(--k) * 3px)) rotate(calc((var(--k) - 1) * 4deg)); }
+  .mtxt { padding: 18px 20px 20px; display: grid; gap: 6px; }
+  .mtxt h3 { margin: 0; font-size: 1.35rem; letter-spacing: -0.03em; }
+  .mtxt p { margin: 0; color: var(--muted); font-size: 0.88rem; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .tags span { padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-2); font-size: 0.7rem; color: var(--muted); }
+  .pc { width: 100%; height: 100%; display: grid; place-items: center; --cw: 74%; }
+  .pc :global(.card) { width: 74%; }
+  .joker { width: 74%; aspect-ratio: 5 / 7; height: auto; display: block; border-radius: 6%; box-shadow: 0 1px 1px rgba(0,0,0,.18), 0 8px 16px -8px rgba(0,0,0,.6); }
+  .cabinet.cards { --frame: #e5c27a; background: radial-gradient(ellipse at 50% 0%, #2d6a4a, #0f2a1d 80%); }
+  .cabinet.cards .reel { background: linear-gradient(180deg, #123524, #1d4a33 20%, #1d4a33 80%, #123524); }
+  .cabinet.cards .cell { padding: 4%; }
   .h1row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .h1row h1 { margin: 0; }
   .page { padding-bottom: 120px; }
   .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 28px 0 16px; }
   h1 { margin: 6px 0 0; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; line-height: 0.95; font-weight: 700; }
-  .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; border: 1px solid var(--line-2); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .tabs button { flex: none; border: 0; background: none; min-height: 38px; padding: 0 16px; border-radius: 999px; font-size: 0.85rem; transition: background-color 0.3s var(--ease-snap), color 0.3s var(--ease-snap); }
-  .tabs button.on { background: var(--text); color: var(--bg); }
-  .sets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 720px; margin: -4px auto 12px; }
-  .set { display: grid; grid-template-columns: 54px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; padding: 5px 10px 5px 5px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--surface); font-size: 0.85rem; font-weight: 600; transition: border-color 0.25s var(--ease-snap), transform 0.3s var(--ease-snap); }
-  .set img { grid-row: span 2; width: 54px; height: 34px; object-fit: contain; }
-  .set .mono { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
-  .set.on { border-color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 22%, transparent); }
-  .set:hover:not(:disabled) { transform: translateY(-2px); }
   .cabinet.armory { --frame: #c9a24a; background: linear-gradient(160deg, #1c1f2b, #0b0d14); }
   .cabinet.armory .reel { background: linear-gradient(180deg, #151826, #22263a 20%, #22263a 80%, #151826); }
   .weapon { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
   .armory .cell { padding: 6%; }
   .cell.wild { background: radial-gradient(circle, rgba(242,192,70,.28), transparent 70%); }
   .pi.wide { width: 80px; }
-  @media (max-width: 640px) {
-    .set { grid-template-columns: 1fr; grid-template-rows: auto; justify-items: center; text-align: center; padding: 6px 4px; }
-    .set img { grid-row: auto; width: 100%; height: 28px; }
-    .set .mono { font-size: 0.64rem; }
-  }
-  .tabs button:disabled:not(.on) { opacity: 0.4; }
 
   .cabinet {
     --frame: #d8b26a; width: fit-content; max-width: 100%; margin: 0 auto; border-radius: 36px; padding: clamp(14px, 2.5vw, 28px);
