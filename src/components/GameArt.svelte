@@ -12,6 +12,9 @@
   import rock from '../assets/space/rock.webp';
   import { coinFace } from '../lib/coinface';
   import JassCard from './JassCard.svelte';
+  import { settings } from '../lib/state.svelte';
+  import { pickDeck } from '../lib/decks';
+  const dkDeck = $derived(pickDeck(settings.cards, ['fr', 'intl', 'ru']));
   import Dice3D from './Dice3D.svelte';
   const coinCache: Record<string, string> = {};
   const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 512).toDataURL('image/png'));
@@ -111,6 +114,11 @@
     </svg>
   {:else if id === 'crossy'}
     <CrossyArt />
+  {:else if id === 'durak'}
+    <div class="dk">
+      {#each [{ s: 0, r: 6 }, { s: 2, r: 6 }, { s: 1, r: 6 }] as c, i}<div class="dkc" style="--i:{i}"><JassCard card={c} deck={dkDeck} /></div>{/each}
+      <svg class="dkhat" viewBox="0 0 48 40" aria-hidden="true"><path d="M4 34 C6 20 14 10 24 8 C34 10 42 20 44 34Z" fill="#c8102e" /><path d="M24 8 C18 12 10 14 4 10 C10 20 16 26 18 34" fill="#f2c33a" /><path d="M24 8 C30 12 38 14 44 10 C38 20 32 26 30 34" fill="#1f5fbf" /><circle cx="4" cy="10" r="3.4" fill="#fff" /><circle cx="44" cy="10" r="3.4" fill="#fff" /><circle cx="24" cy="6" r="3.4" fill="#fff" /><rect x="2" y="32" width="44" height="6" rx="3" fill="#2a2a32" /></svg>
+    </div>
   {:else if id === 'derby'}
     <DerbyArt />
   {:else if id === 'balloon'}
@@ -162,6 +170,12 @@
   :global(.game:hover) .bb, :global(.dailycard:hover) .bb { transform: scale(1.12); }
   .bm { position: absolute; top: 34%; color: #fff; font-weight: 700; font-size: 1.2rem; text-shadow: 0 2px 4px rgba(0,0,0,.3); }
   .cl { position: absolute; left: 12%; top: 18%; width: 70px; height: 22px; border-radius: 999px; background: rgba(255,255,255,.85); box-shadow: 150px 40px 0 -4px rgba(255,255,255,.7); }
+  .art.durak { background: radial-gradient(ellipse at 50% 30%, #2d6a4a, #173a2a); }
+  .dk { position: relative; display: flex; --cw: 64px; padding-top: 24px; }
+  .dkc { margin-left: -22px; rotate: calc((var(--i) - 1) * 12deg); transform-origin: 50% 120%; transition: rotate 0.5s var(--ease-snap); }
+  .dkc:first-child { margin-left: 0; }
+  :global(.game:hover) .dkc, :global(.dailycard:hover) .dkc { rotate: calc((var(--i) - 1) * 20deg); }
+  .dkhat { position: absolute; left: 50%; top: -14px; width: 56px; translate: -50% 0; rotate: -10deg; filter: drop-shadow(0 4px 6px rgba(0,0,0,.4)); }
   .art.dice { background: radial-gradient(ellipse at 50% 30%, var(--felt), var(--felt-2)); }
   .dice3 { position: absolute; inset: 0; display: grid; align-content: center; }
   .art.hop { background: #2c2f36; }

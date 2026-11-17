@@ -15,6 +15,7 @@ export const GAMES: Game[] = [
   { id: 'threecard', name: 'Three Card Poker', cat: 'classic', live: true },
   { id: 'jass', name: 'Jass', cat: 'classic', live: true },
   { id: 'derby', name: ['Pferderennen', 'Horse Racing'], cat: 'classic', live: true },
+  { id: 'durak', name: 'Durak', cat: 'classic', live: true },
   { id: 'videopoker', name: 'Video Poker', cat: 'classic' },
   { id: 'sicbo', name: 'Sic Bo', cat: 'classic' },
 

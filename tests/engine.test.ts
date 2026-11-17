@@ -510,3 +510,39 @@ import { field as hField, simulate as hSim, odds as hOdds, payout as hPay, timel
   assert(back / M / 6 > 0.85 && back / M / 6 < 1.02, 'win RTP near 95 %: ' + (back / M / 6).toFixed(3));
   console.log('horse racing checks passed');
 }
+
+// Durak: rules, a few hundred bot games, transfers
+import { newGame as dkNew, act as dkAct, bot as dkBot, legal as dkLegal, beats as dkBeats, payout as dkPay } from '../src/games/durak.ts';
+{
+  assert(dkBeats({ s: 0, r: 9 }, { s: 0, r: 7 }, 3) && !dkBeats({ s: 0, r: 7 }, { s: 0, r: 9 }, 3), 'higher same suit beats');
+  assert(dkBeats({ s: 3, r: 6 }, { s: 0, r: 14 }, 3) && !dkBeats({ s: 1, r: 14 }, { s: 0, r: 6 }, 3), 'trump beats, other suits do not');
+  let losers = 0, draws = 0, transfers = 0;
+  for (let k = 0; k < 400; k++) {
+    const n = 2 + (k % 5);
+    const g = dkNew(n, { transfer: k % 2 === 0, allThrow: k % 3 === 0 });
+    let steps = 0;
+    while (g.phase === 'play' && steps++ < 3000) {
+      let moved = false;
+      for (const p of [g.defender, ...Array.from({ length: n }, (_, i) => i)]) {
+        const a = dkBot(g, p);
+        if (a && dkAct(g, p, a)) { moved = true; if (a.t === 'transfer') transfers++; break; }
+      }
+      assert(moved, 'someone can always move');
+      // invariants: 36 cards in total, nobody over the table limit
+      const total = g.hands.reduce((a, h) => a + h.length, 0) + g.deck.length + g.discard + g.table.reduce((a, x) => a + (x.d ? 2 : 1), 0);
+      assert(total === 36, 'cards are conserved: ' + total);
+      assert(g.table.length <= 6, 'at most six attack cards');
+    }
+    assert(g.phase === 'over', 'game ends');
+    if (g.loser >= 0) { losers++; assert(g.hands[g.loser].length > 0 && g.out.length === n - 1, 'the durak is the one left with cards'); } else draws++;
+  }
+  assert(transfers > 0, 'bots use transfers');
+  // an attacker cannot open with two cards at once or throw a rank that is not on the table
+  const g = dkNew(2, { transfer: false, allThrow: false });
+  const att = g.attacker, h = g.hands[att];
+  const odd = h.find((c) => c.r !== h[0].r);
+  assert(dkAct(g, att, { t: 'attack', c: h[0] }), 'open');
+  if (odd) assert(!dkLegal(g, att, { t: 'attack', c: odd }), 'throw-in needs a rank on the table');
+  assert(dkPay(2) === 1.94 && dkPay(6) === 1.16, 'payout');
+  console.log('durak checks passed', { losers, draws, transfers });
+}

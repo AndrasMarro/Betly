@@ -36,6 +36,7 @@
     threecard: () => import('./pages/ThreeCard.svelte'),
     jass: () => import('./pages/Jass.svelte'),
     derby: () => import('./pages/Derby.svelte'),
+    durak: () => import('./pages/Durak.svelte'),
     holdem: () => import('./pages/Poker.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),
