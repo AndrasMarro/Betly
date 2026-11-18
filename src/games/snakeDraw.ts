@@ -3,34 +3,63 @@ export function drawApple(ctx: CanvasRenderingContext2D, x: number, y: number, c
   const r = c * 0.36, cx = x + c / 2, cy = y + c / 2 + c * 0.04;
   if (kind !== 'red' && ttl < 14 && Math.floor(clock * 8) % 2) return; // blink before vanishing
   ctx.save();
-  if (kind === 'cosmic') {
+  const still = ttl === Infinity; // slot symbol: no glow or sparkles, so it is cropped to the same size as the red apple
+  if (still) { /* plain */ } else if (kind === 'cosmic') {
     ctx.translate(cx, cy); ctx.rotate(clock * 1.5); ctx.translate(-cx, -cy);
     ctx.shadowColor = '#a78bff'; ctx.shadowBlur = c * 0.6;
   } else if (kind === 'gold') { ctx.shadowColor = '#ffd45a'; ctx.shadowBlur = c * 0.5; }
-  const g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r * 1.1);
-  const [a, b] = kind === 'red' ? ['#ff7a72', '#c0141f'] : kind === 'gold' ? ['#fff3b0', '#d39a12'] : kind === 'poison' ? ['#c9a2ff', '#3b1460'] : ['#9be8ff', '#6a2bd9'];
-  g.addColorStop(0, a); g.addColorStop(1, b);
+  const [hi, mid, lo] = kind === 'red' ? ['#ff9a8c', '#e0262f', '#7e0b14'] : kind === 'gold' ? ['#fff6c4', '#f0b92a', '#8f5a06'] : kind === 'poison' ? ['#d9b8ff', '#7a3fc0', '#2a0b48'] : ['#c4f1ff', '#6a6cf0', '#2a1180'];
+  // apple silhouette: two shoulders with a dip for the stem, a full belly and a small dimple at the bottom
+  const body = () => {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r * 0.62);
+    ctx.bezierCurveTo(cx + r * 0.32, cy - r * 1.02, cx + r * 1.08, cy - r * 0.98, cx + r * 1.02, cy - r * 0.08);
+    ctx.bezierCurveTo(cx + r * 0.98, cy + r * 0.62, cx + r * 0.56, cy + r * 1.02, cx + r * 0.22, cy + r * 0.96);
+    ctx.quadraticCurveTo(cx, cy + r * 0.86, cx - r * 0.22, cy + r * 0.96);
+    ctx.bezierCurveTo(cx - r * 0.56, cy + r * 1.02, cx - r * 0.98, cy + r * 0.62, cx - r * 1.02, cy - r * 0.08);
+    ctx.bezierCurveTo(cx - r * 1.08, cy - r * 0.98, cx - r * 0.32, cy - r * 1.02, cx, cy - r * 0.62);
+    ctx.closePath();
+  };
+  const g = ctx.createRadialGradient(cx - r * 0.38, cy - r * 0.36, r * 0.08, cx + r * 0.1, cy + r * 0.1, r * 1.25);
+  g.addColorStop(0, hi); g.addColorStop(0.45, mid); g.addColorStop(1, lo);
   ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - r * 0.7);
-  ctx.bezierCurveTo(cx + r * 1.2, cy - r * 1.3, cx + r * 1.35, cy + r * 0.6, cx, cy + r);
-  ctx.bezierCurveTo(cx - r * 1.35, cy + r * 0.6, cx - r * 1.2, cy - r * 1.3, cx, cy - r * 0.7);
-  ctx.fill();
+  body(); ctx.fill();
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = '#5a3a1e'; ctx.lineWidth = Math.max(1.5, c * 0.07); ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(cx, cy - r * 0.6); ctx.lineTo(cx + r * 0.15, cy - r * 1.15); ctx.stroke();
-  ctx.fillStyle = kind === 'cosmic' ? '#ffe17a' : '#3fbf5a';
-  ctx.beginPath(); ctx.ellipse(cx + r * 0.5, cy - r * 1.0, r * 0.38, r * 0.17, -0.5, 0, 7); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.55)';
-  ctx.beginPath(); ctx.ellipse(cx - r * 0.42, cy - r * 0.15, r * 0.13, r * 0.26, 0.3, 0, 7); ctx.fill();
+  // soft shade in the stem dip and a rim light on the right
+  ctx.save(); body(); ctx.clip();
+  const dip = ctx.createRadialGradient(cx, cy - r * 0.62, 0, cx, cy - r * 0.62, r * 0.42);
+  dip.addColorStop(0, 'rgba(0,0,0,.35)'); dip.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = dip; ctx.fillRect(cx - r, cy - r * 1.1, r * 2, r);
+  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = r * 0.12;
+  ctx.beginPath(); ctx.arc(cx - r * 0.1, cy + r * 0.05, r * 0.98, -0.5, 0.9); ctx.stroke();
+  ctx.restore();
+  // stem and leaf
+  ctx.strokeStyle = '#4a2e14'; ctx.lineWidth = Math.max(1.5, r * 0.16); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx, cy - r * 0.58); ctx.quadraticCurveTo(cx + r * 0.02, cy - r * 0.95, cx + r * 0.2, cy - r * 1.22); ctx.stroke();
+  const leaf = ctx.createLinearGradient(cx + r * 0.15, cy - r * 1.2, cx + r * 0.95, cy - r * 0.9);
+  const [l1, l2] = kind === 'cosmic' ? ['#fff3a8', '#e0a91c'] : ['#8ee26a', '#2f9a3e'];
+  leaf.addColorStop(0, l1); leaf.addColorStop(1, l2);
+  ctx.fillStyle = leaf;
+  ctx.beginPath();
+  ctx.moveTo(cx + r * 0.12, cy - r * 0.98);
+  ctx.quadraticCurveTo(cx + r * 0.45, cy - r * 1.5, cx + r * 1.0, cy - r * 1.18);
+  ctx.quadraticCurveTo(cx + r * 0.6, cy - r * 0.78, cx + r * 0.12, cy - r * 0.98);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = Math.max(1, r * 0.04);
+  ctx.beginPath(); ctx.moveTo(cx + r * 0.18, cy - r * 0.99); ctx.quadraticCurveTo(cx + r * 0.55, cy - r * 1.14, cx + r * 0.95, cy - r * 1.17); ctx.stroke();
+  // glossy highlight
+  const sh = ctx.createLinearGradient(cx - r * 0.7, cy - r * 0.6, cx - r * 0.3, cy + r * 0.1);
+  sh.addColorStop(0, 'rgba(255,255,255,.75)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = sh;
+  ctx.beginPath(); ctx.ellipse(cx - r * 0.48, cy - r * 0.22, r * 0.17, r * 0.38, 0.35, 0, 7); ctx.fill();
   if (kind === 'poison') {
     // a little skull: do not eat
     ctx.fillStyle = '#e9ffd9';
     ctx.beginPath(); ctx.arc(cx, cy - r * 0.05, r * 0.36, 0, 7); ctx.fill();
     ctx.fillRect(cx - r * 0.22, cy + r * 0.2, r * 0.44, r * 0.2);
-    ctx.fillStyle = '#3b1460';
+    ctx.fillStyle = '#2a0b48';
     for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + sx * r * 0.14, cy - r * 0.08, r * 0.1, 0, 7); ctx.fill(); }
-  } else if (kind !== 'red') {
+  } else if (kind !== 'red' && !still) {
     ctx.fillStyle = '#fff';
     for (let i = 0; i < 3; i++) {
       const t = clock * 2 + i * 2.1, sx = cx + Math.cos(t) * r * 1.25, sy = cy + Math.sin(t * 1.3) * r * 1.1, s = c * 0.05 * (1 + Math.sin(t * 3));

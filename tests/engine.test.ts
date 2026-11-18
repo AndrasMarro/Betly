@@ -557,7 +557,7 @@ import { newGame as dkNew, act as dkAct, bot as dkBot, legal as dkLegal, beats a
       assert(g.table.length <= 6, 'at most six attack cards');
     }
     assert(g.phase === 'over', 'game ends');
-    if (g.loser >= 0) { losers++; assert(g.hands[g.loser].length > 0 && g.out.length === n - 1, 'the durak is the one left with cards'); } else draws++;
+    if (g.loser >= 0) { losers++; assert(g.hands[g.loser].length > 0 && (g.out.length === n - 1 || (g.stall ?? 0) >= 40), 'the durak is the one left with cards'); } else draws++;
   }
   assert(transfers > 0, 'bots use transfers');
   // an attacker cannot open with two cards at once or throw a rank that is not on the table

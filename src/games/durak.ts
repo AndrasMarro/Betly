@@ -18,6 +18,7 @@ export type Durak = {
   taker: number;               // who picked up the last bout (-1: it went to the discard pile)
   lastTake: Card[];            // the cards of that pick-up
   turn: number;                // counts actions, so clients can tell a new state from an old one
+  stall?: number;              // pick-ups in a row with an empty pack (bots can circle forever)
 };
 export type Action =
   | { t: 'attack'; c: Card }            // first card of a bout, or a throw-in of a rank already on the table
@@ -146,6 +147,9 @@ function endBout(g: Durak) {
   for (const p of order) if (!g.hands[p].length && !g.deck.length && !g.out.includes(p)) g.out.push(p);
   const left = Array.from({ length: g.n }, (_, p) => p).filter((p) => !g.out.includes(p));
   if (left.length <= 1) { g.phase = 'over'; g.loser = left.length ? left[0] : -1; return; }
+  // endgame where the same cards only go round and round: whoever holds the most is the durak
+  g.stall = took && !g.deck.length ? (g.stall ?? 0) + 1 : 0;
+  if (g.stall >= 40) { g.phase = 'over'; g.loser = left.reduce((a, p) => (g.hands[p].length > g.hands[a].length ? p : a)); return; }
   // next bout: the defender attacks if they held, otherwise the player after them
   g.attacker = !took && active(g, g.defender) ? g.defender : next(g, g.defender);
   g.defender = next(g, g.attacker);
