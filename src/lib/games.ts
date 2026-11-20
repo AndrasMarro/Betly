@@ -38,6 +38,9 @@ export const GAMES: Game[] = [
   { id: 'balloon', live: true, name: ['Ballon', 'Balloon'], cat: 'arcade' },
   { id: 'penalty', name: ['Elfmeter', 'Penalty'], cat: 'arcade' },
   { id: 'scratch', live: true, name: ['Rubbellos', 'Scratch Card'], cat: 'arcade' },
+  { id: 'cups', live: true, name: ['Hütchenspiel', 'Shell Game'], cat: 'arcade' },
+  { id: 'g2048', live: true, name: '2048', cat: 'arcade' },
+  { id: 'tetris', live: true, name: 'Tetris', cat: 'arcade' },
 ];
 
 export const gameName = (g: Game) => (typeof g.name === 'string' ? g.name : g.name[settings.lang === 'de' ? 0 : 1]);

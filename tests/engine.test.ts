@@ -586,3 +586,83 @@ import { newGame as dkNew, act as dkAct, bot as dkBot, legal as dkLegal, beats a
   assert.equal(lottoRank([1, 2, 30, 10, 11, 12], 1, [1, 2, 3, 4, 5, 6], 2), -1);
   console.log('keno classic 10:', kenoTable(10, 'classic').join(' '), '| lotto:', LOTTO_TABLE.join(' '), '| win chance', p.toFixed(3));
 }
+
+// Shell game: the end cup follows from the hidden swaps and is uniform, even for one fixed set of visible moves
+import { cupsPlan, cupsMult } from '../src/games/arcade.ts';
+{
+  for (const n of [3, 4, 5]) {
+    const hist = Array(n).fill(0), N = 30000;
+    // one fixed visible sequence: replay the same random pairs, vary only what happens after
+    let seed = 7;
+    const fixed = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const base = cupsPlan(n, 0, 6 + n * 2, fixed).moves;
+    for (let k = 0; k < N; k++) {
+      let m = 0;
+      const rnd = () => (m < 1e9 ? Math.random() : 0);
+      const pl = cupsPlan(n, 0, base.length, (() => { let i = 0; const seq = base.flatMap(([a, b]) => [a / n + 1e-9, (b > a ? b - 1 : b) / (n - 1) + 1e-9]); return () => (i < seq.length ? seq[i++] : rnd()); })());
+      assert.deepEqual(pl.moves, base, 'same visible moves');
+      let p = 0;
+      pl.moves.forEach(([a, b], i) => { if (pl.swaps[i] && (p === a || p === b)) p = p === a ? b : a; });
+      assert(p === pl.end, 'end follows the swaps');
+      hist[p]++;
+      m++;
+    }
+    for (const h of hist) assert(Math.abs(h / N - 1 / n) < 0.015, `cups ${n}: uniform end ` + hist.join(','));
+    assert(Math.abs(cupsMult(n) / n - 0.97) < 0.005, 'cups RTP 97 %');
+  }
+  console.log('shell game checks passed');
+}
+
+// 2048: merges once per move, slides to the edge, multiplier tiers
+import { slide as s2048, multFor, canMove as can2048, type Tile as T2048 } from '../src/games/g2048.ts';
+{
+  const row = (vals: number[], y = 0): T2048[] => vals.flatMap((v, x) => (v ? [{ id: x + 1 + y * 10, v, x, y }] : []));
+  const read = (ts: T2048[], y = 0) => [0, 1, 2, 3].map((x) => ts.find((t) => !t.gone && t.x === x && t.y === y)?.v ?? 0);
+  const L = (v: number[]) => read(s2048(row(v), 'left').tiles);
+  assert.deepEqual(L([2, 2, 2, 2]), [4, 4, 0, 0]);
+  assert.deepEqual(L([2, 2, 4, 0]), [4, 4, 0, 0]);
+  assert.deepEqual(L([4, 0, 4, 8]), [8, 8, 0, 0]);
+  assert.deepEqual(L([4, 4, 8, 0]), [8, 8, 0, 0], 'a merged tile does not merge again');
+  assert.deepEqual(read(s2048(row([2, 0, 2, 4]), 'right').tiles), [0, 0, 4, 4]);
+  assert.equal(s2048(row([2, 4, 8, 16]), 'left').moved, false, 'nothing moves');
+  assert.equal(s2048(row([2, 2, 0, 0]), 'left').gained, 4);
+  const full = [0, 1, 2, 3].flatMap((y) => row(y % 2 ? [4, 2, 4, 2] : [2, 4, 2, 4], y));
+  assert.equal(can2048(full), false, 'checkerboard is stuck');
+  assert(multFor(64) === 0 && multFor(128) === 1.1 && multFor(3000) === 10, 'tiers');
+  console.log('2048 checks passed');
+}
+
+// Tetris: line clears, garbage, same pieces for the same seed, and the bot survives a while
+import * as TT from '../src/games/tetris.ts';
+{
+  const a = TT.newGame(42), b = TT.newGame(42);
+  for (let i = 0; i < 20; i++) { assert.equal(a.cur.k, b.cur.k, 'same seed, same pieces'); TT.hardDrop(a); TT.hardDrop(b); if (a.over) break; }
+  // fill the bottom row but one cell, then drop an I vertically into the gap
+  const g = TT.newGame(1);
+  const R = TT.H + TT.HIDDEN;
+  for (let x = 0; x < TT.W - 1; x++) g.board[(R - 1) * TT.W + x] = 8;
+  g.cur = { k: 'I', r: 1, x: TT.W - 3, y: 0 };
+  while (!TT.step(g)) {}
+  assert.equal(g.lines, 1, 'one line cleared');
+  assert(g.board.filter(Boolean).length === 3 && g.board[(R - 1) * TT.W + TT.W - 1], 'the rest of the I stays and drops');
+  // garbage rises after a lock without a clear, and our own clears cancel it first
+  const h = TT.newGame(3);
+  TT.receive(h, 3);
+  TT.hardDrop(h);
+  assert(h.board.slice((R - 3) * TT.W).filter((v) => v === TT.GARBAGE).length === 27, 'three garbage rows with one gap each');
+  // a bot plays: it should clear plenty of lines before topping out
+  let total = 0;
+  for (let s = 0; s < 3; s++) {
+    const q = TT.newGame(100 + s);
+    for (let i = 0; i < 400 && !q.over; i++) {
+      const t = TT.plan(q);
+      for (let k = 0; k < 4 && q.cur.r !== t.r; k++) TT.rotate(q, 1);
+      for (let k = 0; k < 12 && q.cur.x !== t.x; k++) TT.move(q, Math.sign(t.x - q.cur.x));
+      TT.hardDrop(q);
+    }
+    total += q.lines;
+  }
+  assert(total > 300, 'bot clears lines: ' + total);
+  assert(TT.speed(1) === 800 && TT.speed(30) === 60, 'gravity');
+  console.log('tetris checks passed, bot lines', total);
+}

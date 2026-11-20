@@ -285,3 +285,43 @@ export const CLASSIC_CASES: CaseDef[] = [
 ];
 /** Chance of at least one gold item in n openings: 1 - (1 - p)^n. */
 export const atLeastOneGold = (n: number) => 1 - (1 - GOLD_P) ** n;
+
+// ---------- Hütchenspiel / shell game: find the ball under 1 of n cups ----------
+export const cupsMult = (n: number) => Math.floor(n * EDGE * 100 + 1e-9) / 100;
+/**
+ * A shuffle the player can watch but not track: every move is a crossing where two cups meet exactly on the
+ * same spot and part again, either swapped or back where they came from. Only the pairs are visible; the
+ * end cup is drawn uniformly first and the hidden swap decisions are then sampled to lead there, so the
+ * chance stays exactly 1 in n however closely someone watches.
+ */
+export function cupsPlan(n: number, start: number, count: number, rnd = Math.random) {
+  const moves: [number, number][] = [];
+  let reach = new Set([start]);
+  while (moves.length < count || reach.size < n) {
+    const i = Math.floor(rnd() * n);
+    let j = Math.floor(rnd() * (n - 1));
+    if (j >= i) j++;
+    moves.push([i, j]);
+    if (reach.has(i) || reach.has(j)) reach = new Set([...reach, i, j]);
+  }
+  const end = Math.floor(rnd() * n);
+  // ways[k][p]: decision sequences from move k on, ball in slot p, that end in `end`
+  const ways = Array.from({ length: moves.length + 1 }, () => Array(n).fill(0));
+  ways[moves.length][end] = 1;
+  for (let k = moves.length - 1; k >= 0; k--) {
+    const [i, j] = moves[k];
+    for (let p = 0; p < n; p++) {
+      const sw = p === i ? j : p === j ? i : p;
+      ways[k][p] = ways[k + 1][p] + ways[k + 1][sw];
+    }
+  }
+  const swaps: boolean[] = [];
+  let p = start;
+  for (let k = 0; k < moves.length; k++) {
+    const [i, j] = moves[k], sw = p === i ? j : p === j ? i : p;
+    const yes = rnd() * ways[k][p] < ways[k + 1][sw];
+    swaps.push(yes);
+    if (yes) p = sw;
+  }
+  return { moves, swaps, end: p };
+}

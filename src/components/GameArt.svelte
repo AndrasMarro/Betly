@@ -169,6 +169,25 @@
     </div>
   {:else if id === 'scratch'}
     <div class="tk">{#each ['seven', 'seven', 'seven'] as s, i}<i class:foil={i === 2}><SlotSymbol sym={s} /></i>{/each}</div>
+  {:else if id === 'cups'}
+    <div class="cp">
+      {#each [0, 1, 2] as i}
+        <div class="cupa" class:mid={i === 1}>
+          {#if i === 1}<i class="cball"></i>{/if}
+          <svg viewBox="0 0 100 110"><path d="M30 8 Q50 2 70 8 L88 96 Q50 106 12 96 Z" fill="#a8182d" /><path d="M30 8 Q50 2 70 8 L60 96 Q40 100 12 96 Z" fill="#c8263a" opacity=".6" /><ellipse cx="50" cy="8" rx="20" ry="5" fill="#6a0f1c" /><path d="M24 34 Q50 40 76 34 L78 42 Q50 49 22 42 Z" fill="#e3b45a" /><path d="M14 88 Q50 98 86 88 L88 97 Q50 108 12 97 Z" fill="#e3b45a" /><path d="M36 14 Q32 50 24 86" stroke="#fff" stroke-opacity=".3" stroke-width="5" fill="none" stroke-linecap="round" /></svg>
+        </div>
+      {/each}
+    </div>
+  {:else if id === 'g2048'}
+    <div class="t48">{#each [2, 0, 4, 8, 0, 16, 32, 0, 64, 128, 256, 512, 0, 1024, 2048, 4] as v, i}<i class="v{v}" style="--i:{i}">{v || ''}</i>{/each}</div>
+  {:else if id === 'tetris'}
+    <div class="tt">
+      {#each [
+        '..........', '..........', '..........', '..........', '..........', '....T.....', '...TTT....', '..........',
+        'L.........', 'L.....OO..', 'LL..S.OO.I', 'ZZ.SSJJJ.I', 'GZZSGJIIII', 'GGGGG.GGGG'] as row, y}
+        {#each row.split('') as c, x}<i class="t{c}" class:fall={c === 'T'} style="--x:{x}; --y:{y}"></i>{/each}
+      {/each}
+    </div>
   {/if}
 </div>
 
@@ -204,6 +223,27 @@
   .ltb b.g { background: radial-gradient(circle at 35% 30%, #fff1b8, #e0a92a 70%, #9a6b10); font-size: 0.66rem; }
   :global(.game:hover) .ltb b, :global(.dailycard:hover) .ltb b { transform: translateY(-14px); }
   :global(.game:hover) .lt .drum, :global(.dailycard:hover) .lt .drum { transform: rotate(-4deg) scale(1.04); }
+  .art.cups { background: radial-gradient(ellipse at 50% 30%, #5a1830, #22070f 80%); }
+  .cp { display: flex; gap: 6px; align-items: end; padding-top: 30px; }
+  .cupa { position: relative; width: 74px; aspect-ratio: 100 / 110; }
+  .cupa svg { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 8px 8px rgba(0,0,0,.5)); transition: transform 0.5s var(--spring-snappy); }
+  .cball { position: absolute; left: 50%; bottom: 6px; width: 24px; height: 24px; translate: -50% 0; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff8d8, #f2c046 45%, #8a5a0c); opacity: 0; transition: opacity 0.2s; }
+  :global(.game:hover) .cball, :global(.dailycard:hover) .cball { opacity: 1; }
+  :global(.game:hover) .cupa.mid svg, :global(.dailycard:hover) .cupa.mid svg { transform: translateY(-55%) rotate(-6deg); }
+  .art.g2048 { background: radial-gradient(ellipse at 50% 20%, #2a2140, #120e1c 80%); }
+  .t48 { display: grid; grid-template-columns: repeat(4, 38px); gap: 5px; padding: 6px; border-radius: 10px; background: #3a3150; transform: rotate(-4deg); transition: transform 0.5s var(--spring-smooth); }
+  .t48 i { height: 38px; border-radius: 6px; display: grid; place-items: center; font: 800 0.72rem 'Geist Variable', sans-serif; font-style: normal; background: rgba(255,255,255,.07); color: #fff; }
+  .t48 .v2 { background: #f1ead9; color: #2b2238; } .t48 .v4 { background: #ecdfc0; color: #2b2238; } .t48 .v8 { background: #f2b179; } .t48 .v16 { background: #f59563; }
+  .t48 .v32 { background: #f67c5f; } .t48 .v64 { background: #e8493c; } .t48 .v128 { background: #edcf72; } .t48 .v256 { background: #edcc61; }
+  .t48 .v512 { background: #e8bb3c; } .t48 .v1024 { background: #d8a02a; font-size: 0.6rem; } .t48 .v2048 { background: linear-gradient(135deg, #f6d88e, #c9973f); font-size: 0.6rem; box-shadow: 0 0 16px rgba(246,216,142,.8); }
+  :global(.game:hover) .t48, :global(.dailycard:hover) .t48 { transform: rotate(0) scale(1.05); }
+  .art.tetris { background: radial-gradient(ellipse at 50% 0%, #1f2a55, #0b1022 75%); }
+  .tt { position: relative; width: 140px; height: 196px; transform: scale(0.82); transform-origin: center; border-radius: 6px; background: #0e1430; box-shadow: 0 0 0 5px #5a3420, 0 0 0 6px rgba(232,196,120,.6), 0 14px 24px rgba(0,0,0,.5); overflow: hidden; }
+  .tt i { position: absolute; left: calc(var(--x) * 14px); top: calc(var(--y) * 14px); width: 14px; height: 14px; box-shadow: inset 2px 2px 0 rgba(255,255,255,.35), inset -2px -2px 0 rgba(0,0,0,.3); }
+  .tt i.t\. { display: none; }
+  .tI { background: #36d6e7; } .tO { background: #f6d23a; } .tT { background: #a35cf0; } .tS { background: #46d36b; } .tZ { background: #ef4b5a; } .tJ { background: #3d7cf0; } .tL { background: #f39a2b; } .tG { background: #6b6f7a; }
+  .tt i.fall { transition: transform 0.8s cubic-bezier(.5, 0, .9, .6); }
+  :global(.game:hover) .tt i.fall, :global(.dailycard:hover) .tt i.fall { transform: translateY(56px); }
   .art.dice { background: #2a1640; }
   .diceimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s var(--spring-smooth); }
   :global(.game:hover) .diceimg, :global(.dailycard:hover) .diceimg { transform: scale(1.08) rotate(-1.5deg); }

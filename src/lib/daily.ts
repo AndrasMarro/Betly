@@ -1,6 +1,6 @@
 // Daily features: one arcade and one classic game per day pay a bonus, and seeded randomness for daily challenges.
 export const DAILY_BONUS = 0.2; // +20 % on every payout in the game of the day
-const POOL = ['rocket', 'cases', 'mines', 'minesweeper', 'dice', 'hop', 'plinko', 'wheel', 'hilo', 'tower', 'coinflip', 'scratch', 'snake', 'crossy', 'balloon', 'keno'];
+const POOL = ['rocket', 'cases', 'mines', 'minesweeper', 'dice', 'hop', 'plinko', 'wheel', 'hilo', 'tower', 'coinflip', 'scratch', 'snake', 'crossy', 'balloon', 'keno', 'cups'];
 
 /** Local calendar day as a number, e.g. 20261109. */
 export const today = (d = new Date()) => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();

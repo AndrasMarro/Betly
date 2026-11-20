@@ -225,6 +225,46 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Payout', p: 'The less likely the bet, the higher the multiplier. Chance and multiplier are shown next to the button.' },
     ],
   },
+  cups: {
+    de: [
+      { h: 'Ziel', p: 'Am Anfang siehst du, unter welchem Becher die goldene Kugel liegt. Dann werden die Becher gemischt. Wähle danach den Becher mit der Kugel.' },
+      { h: 'Mischen', li: ['Die Becher kreuzen sich immer paarweise. Wo sich zwei treffen, stehen sie genau übereinander: Ob sie getauscht haben oder zurückgehen, kann niemand sehen.', 'Darum ist es fair für alle: Die Chance ist immer genau 1 zu 3 (bzw. 1 zu 4 oder 1 zu 5).', 'Das Tempo ändert nur, wie schnell gemischt wird, nicht die Chance.'] },
+      { h: 'Auszahlung', li: ['3 Becher: ×2.91', '4 Becher: ×3.88', '5 Becher: ×4.85'] },
+      { h: 'Tasten', p: 'Leertaste mischt, die Zahlentasten 1–5 wählen einen Becher von links.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'At the start you see which cup hides the golden ball. Then the cups are shuffled. Afterwards pick the cup with the ball.' },
+      { h: 'Shuffle', li: ['The cups always cross in pairs. Where two meet they stand exactly on top of each other: nobody can see whether they swapped or went back.', 'That keeps it fair for everyone: the chance is always exactly 1 in 3 (or 1 in 4, 1 in 5).', 'The speed only changes how fast they shuffle, not the chance.'] },
+      { h: 'Payout', li: ['3 cups: ×2.91', '4 cups: ×3.88', '5 cups: ×4.85'] },
+      { h: 'Keys', p: 'Space shuffles, number keys 1–5 pick a cup from the left.' },
+    ],
+  },
+  g2048: {
+    de: [
+      { h: 'Ziel', p: 'Schiebe alle Kacheln in eine Richtung. Zwei gleiche Zahlen, die aufeinandertreffen, verschmelzen zu ihrer Summe. Nach jedem Zug erscheint eine neue 2 oder 4. Schaffst du die 2048?' },
+      { h: 'Steuerung', li: ['Pfeiltasten oder WASD, auf dem Handy wischen.', 'Jede Kachel verschmilzt pro Zug höchstens einmal.', 'Geht kein Zug mehr, ist das Spiel vorbei.'] },
+      { h: 'Mit Einsatz', li: ['Die grösste Kachel bestimmt den Multiplikator: 128 ×1.1 · 256 ×1.4 · 512 ×2 · 1024 ×4 · 2048 ×10 · 4096 ×25 · 8192 ×60.', 'Ab 128 kannst du jederzeit auszahlen.', 'Ist das Brett voll, bevor du auszahlst, ist der Einsatz weg.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Slide all tiles in one direction. Two equal numbers that meet merge into their sum. After every move a new 2 or 4 appears. Can you reach 2048?' },
+      { h: 'Controls', li: ['Arrow keys or WASD, swipe on a phone.', 'Each tile merges at most once per move.', 'When no move is left, the game is over.'] },
+      { h: 'With a stake', li: ['The biggest tile sets the multiplier: 128 ×1.1 · 256 ×1.4 · 512 ×2 · 1024 ×4 · 2048 ×10 · 4096 ×25 · 8192 ×60.', 'From 128 on you can cash out any time.', 'If the board fills up before you cash out, the stake is lost.'] },
+    ],
+  },
+  tetris: {
+    de: [
+      { h: 'Ziel', p: 'Steine fallen in den Schacht. Schiebe und drehe sie so, dass volle Reihen entstehen: Die verschwinden und bringen Punkte und Coins. Reicht der Stapel bis oben, ist das Spiel vorbei.' },
+      { h: 'Steuerung', li: ['← → schieben, ↑ oder X drehen, Z andersrum drehen.', '↓ lässt schneller fallen, Leertaste lässt sofort fallen.', 'C oder Shift legt den Stein zur Seite (Hold) und holt ihn später wieder.', 'Auf dem Handy die Knöpfe unter dem Spielfeld.'] },
+      { h: 'Klassisch', li: ['Alle 10 Linien steigt das Level und alles wird schneller.', 'Coins pro Durchgang: 1 Linie 1 · 2 Linien 3 · 3 Linien 6 · 4 Linien 12, jeweils mal Level (bis 15).', 'Die Coins werden am Ende des Spiels gutgeschrieben.'] },
+      { h: 'Versus', li: ['Alle spielen gleichzeitig mit denselben Steinen, nebeneinander.', 'Wer 2 Linien auf einmal löscht, schickt 1 Müll-Zeile zu einem Gegner, 3 Linien schicken 2, 4 Linien schicken 4. Serien geben extra.', 'Müll steigt beim nächsten Stein von unten auf; eigene Linien heben ihn vorher auf (roter Balken links).', 'Wer als Letzter übrig bleibt, gewinnt 50 Coins pro Gegner, dazu die Coins für die Linien.', 'Gegen Bots (Leicht, Mittel, Schwer) oder mit Freunden: Raum öffnen und Code teilen.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Blocks fall into the well. Move and rotate them to fill rows: full rows vanish and bring points and coins. If the stack reaches the top, the game is over.' },
+      { h: 'Controls', li: ['← → move, ↑ or X rotate, Z rotate the other way.', '↓ soft drop, Space hard drop.', 'C or Shift puts the piece aside (hold) to use it later.', 'On a phone use the buttons below the well.'] },
+      { h: 'Classic', li: ['Every 10 lines the level goes up and everything gets faster.', 'Coins per clear: 1 line 1 · 2 lines 3 · 3 lines 6 · 4 lines 12, each times the level (up to 15).', 'The coins are paid at the end of the game.'] },
+      { h: 'Versus', li: ['Everybody plays at the same time with the same pieces, side by side.', 'Clearing 2 lines at once sends 1 garbage row to an opponent, 3 lines send 2, 4 lines send 4. Combos add more.', 'Garbage rises from below with your next piece; your own clears cancel it first (red bar on the left).', 'The last one standing wins 50 coins per opponent, plus the coins for lines.', 'Against bots (easy, medium, hard) or with friends: open a room and share the code.'] },
+    ],
+  },
   keno: {
     de: [
       { h: 'Ziel', p: 'Wähle 1 bis 10 der Zahlen 1–40. Danach werden 10 Zahlen gezogen; jede gezogene Zahl auf deinem Tipp ist ein Treffer.' },
