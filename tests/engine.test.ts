@@ -761,14 +761,44 @@ import * as SH from '../src/games/ships.ts';
     for (let g = 0; g < 60; g++) {
       const f = SH.randomFleet(), s = Array(100).fill(0);
       let n = 0;
-      while (!SH.sunkAll(f, s) && n < 100) { const c = SH.aim(s, skill); assert(!s[c], 'bots never shoot twice'); SH.fire(f, s, c); n++; }
+      const sunk: number[] = [];
+      while (!SH.sunkAll(f, s) && n < 100) { const c = SH.aim(s, skill, Math.random, sunk); assert(!s[c], 'bots never shoot twice'); const r = SH.fire(f, s, c); if (r.res === 'sunk') sunk.push(r.ship!.len); n++; }
       total += n;
     }
     return total / 60;
   };
   const e = play('easy'), m = play('mid'), h = play('hard');
   assert(h < m && m < e, `hard ${h.toFixed(0)} < mid ${m.toFixed(0)} < easy ${e.toFixed(0)} shots`);
-  assert.deepEqual(SH.alive(shots), [5, 4, 3, 3], 'the sunk 2 is no longer alive');
+  assert.deepEqual(SH.alive([2]), [5, 4, 3, 3], 'the sunk 2 is no longer alive');
+  // side by side when allowed, and then nothing is revealed around a wreck
+  const touching = [{ len: 5, x: 0, y: 0, v: false }, { len: 4, x: 0, y: 1, v: false }, { len: 3, x: 0, y: 2, v: false }, { len: 3, x: 0, y: 3, v: false }, { len: 2, x: 0, y: 4, v: false }];
+  assert(SH.validFleet(touching, true) && !SH.validFleet(touching), 'touching only with the setting');
+  for (let k = 0; k < 100; k++) assert(SH.validFleet(SH.randomFleet(Math.random, true), true));
+  const t2 = Array(100).fill(0);
+  SH.fire([{ len: 2, x: 0, y: 0, v: false }], t2, 0, true); SH.fire([{ len: 2, x: 0, y: 0, v: false }], t2, 1, true);
+  assert(t2[10] === 0 && t2[2] === 0 && t2[0] === 3, 'no halo with touching ships');
+  // arcade: armour needs two hits per part, mines, bomb, sonar, direction finder, diving
+  const ar = SH.withKinds(SH.randomFleet(rng(31)), true);
+  assert(ar.find((x) => x.len === 5)?.k === 'armor' && ar.filter((x) => x.k === 'sub').length === 1, 'arcade roles');
+  const bb = ar.find((x) => x.k === 'armor')!, a2 = Array(100).fill(0), c0 = SH.cellsOf(bb)[0];
+  assert.equal(SH.fire(ar, a2, c0).res, 'dent');
+  assert(SH.open(a2[c0]) && SH.fire(ar, a2, c0).res === 'hit' && !SH.open(a2[c0]), 'second hit goes through');
+  const mines = SH.layMines(ar, rng(5));
+  assert(mines.length === 2 && !mines.some((m) => ar.some((x) => SH.cellsOf(x).includes(m))), 'mines on water');
+  const a3 = Array(100).fill(0);
+  assert.equal(SH.fire(ar, a3, mines[0], false, mines).res, 'mine');
+  const one = [{ len: 2, x: 4, y: 4, v: false }], a4 = Array(100).fill(0);
+  assert.equal(SH.sonar(one, a4, 45).n, 2);
+  assert.deepEqual([SH.peil(one, a4, 44).n, SH.peil(one, a4, 44).m], [2, 1]);
+  const b = SH.bomb(one, a4, 44);
+  assert(b.res === 'sunk' && b.sunk.length === 1 && a4[34] === 1 && a4[54] === 1, 'a bomb hits a cross of five');
+  const sub = [{ len: 3, x: 2, y: 2, v: false, k: 'sub' as const }], a5 = Array(100).fill(0);
+  assert(SH.canDive(sub, { len: 3, x: 2, y: 4, v: false }, a5, []), 'dive two down');
+  assert(!SH.canDive(sub, { len: 3, x: 2, y: 5, v: false }, a5, []), 'not three');
+  a5[42] = 1;
+  assert(!SH.canDive(sub, { len: 3, x: 2, y: 4, v: false }, a5, []), 'not into explored water');
+  a5[22] = 2;
+  assert(!SH.canDive(sub, { len: 3, x: 3, y: 2, v: false }, a5, []), 'not once hit');
   console.log('battleship checks passed', e.toFixed(0), m.toFixed(0), h.toFixed(0));
 }
 

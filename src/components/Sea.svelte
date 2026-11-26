@@ -3,14 +3,19 @@
   // and while placing a preview ship. Cells are buttons when the board can be fired at.
   // The latest shot plays an impact: rings running out over the water, spray, and on a hit a flash and smoke.
   import Warship from './Warship.svelte';
-  import { N, cellsOf, type Ship } from '../games/ships';
-  let { shots = '', ships = [], fire, preview = null, previewOk = true, hover, pick, shot = null, cell = 32, dim = false, label = '' }: {
+  import { N, cellsOf, type Ship, type Intel } from '../games/ships';
+  // wrecks: the sunk ships when known exactly (side-by-side fleets); otherwise they are read from the sunk cells.
+  // mines: own mines to show; intel: sonar and direction-finder readings; zone: cells to highlight while aiming.
+  let { shots = '', ships = [], fire, preview = null, previewOk = true, hover, pick, shot = null, cell = 32, dim = false, label = '', wrecks, mines = [], intel = [], zone = [] }: {
     shots?: string; ships?: Ship[]; fire?: (c: number) => void; preview?: Ship | null; previewOk?: boolean;
     hover?: (c: number) => void; pick?: (c: number) => void; shot?: { cell: number; res: string; n: number } | null; cell?: number; dim?: boolean; label?: string;
+    wrecks?: Ship[]; mines?: number[]; intel?: Intel[]; zone?: number[];
   } = $props();
   const at = (c: number) => +(shots[c] ?? 0);
-  // sunk ships show their hull: find the runs of sunk cells
+  const zoned = $derived(new Set(zone));
+  // sunk ships show their hull: the given wrecks, or the runs of sunk cells
   const sunk = $derived.by(() => {
+    if (wrecks) return wrecks;
     const out: Ship[] = [], seen = new Set<number>();
     for (let c = 0; c < N * N; c++) {
       if (at(c) !== 3 || seen.has(c)) continue;
@@ -22,6 +27,7 @@
     return out;
   });
   const own = $derived(ships.filter((s) => !sunk.some((k) => k.x === s.x && k.y === s.y && k.v === s.v)));
+  const canShoot = (v: number) => v === 0 || v === 4;
   const prev = $derived(preview ? new Set(cellsOf(preview).filter((c) => c >= 0 && c < N * N)) : new Set<number>());
   const COLS = 'ABCDEFGHIJ';
   const still = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -34,21 +40,29 @@
     <div class="waves" aria-hidden="true"></div>
     {#each Array(N * N) as _, c}
       {@const v = at(c)}
-      <button class="c" class:w={v === 1} class:h={v === 2} class:s={v === 3} class:pv={prev.has(c)} class:bad={prev.has(c) && !previewOk}
-        disabled={!fire && !pick && !hover} tabindex={fire && !v ? 0 : -1}
-        onpointerenter={() => hover?.(c)} onclick={() => (fire && !v ? fire(c) : pick?.(c))} aria-label={COLS[c % N] + (Math.floor(c / N) + 1)}>
-        {#if v === 1}<i class="drop" class:fresh={shot?.cell === c}></i>{:else if v >= 2}<i class="fire" class:fresh={shot?.cell === c}><i class="core"></i></i>{/if}
+      <button class="c" class:w={v === 1 || v === 5} class:h={v === 2} class:s={v === 3} class:dent={v === 4} class:pv={prev.has(c)} class:bad={prev.has(c) && !previewOk} class:zone={zoned.has(c)}
+        disabled={!fire && !pick && !hover} tabindex={fire && canShoot(v) ? 0 : -1}
+        onpointerenter={() => hover?.(c)} onclick={() => (fire && canShoot(v) ? fire(c) : pick?.(c))} aria-label={COLS[c % N] + (Math.floor(c / N) + 1)}>
+        {#if v === 1}<i class="drop" class:fresh={shot?.cell === c}></i>
+        {:else if v === 5}<i class="mine boom" class:fresh={shot?.cell === c}></i>
+        {:else if v === 4}<i class="spark" class:fresh={shot?.cell === c}></i>
+        {:else if v >= 2}<i class="fire" class:fresh={shot?.cell === c}><i class="core"></i></i>
+        {:else if mines.includes(c)}<i class="mine"></i>{/if}
       </button>
     {/each}
     {#each [...own.map((s) => ({ s, k: 'own' })), ...sunk.map((s) => ({ s, k: 'sunk' }))] as { s, k } (k + s.x + '-' + s.y + s.v)}
-      <span class="hull {k}" class:v={s.v} style="--x:{s.x}; --y:{s.y}; --len:{s.len}"><span class="rot"><Warship len={s.len} sunk={k === 'sunk'} /></span></span>
+      <span class="hull {k}" class:v={s.v} style="--x:{s.x}; --y:{s.y}; --len:{s.len}"><span class="rot"><Warship len={s.len} k={s.k} sunk={k === 'sunk'} /></span></span>
+    {/each}
+    {#each intel as it}
+      {#if it.w === 'sonar'}<span class="sonar" style="--x:{it.c % N}; --y:{Math.floor(it.c / N)}"><b>{it.n}</b></span>
+      {:else}<span class="peil row" style="--y:{Math.floor(it.c / N)}"><b>{it.n}</b></span><span class="peil col" style="--x:{it.c % N}"><b>{it.m}</b></span>{/if}
     {/each}
     {#if shot && shot.cell >= 0 && !still}
       {#key shot.n}
         <span class="fx {shot.res}" style="--x:{shot.cell % N}; --y:{Math.floor(shot.cell / N)}" aria-hidden="true">
           <i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i>
           {#each Array(10) as _, k}<b style="--a:{k * 36 + (k % 2) * 14}deg; --d:{0.55 + (k % 3) * 0.25}"></b>{/each}
-          {#if shot.res !== 'water'}<em class="flash"></em><em class="smoke s1"></em><em class="smoke s2"></em>{/if}
+          {#if shot.res !== 'water' && shot.res !== 'scan'}<em class="flash"></em><em class="smoke s1"></em><em class="smoke s2"></em>{/if}
         </span>
       {/key}
     {/if}
@@ -76,13 +90,28 @@
   .c { position: relative; z-index: 1; padding: 0; border: 0; background: none; box-shadow: inset 0 0 0 0.5px rgba(150,210,255,.15); display: grid; place-items: center; }
   .armed .c:not(.w):not(.h):not(.s) { cursor: crosshair; }
   @media (hover: hover) and (pointer: fine) {
-    .armed .c:not(.w):not(.h):not(.s):hover { background: radial-gradient(circle, transparent 38%, rgba(255,214,120,.9) 40% 46%, transparent 48%), rgba(255,214,120,.12); box-shadow: inset 0 0 0 1.5px rgba(255,214,120,.8); }
+    .armed .c:not(.w):not(.h):not(.s):not(.zone):hover { background: radial-gradient(circle, transparent 38%, rgba(255,214,120,.9) 40% 46%, transparent 48%), rgba(255,214,120,.12); box-shadow: inset 0 0 0 1.5px rgba(255,214,120,.8); }
   }
   .c:disabled { cursor: default; }
   .c.pv { background: rgba(120,255,190,.32); }
   .c.bad { background: rgba(255,90,90,.35); }
   /* every marker is decoration only: clicks always reach the cell underneath */
-  .drop, .fire, .hull, .fx, .fx * { pointer-events: none; }
+  .drop, .fire, .hull, .fx, .fx *, .mine, .spark, .sonar, .peil { pointer-events: none; }
+  .c.zone { background: rgba(255,214,120,.22); box-shadow: inset 0 0 0 1px rgba(255,214,120,.7); }
+  /* a sea mine: dark ball with horns; once it went off, a scorched ring */
+  .mine { width: 46%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6b7380, #20252c 70%); box-shadow: 0 0 0 2px rgba(0,0,0,.3), 0 -4px 0 -2px #20252c, 0 4px 0 -2px #20252c, -4px 0 0 -2px #20252c, 4px 0 0 -2px #20252c; }
+  .mine.boom { background: radial-gradient(circle, #ffb36b, #8a2a12 55%, transparent 72%); box-shadow: 0 0 10px rgba(255,120,40,.6); width: 62%; }
+  .mine.fresh { animation: plop 0.5s var(--spring-snappy); }
+  /* armour took one hit: sparks, shoot again to get through */
+  .spark { width: 46%; aspect-ratio: 1; background: conic-gradient(from 0deg, #ffe9a8 0 8%, transparent 8% 25%, #ffe9a8 25% 33%, transparent 33% 50%, #ffe9a8 50% 58%, transparent 58% 75%, #ffe9a8 75% 83%, transparent 83%); border-radius: 50%; filter: drop-shadow(0 0 4px #ffcf6a); animation: spin 3s linear infinite; }
+  .c.dent { background: rgba(255,207,106,.12); }
+  @keyframes spin { to { rotate: 360deg; } }
+  .sonar { position: absolute; z-index: 4; left: calc((var(--x) - 1) * var(--cell)); top: calc((var(--y) - 1) * var(--cell)); width: calc(3 * var(--cell)); height: calc(3 * var(--cell)); border-radius: 50%; border: 1.5px dashed rgba(120,255,220,.75); background: radial-gradient(circle, rgba(120,255,220,.14), transparent 70%); display: grid; place-items: center; animation: ping 0.8s var(--spring-snappy); }
+  .sonar b, .peil b { font: 700 calc(var(--cell) * 0.45) 'Geist Mono Variable', monospace; color: #b9fff0; text-shadow: 0 0 6px rgba(0,0,0,.8); }
+  @keyframes ping { from { transform: scale(0.3); opacity: 0; } }
+  .peil { position: absolute; z-index: 4; display: flex; align-items: center; background: rgba(120,255,220,.1); }
+  .peil.row { left: 0; right: 0; top: calc(var(--y) * var(--cell)); height: var(--cell); border-block: 1px dashed rgba(120,255,220,.6); justify-content: flex-end; padding-right: 4px; }
+  .peil.col { top: 0; bottom: 0; left: calc(var(--x) * var(--cell)); width: var(--cell); border-inline: 1px dashed rgba(120,255,220,.6); flex-direction: column; justify-content: flex-end; padding-bottom: 2px; }
   .drop { width: 24%; aspect-ratio: 1; border-radius: 50%; background: rgba(220,240,255,.8); box-shadow: 0 0 0 2px rgba(220,240,255,.18); }
   .drop.fresh { animation: plop 0.5s var(--spring-snappy); }
   @keyframes plop { from { transform: scale(2.4); opacity: 0; } }
@@ -108,13 +137,16 @@
   @keyframes ring { 0% { transform: scale(0.3); opacity: 0.95; } 100% { transform: scale(4.2); opacity: 0; } }
   .fx b { position: absolute; left: 44%; top: 44%; width: 12%; height: 12%; border-radius: 50%; background: rgba(230,245,255,.95); opacity: 0; animation: spray 0.7s var(--ease-snap) forwards; }
   @keyframes spray { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.2); } 100% { opacity: 0; transform: rotate(var(--a)) translateX(calc(var(--cell) * var(--d) * 1.4)) scale(0.4); } }
-  .hit .ring, .sunk .ring { border-color: rgba(255,200,130,.85); }
-  .hit b, .sunk b { background: #ffb36b; box-shadow: 0 0 6px #ff7a2a; }
+  .hit .ring, .sunk .ring, .mine .ring, .dent .ring { border-color: rgba(255,200,130,.85); }
+  .hit b, .sunk b, .mine b, .dent b { background: #ffb36b; box-shadow: 0 0 6px #ff7a2a; }
+  .scan .ring { border-color: rgba(120,255,220,.85); border-style: dashed; }
+  .scan b { display: none; }
+  .mine .flash { inset: -110%; }
   .flash { position: absolute; inset: -60%; border-radius: 50%; background: radial-gradient(circle, rgba(255,250,220,1), rgba(255,170,60,.85) 30%, rgba(200,40,30,.35) 55%, transparent 70%); animation: flash 0.6s var(--ease-snap) forwards; }
   @keyframes flash { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
   .smoke { position: absolute; left: 20%; top: 10%; width: 60%; height: 60%; border-radius: 50%; background: radial-gradient(circle, rgba(60,60,66,.75), transparent 70%); opacity: 0; animation: smoke 1.6s var(--ease-snap) 0.2s forwards; }
   .s2 { left: 35%; animation-delay: 0.4s; }
   @keyframes smoke { 0% { opacity: 0.9; transform: translateY(0) scale(0.6); } 100% { opacity: 0; transform: translateY(calc(var(--cell) * -1.4)) scale(2.2); } }
   .sunk .flash { inset: -120%; }
-  @media (prefers-reduced-motion: reduce) { .waves, .drop, .fire, .fire .core, .hull, .fx { animation: none !important; } }
+  @media (prefers-reduced-motion: reduce) { .spark, .sonar, .waves, .drop, .fire, .fire .core, .hull, .fx { animation: none !important; } }
 </style>
