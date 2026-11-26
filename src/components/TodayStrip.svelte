@@ -9,6 +9,7 @@
   import { drawAt, openDay, mine } from '../lib/dailyLotto';
   import { settings } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
+  import { mine as my, toggleFold } from '../lib/mine.svelte';
 
   const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
   const read = (k: string) => { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch { return {}; } };
@@ -46,7 +47,8 @@
 </script>
 
 <section class="today" aria-label={L('Heute', 'Today')}>
-  <header><h2>{L('Heute', 'Today')}</h2><span class="eyebrow">{new Date().toLocaleDateString(settings.lang === 'de' ? 'de-CH' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span></header>
+  <header><h2>{L('Heute', 'Today')}</h2><span class="eyebrow">{new Date().toLocaleDateString(settings.lang === 'de' ? 'de-CH' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span><button class="fold" class:shut={my.fold.today} onclick={() => toggleFold('today')} aria-expanded={!my.fold.today}>{my.fold.today ? L('Zeigen', 'Show') : L('Einklappen', 'Hide')}<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></button></header>
+  <div class="body" class:shut={my.fold.today}><div>
   <div class="row">
     {#if classic}<a class="tile gold" href={href(classic)} style="--i:0"><span class="ic">♠</span><small>{L('Classic des Tages', 'Classic of the day')}</small><b>{gameName(classic)}</b><em>+20 %</em></a>{/if}
     {#if arcade}<a class="tile gold" href={href(arcade)} style="--i:1"><span class="ic">⚡</span><small>{L('Arcade des Tages', 'Arcade of the day')}</small><b>{gameName(arcade)}</b><em>+20 %</em></a>{/if}
@@ -58,6 +60,7 @@
       <span class="ic die" class:spin={!!rolling}>🎲</span><small>{L('Zufallsspiel', 'Random game')}</small><b class:roll={!!rolling}>{rolling || L('Überrasch mich', 'Surprise me')}</b><em>{L('direkt rein', 'straight in')}</em>
     </button>
   </div>
+  </div></div>
 </section>
 
 <style>
@@ -85,4 +88,13 @@
   em { font-style: normal; font-size: 0.78rem; color: var(--gold); margin-top: auto; }
   em.done { color: #6ff0a6; }
   @media (prefers-reduced-motion: reduce) { .tile, .die.spin { animation: none; } }
+
+  .fold { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); background: none; color: var(--muted); border-radius: 999px; padding: 5px 10px 5px 12px; font-size: 0.75rem; font-weight: 600; transition: color 0.25s var(--ease-snap), border-color 0.25s var(--ease-snap); }
+  .fold:hover { color: var(--text); border-color: var(--text); }
+  .fold svg { transition: transform 0.45s var(--spring-snappy); }
+  .fold.shut svg { transform: rotate(-90deg); }
+  .body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.5s var(--spring-smooth), opacity 0.3s var(--ease-snap); }
+  .body.shut { grid-template-rows: 0fr; opacity: 0; }
+  .body > div { min-height: 0; overflow: hidden; }
+  @media (prefers-reduced-motion: reduce) { .body, .fold svg { transition: none; } }
 </style>

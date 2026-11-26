@@ -1,0 +1,104 @@
+# Changelog
+
+Betly folgt [Semantic Versioning](https://semver.org/lang/de/): `MAJOR.MINOR.PATCH`.
+
+- **MAJOR**: inkompatible Änderungen (z. B. 2.0.0: Multiplayer-Räume über Supabase statt WebRTC, alte Versionen können nicht mehr mitspielen).
+- **MINOR**: neue Spiele und Funktionen, abwärtskompatibel.
+- **PATCH**: Fehlerbehebungen, Feinschliff, Assets und Doku.
+- **Vorabversionen**: `0.1.0-alpha.N` (erste Bauphase), `0.1.0-beta.N` (Funktionen komplett, Feinschliff), `0.1.0-rc.N` (Kandidaten vor dem ersten Release). 1.0.0 ist der erste Stand, der nur noch aus `main` live geht.
+
+Jede Version ist als Git-Tag `vX.Y.Z` am passenden Commit gesetzt. Die Version steht auch in `package.json` und klein im Footer der Seite. Die drei Commits mit dem vorläufigen Präfix `v2.1.10a` sind nachträglich als 2.20.0, 2.20.1 und 2.21.0 eingeordnet.
+
+- **2.22.0** (2026-11-26) Ein- und Ausklappen von Heute und Deine Spiele, Schiffe-Vorschau, Versionierung nach SemVer
+- **2.21.0** (2026-11-26) Schiffe versenken mit Arcade-Variante, grösseren Feldern und Nebeneinander-Option
+- **2.20.1** (2026-11-26) Memory-Test auf die zwei verbliebenen Bildsätze angepasst
+- **2.20.0** (2026-11-26) Favoriten und Verlauf, Daily-Hervorhebung, Memory ohne Linien, Version im Footer
+- **2.19.0** (2026-11-26) Home: Heute-Leiste, Zufallsspiel, aufklappende Suche mit Filtern; Tetris-Vorschau
+- **2.18.0** (2026-11-26) Stadt Land Fluss: settings dialog with free values, instant hand-in after stop, rarer jokers
+- **2.17.1** (2026-11-26) Battleships: WWI warships, impact ripples and a click fix; Memory: clean flips and one style per set
+- **2.17.0** (2026-11-26) Stadt Land Fluss online: own categories, game length, stop button, voting, joker and stakes
+- **2.16.0** (2026-11-26) Battleships: 1 vs 1, 2 vs 2 and free for all, against bots or friends, with stakes in the pot
+- **2.15.0** (2026-11-26) Memory with four picture sets, solo and duel; a shared pot for the party games
+- **2.14.0** (2026-11-26) Word Hunt: daily word for everyone in German and English, arcade with up to 8 words
+- **2.13.0** (2026-11-26) Party games filter and a search for all games
+- **2.12.0** (2026-11-20) New arcade games: Shell Game, 2048 and Tetris with versus
+- **2.11.3** (2026-11-20) Lotto guide: animated scenes built from the real ticket card and drum
+- **2.11.2** (2026-11-18) Fix the stuck deploy: Durak endgames that circle forever now end; nicer Snake apples
+- **2.11.1** (2026-11-17) Lotto drum, sounds and centered tabs; rounded dice with chain explosion; new card art
+- **2.11.0** (2026-11-17) Lotto: royal table, real drum, ticket cards, draw history and a free daily draw
+- **2.10.0** (2026-11-17) Scratch cards: ticket shelf with Diamond (two layers + bonus) and Lucky Numbers
+- **2.9.0** (2026-11-17) Three Card Poker: shared table with friends and bots
+- **2.8.0** (2026-11-17) Keno and Lotto with animated guides; Lotto in multiplayer rooms
+- **2.7.0** (2026-11-17) Tower: Climb mode with 12 floors that get harder
+- **2.6.1** (2026-11-17) Dice: WebGL dice with rounded edges on a velvet table
+- **2.6.0** (2026-11-17) Dice: 1-3 dice, D6/D8/D10, mine dice and a royal table
+- **2.5.2** (2026-11-17) Balloon: sloped mountain feet, more targets, rapid fire, x10 bunker hits
+- **2.5.1** (2026-11-17) Balloon: lower snowy bunker mountain, varied targets, secret bunker control
+- **2.5.0** (2026-11-17) Balloon: up to three balloons, bunker hits pay double, alpine skyline
+- **2.4.2** (2026-11-17) Slots: Betly logo as scatter, uncut game symbols, snakes on Snake Bite wins
+- **2.4.1** (2026-11-17) Balloon: canvas sky with day and night, Matterhorn, bunker and rarer easter eggs
+- **2.4.0** (2026-11-17) Slots: Crossy Run and Snake machines, slot of the day, spinning overview art
+- **2.3.0** (2026-11-17) Card decks: 2 to 5 for the French and international decks, Atlas jokers
+- **2.2.2** (2026-11-17) Merge branch 'main' of https://github.com/AndrasMarro/Betly
+- **2.2.1** (2026-11-17) addition cardsets
+- **2.2.0** (2026-11-17) Slots: machine lobby and Royal Cards
+- **2.1.2** (2026-11-17) Balloon: landscape, layered clouds, sun and easter eggs in the sky
+- **2.1.1** (2026-11-17) Card decks: French and international pictures in the 52-card games, fixed overview art
+- **2.1.0** (2026-11-17) Home: Classic and Arcade of the day on top, search, sorted classics
+- **2.0.0** (2026-11-17) Multiplayer: rooms over Supabase Realtime instead of direct WebRTC
+- **1.13.1** (2026-11-17) Footer: gambling help as an expandable item with links
+- **1.13.0** (2026-11-17) Guides: animated step-by-step guides for Jass and Hold'em
+- **1.12.1** (2026-11-17) Card decks: separate choice for the 52-card games, Standard everywhere
+- **1.12.0** (2026-11-17) Card decks: Russian Atlas deck in every card game
+- **1.11.1** (2026-11-17) Merge remote-tracking branch 'origin/main'
+- **1.11.0** (2026-11-17) Durak: new classic card game with multiplayer
+- **1.10.0** (2026-11-17) Card decks: one global setting with a dropdown in every card game
+- **1.9.8** (2026-11-17) upload asset
+- **1.9.7** (2026-11-16) Jass: international deck in the usual 5:7 card shape
+- **1.9.6** (2026-11-16) Crossy: voxel gamer duck and fairer log hitboxes
+- **1.9.5** (2026-11-16) Horse racing: wide Alpenrot banner, seven more secret guests
+- **1.9.4** (2026-11-16) Horse racing: Alpenrot boards, cleaner banners, secret guests
+- **1.9.3** (2026-11-16) Horse racing: dust puffs, more sponsors, Betly logo and token
+- **1.9.2** (2026-11-16) Horse racing: smooth playback, real grandstand, clearer race card
+- **1.9.1** (2026-11-16) Rocket: send the round to a new guest right away
+- **1.9.0** (2026-11-16) Jass: multiplayer
+- **1.8.0** (2026-11-16) Horse racing: new classic game with multiplayer
+- **1.7.0** (2026-11-16) Balloon: new arcade game
+- **1.6.1** (2026-11-16) Cases: proper cut-outs for all item pictures
+- **1.6.0** (2026-11-16) Minesweeper: random-shape boards and longer campaigns
+- **1.5.0** (2026-11-16) Jass: real card pictures for three decks
+- **1.4.4** (2026-11-16) upload cards
+- **1.4.3** (2026-11-16) Jass: accept GIF card pictures and credit the French deck sources
+- **1.4.2** (2026-11-16) Cases: same canvas and transparent background for every item picture
+- **1.4.1** (2026-11-16) Lobby art: live Crossy scene and real 3D dice
+- **1.4.0** (2026-11-16) Crossy: police, taxi, sports car, bus, fire engine, houses and new grass
+- **1.3.2** (2026-11-16) Remove stray screenshots
+- **1.3.1** (2026-11-16) Accounts: Google sign-in on the welcome screen, profile button in the header
+- **1.3.0** (2026-11-16) Accounts: optional Google login that syncs progress to Supabase
+- **1.2.4** (2026-11-16) Jass: use card images from src/assets/jass when present
+- **1.2.3** (2026-11-16) Crossy: rebuild all props in the game's own box style
+- **1.2.2** (2026-11-16) Concept for accounts and synced progress
+- **1.2.1** (2026-11-16) Ask the browser to keep local data persistently
+- **1.2.0** (2026-11-16) Snake: six new modifiers
+- **1.1.2** (2026-11-16) Crossy: grounded shadows and new breaking logs
+- **1.1.1** (2026-11-16) Jass: classic double-headed French court cards
+- **1.1.0** (2026-11-14) Add Jass (Schieber) to the classic games
+- **1.0.1** (2026-11-14) Coin flip: fix card art and coin view on phones
+- **1.0.0** (2026-11-11) Deploy only from main
+- **0.1.0-rc.4** (2026-11-10) Three Card Poker
+- **0.1.0-rc.3** (2026-11-10) Snake: smooth movement and sharper graphics
+- **0.1.0-rc.2** (2026-11-10) Coin card art, Hop Street themes, wheel card art
+- **0.1.0-rc.1** (2026-11-10) Security hardening, new coin faces on a table, edge scene only sometimes
+- **0.1.0-beta.7** (2026-11-10) 3D GLB coin, minesweeper campaigns and full screen, crossy checkpoints
+- **0.1.0-beta.6** (2026-11-10) Minesweeper arcade + co-op, crossy assets and breaking logs, rocket secrets
+- **0.1.0-beta.5** (2026-11-10) Volume sliders, armory slots, crossy stakes and coins, mobile poker and cases
+- **0.1.0-beta.4** (2026-11-09) Coin flip rework, rocket artwork, three classic crates, crossy difficulty
+- **0.1.0-beta.3** (2026-11-09) Snake, Retro Crossy Run, game of the day, rocket sightings, poker layout
+- **0.1.0-beta.2** (2026-11-09) Royal roulette with auto rounds, case artwork + sound, guides, PWA icons, layout pass
+- **0.1.0-beta.1** (2026-11-03) Smoother coin, rocket camera + asteroids, scratch modes, classic cases, new sounds, README
+- **0.1.0-alpha.5** (2026-11-03) Add Texas Hold'em, Baccarat, Minesweeper; fix Plinko; Swiss legal texts
+- **0.1.0-alpha.4** (2026-11-03) Real 3D dice, full-screen blackjack, new cards, Cases game, roulette sound
+- **0.1.0-alpha.3** (2026-11-03) Redesign arcade games, add six new games and two slot machines
+- **0.1.0-alpha.2** (2026-11-03) Add arcade games, menu music, name prompt; fix stalled blackjack rounds
+- **0.1.0-alpha.1** (2026-11-02) Build Betly play-money casino: roulette, blackjack, slots
+- **0.0.0** (2026-11-02) Initial commit

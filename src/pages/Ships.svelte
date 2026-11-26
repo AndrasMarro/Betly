@@ -417,7 +417,7 @@
     <div class="ocean" bind:clientWidth={oceanW}>
       {#if share.phase === 'lobby'}
         <div class="intro">
-          <Sea ships={demo} cell={28} />
+          <Sea ships={withKinds(demo, variant === 'arcade')} cell={cellPlace} />
           <p class="muted">{L('Versenke alle Schiffe der Gegner, bevor sie deine finden.', 'Sink all enemy ships before they find yours.')}</p>
         </div>
       {:else if share.phase === 'place'}

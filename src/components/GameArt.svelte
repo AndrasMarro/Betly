@@ -180,8 +180,8 @@
     <div class="mem">{#each ['', 'seven', '', 'cherry', 'seven', '', 'bell', '', 'cherry', '', '', 'bell'] as sym, i}<i class:open={!!sym} class:late={sym === 'bell'} style="--i:{i}"><b class="bk"></b><b class="fr">{#if sym}<SlotSymbol {sym} />{/if}</b></i>{/each}</div>
   {:else if id === 'ships'}
     <div class="naval">
-      <div class="bb"><Warship len={5} /></div>
-      <div class="dd"><Warship len={2} /></div>
+      <div class="bship"><Warship len={5} /></div>
+      <div class="dship"><Warship len={2} /></div>
       <span class="hitf"></span>
       <span class="splash"><i></i><i></i><i></i></span>
     </div>
@@ -263,8 +263,10 @@
   .art.ships { background: radial-gradient(ellipse at 30% 20%, rgba(120,200,255,.25), transparent 60%), linear-gradient(160deg, #11496f, #061a2e); }
   .naval { position: absolute; inset: 0; overflow: hidden;
     background: repeating-radial-gradient(ellipse at 40% 60%, rgba(255,255,255,.05) 0 2px, transparent 3px 18px), linear-gradient(rgba(150,210,255,.08) 1px, transparent 1px) 0 0 / 34px 34px, linear-gradient(90deg, rgba(150,210,255,.08) 1px, transparent 1px) 0 0 / 34px 34px; }
-  .naval .bb { position: absolute; left: 12%; top: 30%; width: 220px; height: 44px; transform: rotate(-8deg); animation: bob 5s ease-in-out infinite; }
-  .naval .dd { position: absolute; right: 10%; top: 66%; width: 88px; height: 26px; transform: rotate(172deg); animation: bob 4s ease-in-out 1s infinite; }
+  .naval .bship { position: absolute; left: 12%; top: 30%; width: 220px; height: 44px; rotate: -8deg; animation: bob 5s ease-in-out infinite; }
+  /* the destroyer sails the other way: mirrored, not turned upside down, so its light still comes from above */
+  .naval .dship { position: absolute; right: 10%; top: 66%; width: 88px; height: 26px; transform: scaleX(-1) rotate(8deg); animation: bob 4s ease-in-out 1s infinite; transition: right 0.9s var(--spring-smooth); }
+  :global(.game:hover) .naval .dship, :global(.dailycard:hover) .naval .dship { right: calc(10% + 18px); }
   @keyframes bob { 50% { translate: 0 -3px; } }
   .hitf { position: absolute; left: 46%; top: 34%; width: 16px; height: 16px; border-radius: 50% 50% 50% 0; rotate: -45deg; background: radial-gradient(circle at 60% 40%, #fff3b0, #ff8a2a 50%, #c8262c 85%); box-shadow: 0 0 12px 4px rgba(255,120,40,.6); animation: fl 0.9s ease-in-out infinite alternate; }
   @keyframes fl { to { transform: scale(1.2); } }
@@ -273,7 +275,7 @@
   :global(.game:hover) .splash i, :global(.dailycard:hover) .splash i { animation: rip 1.2s var(--ease-snap) infinite; }
   .splash i:nth-child(2) { animation-delay: 0.15s !important; } .splash i:nth-child(3) { animation-delay: 0.3s !important; }
   @keyframes rip { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(3.4); opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) { .naval .bb, .naval .dd, .hitf, .splash i { animation: none !important; } }
+  @media (prefers-reduced-motion: reduce) { .naval .bship, .naval .dship, .hitf, .splash i { animation: none !important; } }
   .art.slf { background: radial-gradient(ellipse at 50% 30%, #3a2a5a, #160e24 80%); }
   .sheet { position: relative; width: 190px; padding: 18px 16px 14px; border-radius: 10px; transform: rotate(-3deg); color: #2b2a3a; display: grid; gap: 6px; box-shadow: 0 16px 30px rgba(0,0,0,.5); transition: transform 0.5s var(--spring-smooth);
     background: linear-gradient(rgba(70,110,200,.16) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgba(70,110,200,.16) 1px, transparent 1px) 0 0 / 14px 14px, #fbf8ef; }
