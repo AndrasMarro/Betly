@@ -264,9 +264,9 @@
   .naval { position: absolute; inset: 0; overflow: hidden;
     background: repeating-radial-gradient(ellipse at 40% 60%, rgba(255,255,255,.05) 0 2px, transparent 3px 18px), linear-gradient(rgba(150,210,255,.08) 1px, transparent 1px) 0 0 / 34px 34px, linear-gradient(90deg, rgba(150,210,255,.08) 1px, transparent 1px) 0 0 / 34px 34px; }
   .naval .bship { position: absolute; left: 12%; top: 30%; width: 220px; height: 44px; rotate: -8deg; animation: bob 5s ease-in-out infinite; }
-  /* the destroyer sails the other way: mirrored, not turned upside down, so its light still comes from above */
-  .naval .dship { position: absolute; right: 10%; top: 66%; width: 88px; height: 26px; transform: scaleX(-1) rotate(8deg); animation: bob 4s ease-in-out 1s infinite; transition: right 0.9s var(--spring-smooth); }
-  :global(.game:hover) .naval .dship, :global(.dailycard:hover) .naval .dship { right: calc(10% + 18px); }
+  /* the destroyer escorts the battleship in the same direction and pulls ahead on hover */
+  .naval .dship { position: absolute; right: 10%; top: 66%; width: 88px; height: 26px; rotate: -4deg; animation: bob 4s ease-in-out 1s infinite; transition: right 0.9s var(--spring-smooth); }
+  :global(.game:hover) .naval .dship, :global(.dailycard:hover) .naval .dship { right: calc(10% - 14px); }
   @keyframes bob { 50% { translate: 0 -3px; } }
   .hitf { position: absolute; left: 46%; top: 34%; width: 16px; height: 16px; border-radius: 50% 50% 50% 0; rotate: -45deg; background: radial-gradient(circle at 60% 40%, #fff3b0, #ff8a2a 50%, #c8262c 85%); box-shadow: 0 0 12px 4px rgba(255,120,40,.6); animation: fl 0.9s ease-in-out infinite alternate; }
   @keyframes fl { to { transform: scale(1.2); } }
