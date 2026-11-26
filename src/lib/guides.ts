@@ -255,6 +255,22 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Duel', li: ['Take turns against bots, people at the same device or friends in a room. Find a pair and you go again.', 'Everyone puts their own stake in the pot, visible to all. Most pairs wins.', 'Like poker side pots you can win from each player only as much as you staked yourself. Bet small, risk little, win little.'] },
     ],
   },
+  ships: {
+    de: [
+      { h: 'Ziel', p: 'Jeder versteckt eine Flotte auf einem 10 × 10-Meer: Schiffe mit 5, 4, 3, 3 und 2 Feldern. Wer alle gegnerischen Schiffe versenkt, gewinnt.' },
+      { h: 'Flotte setzen', li: ['Schiff links wählen, über das Meer fahren und klicken. R oder der Knopf dreht es.', 'Schiffe dürfen sich nicht berühren, auch nicht an den Ecken.', 'Ein Klick auf ein gesetztes Schiff nimmt es wieder auf; «Zufällig» setzt alles auf einmal.', 'Nach 90 Sekunden wird der Rest zufällig gesetzt.'] },
+      { h: 'Schiessen', li: ['Wer dran ist, klickt ein Feld auf einem gegnerischen Meer: Wasser, Treffer oder versenkt.', 'Ein Treffer heisst: nochmal schiessen (abschaltbar).', 'Ein versenktes Schiff zeigt seinen Rumpf, und das Wasser rundherum wird aufgedeckt.', 'Pro Schuss gibt es 30 Sekunden, dann fällt ein zufälliger Schuss.'] },
+      { h: 'Modi', li: ['1 gegen 1: gegen einen Bot oder einen Freund.', '2 gegen 2: Partner sehen die Flotte des anderen; ein Team verliert, wenn beide Flotten am Grund liegen.', 'Jeder gegen jeden mit 3 oder 4: Du wählst selbst, wen du beschiesst. Wer zuletzt schwimmt, gewinnt.', 'Freie Plätze übernehmen Bots (Leicht, Mittel oder Schwer).'] },
+      { h: 'Einsatz', p: 'Jeder legt seinen eigenen Einsatz in den Topf, alle sehen ihn. Wie bei Poker-Side-Pots kann man von jedem nur so viel gewinnen, wie man selbst gesetzt hat. Im Team teilen sich die Sieger den Gewinn.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Everyone hides a fleet in a 10 × 10 sea: ships of 5, 4, 3, 3 and 2 cells. Sink all enemy ships to win.' },
+      { h: 'Placing', li: ['Pick a ship on the left, move over the sea and click. R or the button turns it.', 'Ships may not touch, not even at the corners.', 'Click a placed ship to pick it up; "Random" places everything at once.', 'After 90 seconds the rest is placed at random.'] },
+      { h: 'Shooting', li: ['On your turn click a cell on an enemy sea: splash, hit or sunk.', 'A hit means you shoot again (can be switched off).', 'A sunk ship shows its hull, and the water around it is revealed.', 'Each shot has 30 seconds, then a random shot is fired.'] },
+      { h: 'Modes', li: ['1 vs 1: against a bot or a friend.', '2 vs 2: partners see each other\'s fleet; a team loses when both fleets are at the bottom.', 'Free for all with 3 or 4: you choose whom to shoot at. The last one afloat wins.', 'Bots take free seats (easy, medium or hard).'] },
+      { h: 'Stakes', p: 'Everyone puts their own stake in the pot, visible to all. Like poker side pots you can win from each player only as much as you staked yourself. Team winners share.' },
+    ],
+  },
   cups: {
     de: [
       { h: 'Ziel', p: 'Am Anfang siehst du, unter welchem Becher die goldene Kugel liegt. Dann werden die Becher gemischt. Wähle danach den Becher mit der Kugel.' },

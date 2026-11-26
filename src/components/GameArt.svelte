@@ -177,6 +177,11 @@
     </div>
   {:else if id === 'memory'}
     <div class="mem">{#each ['', 'seven', '', 'cherry', 'seven', '', 'bell', '', 'cherry', '', '', 'bell'] as sym, i}<i class:open={!!sym} class:late={sym === 'bell'} style="--i:{i}"><b class="bk"></b><b class="fr">{#if sym}<SlotSymbol {sym} />{/if}</b></i>{/each}</div>
+  {:else if id === 'ships'}
+    <div class="sea2">
+      {#each Array(36) as _, i}<i class:w={[3, 8, 22, 26, 31].includes(i)} class:h={[13, 14].includes(i)} class:x={i === 25}></i>{/each}
+      <span class="hl" style="--x:1; --y:2; --len:3"></span><span class="hl v" style="--x:4; --y:0; --len:2"></span>
+    </div>
   {:else if id === 'cups'}
     <div class="cp">
       {#each [0, 1, 2] as i}
@@ -247,6 +252,15 @@
   .mem .bk { background: repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 4px, transparent 4px 8px), linear-gradient(160deg, #8e1b22, #4e0b10); box-shadow: inset 0 0 0 1.5px rgba(232,196,120,.7); }
   .mem .fr { transform: rotateY(180deg); background: #fbf6e8; padding: 6px; box-shadow: inset 0 0 0 1.5px rgba(232,196,120,.7); }
   .mem .fr :global(svg) { width: 100%; height: 100%; }
+  .art.ships { background: radial-gradient(ellipse at 50% 0%, #133a5e, #061527 80%); }
+  .sea2 { position: relative; display: grid; grid-template-columns: repeat(6, 30px); grid-template-rows: repeat(6, 30px); border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #10456b, #082440); box-shadow: inset 0 0 0 1px rgba(150,210,255,.25); }
+  .sea2 i { box-shadow: inset 0 0 0 0.5px rgba(150,210,255,.16); display: grid; place-items: center; }
+  .sea2 i.w::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: rgba(220,240,255,.75); }
+  .sea2 i.h::after, .sea2 i.x::after { content: ''; position: relative; z-index: 2; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff3b0, #ff8a2a 45%, #c8262c 80%); box-shadow: 0 0 10px rgba(255,120,40,.8); }
+  .sea2 i.x::after { transform: scale(0); transition: transform 0.4s var(--spring-snappy); }
+  :global(.game:hover) .sea2 i.x::after, :global(.dailycard:hover) .sea2 i.x::after { transform: scale(1.2); }
+  .hl { position: absolute; left: calc(var(--x) * 30px + 3px); top: calc(var(--y) * 30px + 4px); width: calc(var(--len) * 30px - 6px); height: 22px; border-radius: 40% 12% 12% 40% / 50%; background: linear-gradient(180deg, #c3ccd8, #7d8796 55%, #555e6c); }
+  .hl.v { width: 22px; height: calc(var(--len) * 30px - 6px); left: calc(var(--x) * 30px + 4px); top: calc(var(--y) * 30px + 3px); border-radius: 50% / 40% 40% 12% 12%; background: linear-gradient(90deg, #c3ccd8, #7d8796 55%, #555e6c); }
   .art.cups { background: radial-gradient(ellipse at 50% 30%, #5a1830, #22070f 80%); }
   .cp { display: flex; gap: 6px; align-items: end; padding-top: 30px; }
   .cupa { position: relative; width: 74px; aspect-ratio: 100 / 110; }

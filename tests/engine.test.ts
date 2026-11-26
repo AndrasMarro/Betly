@@ -745,3 +745,29 @@ import { deal as memDeal, Brain, soloMult, FACES } from '../src/games/memory.ts'
   assert(soloMult(8, 8, 16, 'normal') > soloMult(14, 8, 16, 'normal') && soloMult(30, 8, 16, 'normal') === 0);
   console.log('memory checks passed', good.toFixed(1), bad.toFixed(1));
 }
+
+// Battleships: legal fleets, sinking reveals the halo, better bots need fewer shots
+import * as SH from '../src/games/ships.ts';
+{
+  for (let k = 0; k < 200; k++) assert(SH.validFleet(SH.randomFleet()), 'random fleets are legal');
+  assert(!SH.validFleet([{ len: 5, x: 0, y: 0, v: false }, { len: 4, x: 0, y: 1, v: false }, { len: 3, x: 0, y: 5, v: false }, { len: 3, x: 5, y: 5, v: false }, { len: 2, x: 0, y: 8, v: false }]), 'touching ships are not allowed');
+  assert(!SH.validFleet([{ len: 5, x: 7, y: 0, v: false }, ...SH.randomFleet().slice(1)]), 'ships stay inside');
+  const fleet = [{ len: 2, x: 0, y: 0, v: false }], shots = Array(100).fill(0);
+  assert.equal(SH.fire(fleet, shots, 0).res, 'hit');
+  assert.equal(SH.fire(fleet, shots, 1).res, 'sunk');
+  assert(shots[10] === 1 && shots[11] === 1 && shots[2] === 1 && shots[0] === 3, 'water around a sunk ship is revealed');
+  const play = (skill: SH.Skill) => {
+    let total = 0;
+    for (let g = 0; g < 60; g++) {
+      const f = SH.randomFleet(), s = Array(100).fill(0);
+      let n = 0;
+      while (!SH.sunkAll(f, s) && n < 100) { const c = SH.aim(s, skill); assert(!s[c], 'bots never shoot twice'); SH.fire(f, s, c); n++; }
+      total += n;
+    }
+    return total / 60;
+  };
+  const e = play('easy'), m = play('mid'), h = play('hard');
+  assert(h < m && m < e, `hard ${h.toFixed(0)} < mid ${m.toFixed(0)} < easy ${e.toFixed(0)} shots`);
+  assert.deepEqual(SH.alive(shots), [5, 4, 3, 3], 'the sunk 2 is no longer alive');
+  console.log('battleship checks passed', e.toFixed(0), m.toFixed(0), h.toFixed(0));
+}
