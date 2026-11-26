@@ -1,5 +1,5 @@
 // Slot symbols drawn with the games' own canvas renderers (Retro Crossy Run, Snake), rendered once to images.
-import { drawDuck, drawCar, drawTree, drawCoin, art } from '../games/crossyDraw';
+import { drawDuck, drawCar, drawTree, drawCoin, drawFlag, drawPad, drawTrain, drawSignal, art } from '../games/crossyDraw';
 import { drawApple, drawHead, drawWall } from '../games/snakeDraw';
 
 // Each symbol is drawn on a large canvas with room for glows and halos, then cropped to what was drawn,
@@ -13,6 +13,14 @@ const DRAW: Record<string, (ctx: CanvasRenderingContext2D) => void> = {
   'cr-fire': (c) => drawCar(c, O + 10, O + 70, 2, 72, 7, 1),
   'cr-duck': (c) => drawDuck(c, O + 80, O + 140, 120, 'down'),
   'cr-coin': (c) => drawCoin(c, O + 20, O + 10, 120),
+  // more of the Crossy world, for the memory cards (one art style per set)
+  'cr-rock': (c) => drawTree(c, O + 30, O + 62, 100, true),
+  'cr-flag': (c) => drawFlag(c, O + 60, O + 70, 90),
+  'cr-pad': (c) => drawPad(c, O + 20, O + 30, 120, 0),
+  'cr-train': (c) => drawTrain(c, O + 10, O + 70, 2, 72, 1),
+  'cr-signal': (c) => drawSignal(c, O + 70, O + 40, 90, true),
+  ...Object.fromEntries([1, 2, 3, 4, 5].map((k) => [`cr-car${k}`, (c: CanvasRenderingContext2D) => drawCar(c, O + 25, O + 52, 1, 110, k, 1)])),
+  ...Object.fromEntries([0, 2, 4].map((k) => [`cr-truck${k}`, (c: CanvasRenderingContext2D) => drawCar(c, O + 10, O + 70, 2, 72, k, 1)])),
   'sn-wall': (c) => drawWall(c, O + 25, O + 25, 110),
   'sn-poison': (c) => drawApple(c, O + 10, O + 10, 140, 'poison', Infinity, 0),
   'sn-red': (c) => drawApple(c, O + 10, O + 10, 140, 'red', Infinity, 0),

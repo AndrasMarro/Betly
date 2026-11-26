@@ -326,19 +326,19 @@
             {#each targets as t (t.id)}
               <div class="board" class:target={myTurn && t.alive} class:out={!t.alive}>
                 <div class="bh"><span class="av" class:t1={t.team === 1} class:t2={t.team === 2}>{t.bot ? '🤖' : t.name.slice(0, 1)}</span>{t.name}{#if !t.alive}<em>{L('versenkt', 'sunk')}</em>{/if}{#if share.turn === t.id}<em class="aim">🎯</em>{/if}</div>
-                <Sea shots={t.shots} cell={cellBig} fire={myTurn && t.alive ? (c) => fireAt(t.id, c) : undefined} last={share.last?.target === t.id ? share.last.cell : -1} dim={!t.alive} />
+                <Sea shots={t.shots} cell={cellBig} fire={myTurn && t.alive ? (c) => fireAt(t.id, c) : undefined} shot={share.last?.target === t.id ? share.last : null} dim={!t.alive} />
               </div>
             {/each}
           </div>
           <div class="mine">
             <div class="board small" class:hit={share.last?.target === room.myId && share.last.res !== 'water'}>
               {#key share.last?.n}<div class="bh">{L('Deine Flotte', 'Your fleet')}{#if meP && !meP.alive}<em>{L('versenkt', 'sunk')}</em>{/if}</div>{/key}
-              <Sea shots={meP?.shots ?? blank} ships={fleet} cell={22} last={share.last?.target === room.myId ? share.last.cell : -1} />
+              <Sea shots={meP?.shots ?? blank} ships={fleet} cell={22} shot={share.last?.target === room.myId ? share.last : null} />
             </div>
             {#if mate}
               <div class="board small">
                 <div class="bh">{L('Partner', 'Partner')}: {mate.name}</div>
-                <Sea shots={mate.shots} ships={mates[mate.id] ?? []} cell={22} last={share.last?.target === mate.id ? share.last.cell : -1} dim={!mate.alive} />
+                <Sea shots={mate.shots} ships={mates[mate.id] ?? []} cell={22} shot={share.last?.target === mate.id ? share.last : null} dim={!mate.alive} />
               </div>
             {/if}
           </div>

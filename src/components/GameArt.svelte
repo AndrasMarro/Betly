@@ -12,6 +12,7 @@
   import rock from '../assets/space/rock.webp';
   import { coinFace } from '../lib/coinface';
   import JassCard from './JassCard.svelte';
+  import Warship from './Warship.svelte';
   import { settings } from '../lib/state.svelte';
   import diceArt from '../assets/dice-art.webp';
   import lottoDrum from '../assets/lotto-drum.webp';
@@ -178,14 +179,11 @@
   {:else if id === 'memory'}
     <div class="mem">{#each ['', 'seven', '', 'cherry', 'seven', '', 'bell', '', 'cherry', '', '', 'bell'] as sym, i}<i class:open={!!sym} class:late={sym === 'bell'} style="--i:{i}"><b class="bk"></b><b class="fr">{#if sym}<SlotSymbol {sym} />{/if}</b></i>{/each}</div>
   {:else if id === 'ships'}
-    <div class="sea2">
-      {#each Array(36) as _, i}<i class:w={[3, 8, 22, 26, 31].includes(i)} class:h={[13, 14].includes(i)} class:x={i === 25}></i>{/each}
-      <span class="hl" style="--x:1; --y:2; --len:3"></span><span class="hl v" style="--x:4; --y:0; --len:2"></span>
-    </div>
-  {:else if id === 'slf'}
-    <div class="sheet">
-      <span class="lt2 mono">B</span>
-      {#each [['Stadt', 'Bern'], ['Land', 'Brasilien'], ['Fluss', 'Bode']] as [c, w], i}<div class="ln"><small>{c}</small><b style="--i:{i}">{w}</b></div>{/each}
+    <div class="naval">
+      <div class="bb"><Warship len={5} /></div>
+      <div class="dd"><Warship len={2} /></div>
+      <span class="hitf"></span>
+      <span class="splash"><i></i><i></i><i></i></span>
     </div>
   {:else if id === 'cups'}
     <div class="cp">
@@ -257,23 +255,20 @@
   .mem .bk { background: repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 4px, transparent 4px 8px), linear-gradient(160deg, #8e1b22, #4e0b10); box-shadow: inset 0 0 0 1.5px rgba(232,196,120,.7); }
   .mem .fr { transform: rotateY(180deg); background: #fbf6e8; padding: 6px; box-shadow: inset 0 0 0 1.5px rgba(232,196,120,.7); }
   .mem .fr :global(svg) { width: 100%; height: 100%; }
-  .art.ships { background: radial-gradient(ellipse at 50% 0%, #133a5e, #061527 80%); }
-  .sea2 { position: relative; display: grid; grid-template-columns: repeat(6, 30px); grid-template-rows: repeat(6, 30px); border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #10456b, #082440); box-shadow: inset 0 0 0 1px rgba(150,210,255,.25); }
-  .sea2 i { box-shadow: inset 0 0 0 0.5px rgba(150,210,255,.16); display: grid; place-items: center; }
-  .sea2 i.w::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: rgba(220,240,255,.75); }
-  .sea2 i.h::after, .sea2 i.x::after { content: ''; position: relative; z-index: 2; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff3b0, #ff8a2a 45%, #c8262c 80%); box-shadow: 0 0 10px rgba(255,120,40,.8); }
-  .sea2 i.x::after { transform: scale(0); transition: transform 0.4s var(--spring-snappy); }
-  :global(.game:hover) .sea2 i.x::after, :global(.dailycard:hover) .sea2 i.x::after { transform: scale(1.2); }
-  .hl { position: absolute; left: calc(var(--x) * 30px + 3px); top: calc(var(--y) * 30px + 4px); width: calc(var(--len) * 30px - 6px); height: 22px; border-radius: 40% 12% 12% 40% / 50%; background: linear-gradient(180deg, #c3ccd8, #7d8796 55%, #555e6c); }
-  .hl.v { width: 22px; height: calc(var(--len) * 30px - 6px); left: calc(var(--x) * 30px + 4px); top: calc(var(--y) * 30px + 3px); border-radius: 50% / 40% 40% 12% 12%; background: linear-gradient(90deg, #c3ccd8, #7d8796 55%, #555e6c); }
-  .art.slf { background: radial-gradient(ellipse at 50% 30%, #3a2a5a, #160e24 80%); }
-  .sheet { position: relative; width: 190px; padding: 18px 16px 14px; border-radius: 10px; transform: rotate(-3deg); color: #2b2a3a; display: grid; gap: 6px; box-shadow: 0 16px 30px rgba(0,0,0,.5); transition: transform 0.5s var(--spring-smooth);
-    background: linear-gradient(rgba(70,110,200,.16) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgba(70,110,200,.16) 1px, transparent 1px) 0 0 / 14px 14px, #fbf8ef; }
-  :global(.game:hover) .sheet, :global(.dailycard:hover) .sheet { transform: rotate(0) scale(1.04); }
-  .lt2 { position: absolute; top: -18px; right: -14px; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; font-size: 1.7rem; font-weight: 800; color: #3a2408; background: radial-gradient(circle at 40% 30%, #fff8e1, #f0d48c); box-shadow: inset 0 0 0 2px #c9973f, 0 6px 12px rgba(0,0,0,.4); }
-  .ln { display: grid; border-bottom: 1.5px solid rgba(0,0,0,.12); }
-  .ln small { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: #6b6a78; font-weight: 700; }
-  .ln b { font: italic 600 1.05rem 'Instrument Serif', Georgia, serif; }
+  .art.ships { background: radial-gradient(ellipse at 30% 20%, rgba(120,200,255,.25), transparent 60%), linear-gradient(160deg, #11496f, #061a2e); }
+  .naval { position: absolute; inset: 0; overflow: hidden;
+    background: repeating-radial-gradient(ellipse at 40% 60%, rgba(255,255,255,.05) 0 2px, transparent 3px 18px), linear-gradient(rgba(150,210,255,.08) 1px, transparent 1px) 0 0 / 34px 34px, linear-gradient(90deg, rgba(150,210,255,.08) 1px, transparent 1px) 0 0 / 34px 34px; }
+  .naval .bb { position: absolute; left: 12%; top: 30%; width: 220px; height: 44px; transform: rotate(-8deg); animation: bob 5s ease-in-out infinite; }
+  .naval .dd { position: absolute; right: 10%; top: 66%; width: 88px; height: 26px; transform: rotate(172deg); animation: bob 4s ease-in-out 1s infinite; }
+  @keyframes bob { 50% { translate: 0 -3px; } }
+  .hitf { position: absolute; left: 46%; top: 34%; width: 16px; height: 16px; border-radius: 50% 50% 50% 0; rotate: -45deg; background: radial-gradient(circle at 60% 40%, #fff3b0, #ff8a2a 50%, #c8262c 85%); box-shadow: 0 0 12px 4px rgba(255,120,40,.6); animation: fl 0.9s ease-in-out infinite alternate; }
+  @keyframes fl { to { transform: scale(1.2); } }
+  .splash { position: absolute; left: 70%; top: 34%; width: 30px; height: 30px; }
+  .splash i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(220,240,255,.8); opacity: 0; }
+  :global(.game:hover) .splash i, :global(.dailycard:hover) .splash i { animation: rip 1.2s var(--ease-snap) infinite; }
+  .splash i:nth-child(2) { animation-delay: 0.15s !important; } .splash i:nth-child(3) { animation-delay: 0.3s !important; }
+  @keyframes rip { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(3.4); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .naval .bb, .naval .dd, .hitf, .splash i { animation: none !important; } }
   .art.cups { background: radial-gradient(ellipse at 50% 30%, #5a1830, #22070f 80%); }
   .cp { display: flex; gap: 6px; align-items: end; padding-top: 30px; }
   .cupa { position: relative; width: 74px; aspect-ratio: 100 / 110; }

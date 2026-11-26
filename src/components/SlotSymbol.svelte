@@ -37,8 +37,8 @@
     <rect x="14" y="74" width="72" height="10" rx="3" fill="#d39e2c" />
     <circle cx="50" cy="60" r="6" fill="#e83346" /><circle cx="32" cy="64" r="4" fill="#4f8dff" /><circle cx="68" cy="64" r="4" fill="#4fe3a0" />
   {:else if sym === 'wild'}
-    <rect x="8" y="26" width="84" height="48" rx="12" fill="url(#wildg)" />
-    <defs><linearGradient id="wildg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5ea8" /><stop offset="1" stop-color="#7a3fb5" /></linearGradient></defs>
+    <rect x="8" y="26" width="84" height="48" rx="12" fill="url(#{uid}-wild)" />
+    <defs><linearGradient id="{uid}-wild" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5ea8" /><stop offset="1" stop-color="#7a3fb5" /></linearGradient></defs>
     <text x="50" y="52" class="t" fill="#fff" font-size="26">WILD</text>
   {:else if sym === 'star'}
     <!-- the scatter is the Betly logo: red ring, dark gap, red dot, on a gold rim -->

@@ -94,7 +94,7 @@
 
   // ---------- the game (host / solo) ----------
   function start() {
-    if (!isHost || share.phase === 'play') return;
+    if (!isHost || (share.phase === 'play' && locked)) return; // a free solo game can simply be dealt again
     const players = roster();
     if (mode === 'solo' && paid && (bet <= 0 || bet > wallet.balance)) return;
     if (mode === 'duel' && (players.length < 2 || bet > wallet.balance)) return;
@@ -386,7 +386,7 @@
   .card:disabled { cursor: default; }
   .inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.55s var(--spring-smooth); }
   .card.up .inner { transform: rotateY(180deg); }
-  .back, .front { position: absolute; inset: 0; border-radius: 10px; backface-visibility: hidden; display: grid; place-items: center; overflow: hidden; }
+  .back, .front { position: absolute; inset: 0; border-radius: 10px; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: grid; place-items: center; overflow: hidden; }
   .back {
     background: repeating-linear-gradient(45deg, rgba(255,255,255,.06) 0 6px, transparent 6px 12px), linear-gradient(160deg, #8e1b22, #4e0b10);
     box-shadow: inset 0 0 0 2px rgba(232,196,120,.7), inset 0 0 0 5px rgba(0,0,0,.2), 0 6px 12px -6px rgba(0,0,0,.6);
@@ -395,8 +395,9 @@
   .front { transform: rotateY(180deg); background: #fbf6e8; box-shadow: inset 0 0 0 2px rgba(232,196,120,.6), 0 6px 12px -6px rgba(0,0,0,.6); }
   @media (hover: hover) and (pointer: fine) { .card.hint:hover .inner { transform: translateY(-3px); } }
   .card:active:not(:disabled) .inner { transform: scale(0.97); }
+  /* found pairs: a coloured frame of the finder; no opacity on the card itself, that would flatten the 3D flip */
   .card.taken .front { box-shadow: inset 0 0 0 3px var(--own), 0 0 18px -2px var(--own); animation: found 0.6s var(--spring-snappy); }
-  .card.taken { opacity: 0.6; transition: transform 0.7s var(--spring-smooth), opacity 0.5s var(--ease-snap) 0.6s; }
+  .card.taken .front :global(.face) { filter: saturate(0.75) brightness(0.92); transition: filter 0.5s var(--ease-snap) 0.6s; }
   @keyframes found { 40% { transform: scale(1.06); } }
   .note { min-height: 30px; display: flex; gap: 12px; align-items: baseline; color: #f2ecdc; }
   .note strong { font-size: 1.2rem; }
