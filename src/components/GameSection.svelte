@@ -5,11 +5,12 @@
   import { dailyGame, dailyClassic } from '../lib/daily';
   import { t, type Key } from '../lib/i18n';
   // q: search text; daily: show this category's game of the day on top (the home page shows both together instead)
-  let { cat, title = true, q = '', daily = true }: { cat: Cat; title?: boolean; q?: string; daily?: boolean } = $props();
+  // party: only the games to play together, from both categories
+  let { cat, title = true, q = '', daily = true, party = false }: { cat: Cat; title?: boolean; q?: string; daily?: boolean; party?: boolean } = $props();
   const abc = (a: Game, b: Game) => gameName(a).localeCompare(gameName(b));
-  const all = $derived(GAMES.filter((g) => g.cat === cat && matches(g, q)));
+  const all = $derived(GAMES.filter((g) => (party ? g.party : g.cat === cat) && matches(g, q, t(('game.' + g.id) as Key))));
   // classics: card games first, then the rest, each alphabetical; arcade keeps its order
-  const groups = $derived(cat === 'classic'
+  const groups = $derived(cat === 'classic' && !party
     ? (['cards', 'table'] as const).map((k) => ({ k, games: all.filter((g) => g.live && g.group === k).sort(abc) })).filter((x) => x.games.length)
     : [{ k: '', games: all.filter((g) => g.live) }]);
   const soon = $derived(all.filter((g) => !g.live));
@@ -27,13 +28,14 @@
       <p>{t(('cat.' + cat + '.text') as Key)}</p>
     </header>
   {/if}
-  {#if daily && today && !q}<DailyCard g={today} />{/if}
+  {#if daily && today && !q && !party}<DailyCard g={today} />{/if}
   {#each groups as grp}
     {#if grp.k}<h3 class="grp eyebrow">{t(('group.' + grp.k) as Key)}</h3>{/if}
     <div class="grid">
       {#each grp.games as g, i (g.id)}
         <a class="game rise" class:isdaily={g.id === today?.id} style="--i:{Math.min(i, 6)}" href={href(g)}>
           <div class="art"><GameArt id={g.id} /></div>
+          {#if g.party}<span class="pty" title={t('party.badge')}>👥</span>{/if}
           <div class="txt">
             <h3>{gameName(g)}</h3>
             <p>{t(('game.' + g.id) as Key)}</p>
@@ -54,6 +56,7 @@
 {/if}
 
 <style>
+  .pty { position: absolute; top: 14px; right: 14px; z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,.45); backdrop-filter: blur(6px); font-size: 0.85rem; }
   .game.isdaily { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 60%, transparent); }
   .grp { margin: 26px 0 12px; font: 500 0.72rem/1 'Geist Mono Variable', monospace; letter-spacing: 0.14em; }
   .grp:first-of-type { margin-top: 0; }

@@ -7,7 +7,7 @@
   import { t, type Key } from '../lib/i18n';
   let q = $state('');
   const dailies = [byId(dailyClassic()), byId(dailyGame())].filter((g) => !!g);
-  const found = $derived(GAMES.some((g) => matches(g, q)));
+  const found = $derived(GAMES.some((g) => matches(g, q, t(('game.' + g.id) as Key))));
 </script>
 
 <section class="hero">

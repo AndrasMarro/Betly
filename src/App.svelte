@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import Dialogs from './components/Dialogs.svelte';
+  import Search from './components/Search.svelte';
   import { settings, wallet, ui, fmt, bonusReadyIn, askName, tampered } from './lib/state.svelte';
   let tamperNote = $state(tampered);
   import { t } from './lib/i18n';
@@ -43,6 +44,7 @@
     cups: () => import('./pages/Cups.svelte'),
     g2048: () => import('./pages/Game2048.svelte'),
     tetris: () => import('./pages/Tetris.svelte'),
+    words: () => import('./pages/Words.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),
     soon: () => import('./pages/Soon.svelte'),
@@ -106,6 +108,9 @@
         <span class="plus" class:ready={bonusReady}>+</span>
         {#if ui.bonus}{#key ui.bonus.id}<span class="dflash mono">+{fmt(ui.bonus.amt)} · Daily</span>{/key}{/if}
       </button>
+      <button class="btn icon ghost find" onclick={() => (ui.search = true)} aria-label={t('search.title')} title={t('search.title') + ' ( / )'}>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="M16.5 16.5L21 21" /></svg>
+      </button>
       <button class="btn icon ghost music" class:off={!settings.music || !settings.sound} onclick={() => (settings.music = !(settings.music && settings.sound)) && (settings.sound = true)} aria-label={t('settings.music')} aria-pressed={settings.music && settings.sound}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l11-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="17" cy="16" r="3" /></svg>
       </button>
@@ -164,6 +169,7 @@
 </footer>
 
 <Dialogs />
+<Search />
 
 {#if tamperNote}
   <div class="tamper" role="alert">
