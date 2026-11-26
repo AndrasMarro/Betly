@@ -24,7 +24,9 @@ export const fits = (s: string, letter: string) => norm(s).startsWith(letter.toL
  * Points for one round. answers: per player one string per category; rejected(pid, ci): voted down.
  * Returns per player the points per category.
  */
-export function scoreRound(nCats: number, letter: string, answers: Record<string, string[]>, rejected: (pid: string, ci: number) => boolean) {
+export type Points = { only: number; unique: number; same: number };
+export const POINTS: Points = { only: 20, unique: 10, same: 5 };
+export function scoreRound(nCats: number, letter: string, answers: Record<string, string[]>, rejected: (pid: string, ci: number) => boolean, pts: Points = POINTS) {
   const out: Record<string, number[]> = {};
   const ids = Object.keys(answers);
   for (const id of ids) out[id] = Array(nCats).fill(0);
@@ -33,7 +35,7 @@ export function scoreRound(nCats: number, letter: string, answers: Record<string
     for (const id of valid) {
       const me = norm(answers[id][ci]);
       const same = valid.filter((o) => o !== id && norm(answers[o][ci]) === me).length;
-      out[id][ci] = valid.length === 1 ? 20 : same ? 5 : 10;
+      out[id][ci] = valid.length === 1 ? pts.only : same ? pts.same : pts.unique;
     }
   }
   return out;

@@ -1,7 +1,8 @@
 <script lang="ts">
   // Stadt Land Fluss, online with friends or with bots. The host sets categories, rounds and time; every round a
   // letter is drawn, everybody writes, then all answers are shown and anyone can vote an answer down.
-  // Once per game a player may light a joker: double points that round (everyone sees it).
+  // A few jokers per game (first come, first served) double one player's round, and everyone sees it.
+  // Everything is set in the settings dialog: rounds, times, stop rule, letters, points, jokers, bots.
   // Stakes go into the pot and are shared like side pots by the final ranking (games/pot.ts).
   import { onDestroy, untrack } from 'svelte';
   import { fly, scale } from 'svelte/transition';
@@ -10,7 +11,7 @@
   import BetInput from '../components/BetInput.svelte';
   import PotSeats from '../components/PotSeats.svelte';
   import { Room } from '../lib/net.svelte';
-  import { CLASSIC, defaultCats, letters, fits, norm, scoreRound, isRejected, botAnswers, looksFake, type Cat, type Lang, type BotSkill } from '../games/slf';
+  import { CLASSIC, POINTS, defaultCats, letters, fits, norm, scoreRound, isRejected, botAnswers, looksFake, type Cat, type Lang, type BotSkill, type Points } from '../games/slf';
   import { sidePots, ranks } from '../games/pot';
   import { wallet, settle, stake as takeStake, fmt, settings } from '../lib/state.svelte';
   import { sfx } from '../lib/sfx';
@@ -19,19 +20,25 @@
   const saved = (() => { try { return JSON.parse(localStorage.getItem('betly:slf') || '{}'); } catch { return {}; } })();
   let lang = $state<Lang>(saved.lang ?? (settings.lang === 'en' ? 'en' : 'de'));
   let cats = $state<Cat[]>(saved.cats ?? defaultCats(saved.lang ?? (settings.lang === 'en' ? 'en' : 'de')));
-  let rounds = $state<number>(saved.rounds ?? 5);
-  let time = $state<number>(saved.time ?? 90);
-  let stopKey = $state<boolean>(saved.stop ?? true);
-  let hard = $state<boolean>(saved.hard ?? false);
-  let botCount = $state<number>(saved.bots ?? 2);
-  let skill = $state<BotSkill>(saved.skill ?? 'mid');
+  type Cfg = { rounds: number; time: number; review: number; pause: number; stop: boolean; grace: number; letters: string; jokers: number; jokerX: number; bots: number; skill: BotSkill; pts: Points };
+  const DEF: Cfg = { rounds: 5, time: 90, review: 60, pause: 7, stop: true, grace: 10, letters: letters(false).join(''), jokers: 1, jokerX: 2, bots: 2, skill: 'mid', pts: { ...POINTS } };
+  let cfg = $state<Cfg>({ ...DEF, ...saved.cfg, pts: { ...POINTS, ...saved.cfg?.pts } });
   let bet = $state(10);
-  $effect(() => { const s = { lang, cats: $state.snapshot(cats), rounds, time, stop: stopKey, hard, bots: botCount, skill }; untrack(() => { try { localStorage.setItem('betly:slf', JSON.stringify(s)); } catch {} }); });
+  $effect(() => { const s = { lang, cats: $state.snapshot(cats), cfg: $state.snapshot(cfg) }; untrack(() => { try { localStorage.setItem('betly:slf', JSON.stringify(s)); } catch {} }); });
+  /** Keep every number inside sensible limits (the inputs accept anything). */
+  const clampNum = (v: unknown, lo: number, hi: number, d: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
+  function tidy() {
+    cfg.rounds = clampNum(cfg.rounds, 1, 26, 5); cfg.time = clampNum(cfg.time, 15, 900, 90); cfg.review = clampNum(cfg.review, 10, 600, 60);
+    cfg.pause = clampNum(cfg.pause, 2, 60, 7); cfg.grace = clampNum(cfg.grace, 0, 120, 10); cfg.jokers = clampNum(cfg.jokers, 0, 20, 1);
+    cfg.jokerX = clampNum(cfg.jokerX, 2, 5, 2); cfg.bots = clampNum(cfg.bots, 0, 5, 2);
+    for (const k of ['only', 'unique', 'same'] as const) cfg.pts[k] = clampNum(cfg.pts[k], 0, 1000, POINTS[k]);
+    if (cfg.letters.length < 3) cfg.letters = DEF.letters;
+  }
 
   type P = { id: string; name: string; bot?: boolean; stake: number; score: number; joker: 0 | 1 | 2; filled: number; done: boolean };
   const share = $state({
     phase: 'lobby' as 'lobby' | 'letter' | 'write' | 'review' | 'scores' | 'end', game: 0, round: 0,
-    rounds: 5, time: 90, stop: true, lang: 'de' as Lang, cats: [] as Cat[], letter: '', used: [] as string[], until: 0, stopBy: '',
+    rounds: 5, time: 90, stop: true, grace: 10, jokersLeft: 1, jokerX: 2, ptsCfg: { ...POINTS } as Points, lang: 'de' as Lang, cats: [] as Cat[], letter: '', used: [] as string[], until: 0, stopBy: '',
     players: [] as P[], answers: {} as Record<string, string[]>, rejects: {} as Record<string, string[][]>, pts: {} as Record<string, number[]>,
     payouts: null as Record<string, number> | null,
   });
@@ -49,17 +56,23 @@
     push(true);
   });
   const isHost = $derived(room.role !== 'guest');
-  const BOT_NAMES = ['Mila', 'Jonas', 'Lea'];
+  const BOT_NAMES = ['Mila', 'Jonas', 'Lea', 'Sven', 'Nora'];
   const roster = (): P[] => [
     { id: room.myId, name: settings.name || L('Du', 'You'), stake: bet },
     ...guests,
-    ...BOT_NAMES.slice(0, botCount).map((n, i) => ({ id: 'bot' + i, name: n, bot: true, stake: bet })),
+    ...BOT_NAMES.slice(0, cfg.bots).map((n, i) => ({ id: 'bot' + i, name: n, bot: true, stake: bet })),
   ].map((p) => ({ ...p, score: 0, joker: 0, filled: 0, done: false }));
   const lobby = $derived(share.phase === 'lobby' && isHost ? roster() : share.players);
 
   function onMsg(m: any, from: string) {
     if (room.role === 'guest') {
-      if (m.t === 'state') { const newRound = m.s.round !== share.round || m.s.game !== share.game; Object.assign(share, m.s); if (newRound) resetMine(); afterState(); }
+      if (m.t === 'state') {
+        const newRound = m.s.round !== share.round || m.s.game !== share.game, stopped = !share.stopBy && m.s.stopBy;
+        Object.assign(share, m.s);
+        if (newRound) resetMine();
+        if (stopped && share.phase === 'write') { clearTimeout(sendTimer); room.send({ t: 'ans', round: share.round, list: $state.snapshot(mine) }); } // someone stopped: hand in right now
+        afterState();
+      }
       return;
     }
     const p = share.players.find((x) => x.id === from);
@@ -85,7 +98,7 @@
     untrack(() => room.broadcast({ t: 'state', s: $state.snapshot(share) }));
   }
   $effect(() => { if (room.role === 'guest' && room.status === 'open') room.send({ t: 'hello', name: settings.name, stake: bet }); });
-  $effect(() => { void [guests.length, botCount, bet, settings.name, lang, cats.length, rounds, time, stopKey]; untrack(() => { if (share.phase === 'lobby') { Object.assign(share, { players: roster(), cats: $state.snapshot(cats), lang, rounds, time, stop: stopKey }); push(true); } }); });
+  $effect(() => { void [guests.length, bet, settings.name, lang, cats.length, JSON.stringify(cfg)]; untrack(() => { if (share.phase === 'lobby') { Object.assign(share, { players: roster(), cats: $state.snapshot(cats), lang, rounds: cfg.rounds, time: cfg.time, stop: cfg.stop, grace: cfg.grace, jokersLeft: cfg.jokers, jokerX: cfg.jokerX, ptsCfg: { ...cfg.pts } }); push(true); } }); });
   let wasGuest = false;
   $effect(() => {
     if (room.role === 'guest') wasGuest = true;
@@ -94,18 +107,20 @@
 
   function startGame() {
     if (!isHost || cats.length < 3 || bet > wallet.balance || (share.phase !== 'lobby' && share.phase !== 'end')) return;
-    Object.assign(share, { game: share.game + 1, round: 0, rounds, time, stop: stopKey, lang, cats: $state.snapshot(cats), used: [], players: roster(), payouts: null });
+    tidy();
+    Object.assign(share, { game: share.game + 1, round: 0, rounds: cfg.rounds, time: cfg.time, stop: cfg.stop, grace: cfg.grace, jokersLeft: cfg.jokers, jokerX: cfg.jokerX, ptsCfg: { ...cfg.pts }, lang, cats: $state.snapshot(cats), used: [], players: roster(), payouts: null });
     payStake();
     nextRound();
   }
   function nextRound() {
-    const pool = letters(hard).filter((l) => !share.used.includes(l));
+    let pool = [...cfg.letters].filter((l) => !share.used.includes(l));
+    if (!pool.length) { share.used = []; pool = [...cfg.letters]; } // more rounds than letters: start over
     const letter = pool[Math.floor(Math.random() * pool.length)];
     got = {}; botFinal = {};
     for (const p of share.players) {
       p.filled = 0; p.done = false;
       if (p.joker === 1) p.joker = 2;
-      if (p.bot) botFinal[p.id] = botAnswers(share.cats, letter, share.lang, skill);
+      if (p.bot) botFinal[p.id] = botAnswers(share.cats, letter, share.lang, cfg.skill);
     }
     Object.assign(share, { phase: 'letter', round: share.round + 1, letter, used: [...share.used, letter], until: Date.now() + 2800, stopBy: '', answers: {}, rejects: {}, pts: {} });
     resetMine();
@@ -116,13 +131,14 @@
     const a = got[by] ?? [];
     if (a.length < share.cats.length || a.some((x) => !x.trim())) return;
     share.stopBy = by;
-    share.until = Math.min(share.until, Date.now() + 10_000);
+    share.until = Math.min(share.until, Date.now() + share.grace * 1000); // 0: handed in at once
     push(true);
   }
   function joker(by: string) {
     const p = share.players.find((x) => x.id === by);
-    if (!p || p.joker !== 0 || (share.phase !== 'letter' && share.phase !== 'write')) return;
+    if (!p || p.joker !== 0 || share.jokersLeft <= 0 || (share.phase !== 'letter' && share.phase !== 'write')) return;
     p.joker = 1;
+    share.jokersLeft--;
     push(true);
   }
   function vote(by: string, pid: string, ci: number) {
@@ -140,17 +156,17 @@
     const bots = share.players.filter((p) => p.bot).map((p) => p.id);
     share.rejects = Object.fromEntries(share.players.map((p) => [p.id, share.cats.map((_, ci) => (looksFake(share.answers[p.id][ci]) ? bots.filter((b) => b !== p.id) : []))]));
     for (const p of share.players) p.done = !!p.bot;
-    Object.assign(share, { phase: 'review', until: Date.now() + 60_000 });
+    Object.assign(share, { phase: 'review', until: Date.now() + cfg.review * 1000 });
     push(true);
   }
   function maybeScore() { if (share.phase === 'review' && share.players.every((p) => p.done)) score(); }
   function score() {
-    const pts = scoreRound(share.cats.length, share.letter, share.answers, (pid, ci) => isRejected(share.rejects[pid][ci].length, votersFor(pid)));
+    const pts = scoreRound(share.cats.length, share.letter, share.answers, (pid, ci) => isRejected(share.rejects[pid][ci].length, votersFor(pid)), share.ptsCfg);
     for (const p of share.players) {
-      if (p.joker === 1) pts[p.id] = pts[p.id].map((x) => x * 2);
+      if (p.joker === 1) pts[p.id] = pts[p.id].map((x) => x * share.jokerX);
       p.score += pts[p.id].reduce((a, b) => a + b, 0);
     }
-    Object.assign(share, { phase: 'scores', pts, until: Date.now() + 7000 });
+    Object.assign(share, { phase: 'scores', pts, until: Date.now() + cfg.pause * 1000 });
     push(true);
   }
   function finish() {
@@ -232,6 +248,16 @@
   // sound when the clock runs low or someone pressed stop
   $effect(() => { if (share.stopBy) untrack(() => sfx('stop')); });
 
+  // ---------- settings dialog ----------
+  let setupOpen = $state(false);
+  /** Opens the dialog as a modal (Esc and the backdrop close it). */
+  function modal(d: HTMLDialogElement) {
+    d.showModal();
+    const click = (e: MouseEvent) => { if (e.target === d) d.close(); };
+    d.addEventListener('click', click);
+    return { destroy: () => d.removeEventListener('click', click) };
+  }
+
   // ---------- lobby: categories ----------
   let draft = $state('');
   function addCat(label: string, k?: string) {
@@ -272,20 +298,17 @@
       {#if share.phase === 'lobby' || share.phase === 'end'}
         <div class="field">{L('Dein Einsatz im Topf', 'Your stake in the pot')}<BetInput bind:value={bet} /></div>
         {#if isHost}
-          <div class="field">{L('Runden', 'Rounds')}<div class="seg">{#each [3, 5, 8, 10] as r}<button class:on={rounds === r} onclick={() => (rounds = r)}>{r}</button>{/each}</div></div>
-          <div class="field">{L('Zeit pro Runde', 'Time per round')}<div class="seg">{#each [60, 90, 120, 180] as s}<button class:on={time === s} onclick={() => (time = s)}>{s}s</button>{/each}</div></div>
-          <label class="switch"><span>{L('Stopp-Taste (alles ausgefüllt: noch 10 s)', 'Stop button (all filled: 10 s left)')}</span><input type="checkbox" bind:checked={stopKey} /></label>
-          <label class="switch"><span>{L('Auch Q, X und Y', 'Include Q, X and Y')}</span><input type="checkbox" bind:checked={hard} /></label>
-          <div class="field">Bots<div class="seg">{#each [0, 1, 2, 3] as k}<button class:on={botCount === k} onclick={() => (botCount = k)}>{k}</button>{/each}</div>
-            {#if botCount}<div class="seg">{#each [['easy', L('Leicht', 'Easy')], ['mid', L('Mittel', 'Medium')], ['hard', L('Schlau', 'Smart')]] as [s, lb]}<button class:on={skill === s} onclick={() => (skill = s as BotSkill)}>{lb}</button>{/each}</div>{/if}
-          </div>
+          <button class="setup" onclick={() => (setupOpen = true)}>
+            <span class="eyebrow">⚙ {L('Einstellungen', 'Settings')}</span>
+            <span class="sum">{cfg.rounds} {L('Runden', 'rounds')} · {cfg.time}s · {cfg.stop ? (cfg.grace ? L(`Stopp +${cfg.grace}s`, `stop +${cfg.grace}s`) : L('Stopp: sofort', 'stop: instant')) : L('ohne Stopp', 'no stop')} · {cfg.jokers} Joker · {cfg.bots} Bots</span>
+          </button>
           <button class="btn primary big" disabled={cats.length < 3 || lobby.length < 2 || bet > wallet.balance} onclick={startGame}>{lobby.length < 2 ? L('Bot oder Freund dazunehmen', 'Add a bot or a friend') : share.phase === 'end' ? L('Neues Spiel', 'New game') : 'Start'}</button>
         {:else}<p class="muted small">{L('Der Gastgeber stellt ein und startet.', 'The host sets up and starts.')}</p>{/if}
       {:else}
         <div class="bigletter" class:land={share.phase !== 'letter'}><span class="mono">{shown}</span></div>
         {#if share.phase === 'letter' || share.phase === 'write'}
-          {#if meP && meP.joker === 0}<button class="btn joker" onclick={() => act({ t: 'joker' })}>🔥 {L('Joker: Punkte ×2 in dieser Runde', 'Joker: double points this round')}</button>
-          {:else if meP?.joker === 1}<p class="armed" in:scale={{ start: 0.9 }}>🔥 {L('Joker aktiv: diese Runde zählt doppelt', 'Joker on: this round counts double')}</p>{/if}
+          {#if meP?.joker === 1}<p class="armed" in:scale={{ start: 0.9 }}>🔥 {L(`Joker aktiv: diese Runde zählt ×${share.jokerX}`, `Joker on: this round counts ×${share.jokerX}`)}</p>
+          {:else if meP && meP.joker === 0 && share.jokersLeft > 0}<button class="btn joker" onclick={() => act({ t: 'joker' })}>🔥 {L(`Joker ×${share.jokerX} (noch ${share.jokersLeft} im Spiel)`, `Joker ×${share.jokerX} (${share.jokersLeft} left in the game)`)}</button>{/if}
         {/if}
       {/if}
       <PotSeats {seats} me={room.myId} payouts={share.phase === 'end' ? share.payouts : null} />
@@ -323,7 +346,7 @@
           <span>{L('Buchstabe', 'Letter')} <b class="mono gold">{share.phase === 'letter' ? '…' : share.letter}</b></span>
           <span class="mono" class:hot={left <= 10 && share.phase === 'write'}>{share.phase === 'write' ? left + 's' : ''}</span>
         </div>
-        {#if share.stopBy}<p class="stopped" in:fly={{ y: -6 }}>✋ {nameOf(share.stopBy)} {L('hat Stopp gerufen! Noch', 'called stop! Only')} {left}s</p>{/if}
+        {#if share.stopBy}<p class="stopped" in:fly={{ y: -6 }}>✋ {nameOf(share.stopBy)} {share.grace ? L(`hat Stopp gerufen! Noch ${left}s`, `called stop! Only ${left}s`) : L('hat abgegeben, alle Blätter werden eingesammelt.', 'handed in, all sheets are collected.')}</p>{/if}
         <div class="form">
           {#each share.cats as c, i}
             {@const v = mine[i] ?? ''}
@@ -382,6 +405,78 @@
   </div>
 </section>
 
+{#if setupOpen}
+  <dialog class="cfg" onclose={() => { tidy(); setupOpen = false; }} use:modal>
+    <form method="dialog" class="dlg" onsubmit={() => tidy()}>
+      <header><h2>{L('Einstellungen', 'Settings')}</h2><button class="btn icon sm ghost" aria-label={L('Schliessen', 'Close')}>×</button></header>
+      <section>
+        <h3>{L('Spiel', 'Game')}</h3>
+        <div class="grid2">
+          {@render num(L('Runden', 'Rounds'), 'rounds', 1, 26, '')}
+          {@render num(L('Zeit pro Runde', 'Time per round'), 'time', 15, 900, 's')}
+          {@render num(L('Zeit zum Prüfen', 'Time to check'), 'review', 10, 600, 's')}
+          {@render num(L('Pause nach der Runde', 'Pause after a round'), 'pause', 2, 60, 's')}
+        </div>
+      </section>
+      <section>
+        <h3>{L('Stopp', 'Stop')}</h3>
+        <label class="switch"><span>{L('Stopp-Taste: Wer alles ausgefüllt hat, darf beenden', 'Stop button: whoever filled everything may end the round')}</span><input type="checkbox" bind:checked={cfg.stop} /></label>
+        {#if cfg.stop}
+          <div class="grid2">
+            {@render num(L('Restzeit nach Stopp', 'Time left after stop'), 'grace', 0, 120, 's')}
+            <div class="quick">{#each [[0, L('Sofort abgeben', 'Hand in at once')], [5, '5 s'], [10, '10 s']] as [v, lb]}<button type="button" class:on={cfg.grace === v} onclick={() => (cfg.grace = v as number)}>{lb}</button>{/each}</div>
+          </div>
+        {/if}
+      </section>
+      <section>
+        <h3>{L('Buchstaben', 'Letters')} <span class="muted">{cfg.letters.length}</span></h3>
+        <div class="abc">{#each 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' as l}<button type="button" class:on={cfg.letters.includes(l)} onclick={() => (cfg.letters = cfg.letters.includes(l) ? cfg.letters.replace(l, '') : [...cfg.letters + l].sort().join(''))}>{l}</button>{/each}</div>
+      </section>
+      <section>
+        <h3>{L('Punkte', 'Points')}</h3>
+        <div class="grid3">
+          {@render pts(L('Allein in der Kategorie', 'Only answer'), 'only')}
+          {@render pts(L('Einzigartig', 'Unique'), 'unique')}
+          {@render pts(L('Doppelt', 'Same as others'), 'same')}
+        </div>
+      </section>
+      <section>
+        <h3>Joker</h3>
+        <div class="grid2">
+          {@render num(L('Joker im ganzen Spiel', 'Jokers per game'), 'jokers', 0, 20, '')}
+          {@render num(L('Faktor', 'Factor'), 'jokerX', 2, 5, '×')}
+        </div>
+        <small class="muted">{L('Wer zuerst zündet, bekommt ihn; jeder höchstens einen.', 'First come, first served; one per player at most.')}</small>
+      </section>
+      <section>
+        <h3>Bots</h3>
+        <div class="grid2">
+          {@render num(L('Anzahl', 'Number'), 'bots', 0, 5, '')}
+          <div class="quick">{#each [['easy', L('Leicht', 'Easy')], ['mid', L('Mittel', 'Medium')], ['hard', L('Schlau', 'Smart')]] as [k, lb]}<button type="button" class:on={cfg.skill === k} onclick={() => (cfg.skill = k as BotSkill)}>{lb}</button>{/each}</div>
+        </div>
+      </section>
+      <footer>
+        <button type="button" class="btn ghost" onclick={() => (cfg = { ...DEF, pts: { ...POINTS } })}>{L('Zurücksetzen', 'Reset')}</button>
+        <button class="btn primary">{L('Fertig', 'Done')}</button>
+      </footer>
+    </form>
+  </dialog>
+{/if}
+
+{#snippet num(label: string, key: 'rounds' | 'time' | 'review' | 'pause' | 'grace' | 'jokers' | 'jokerX' | 'bots', lo: number, hi: number, unit: string)}
+  <label class="num">{label}
+    <span class="box">
+      <button type="button" onclick={() => (cfg[key] = Math.max(lo, (Number(cfg[key]) || 0) - 1))} aria-label="−">−</button>
+      <input type="number" inputmode="numeric" min={lo} max={hi} bind:value={cfg[key]} onblur={tidy} />
+      {#if unit}<em>{unit}</em>{/if}
+      <button type="button" onclick={() => (cfg[key] = Math.min(hi, (Number(cfg[key]) || 0) + 1))} aria-label="+">+</button>
+    </span>
+  </label>
+{/snippet}
+{#snippet pts(label: string, key: 'only' | 'unique' | 'same')}
+  <label class="num">{label}<span class="box"><input type="number" inputmode="numeric" min="0" max="1000" bind:value={cfg.pts[key]} onblur={tidy} /></span></label>
+{/snippet}
+
 <style>
   .slf { width: min(100%, 1280px); margin-inline: auto; padding: 0 20px 48px; display: grid; gap: 14px; }
   .head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px 16px; padding: 12px 4px 0; min-height: 64px; }
@@ -402,6 +497,33 @@
   .bigletter span { font-size: 5rem; font-weight: 800; color: #3a2408; line-height: 1; }
   .bigletter.land span { animation: land 0.6s var(--spring-snappy); }
   @keyframes land { from { transform: scale(1.25); } }
+  .setup { display: grid; gap: 4px; text-align: left; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); transition: border-color 0.3s var(--ease-snap), transform 0.16s var(--ease-snap); }
+  .setup:hover { border-color: var(--gold); }
+  .setup:active { transform: scale(0.98); }
+  .setup .sum { font-size: 0.85rem; color: var(--muted); }
+  .cfg { width: min(620px, calc(100% - 24px)); max-height: calc(100dvh - 40px); overflow-y: auto; }
+  .cfg .dlg { display: grid; gap: 18px; padding: 22px; }
+  .cfg header, .cfg footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .cfg h2 { margin: 0; font-size: 1.5rem; letter-spacing: -0.03em; }
+  .cfg section { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .cfg h3 { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 520px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+  .num { display: grid; gap: 6px; font-size: 0.82rem; color: var(--muted); }
+  .box { display: flex; align-items: center; border: 1px solid var(--line-2); border-radius: 12px; background: var(--bg-2); overflow: hidden; transition: border-color 0.3s var(--ease-snap); }
+  .box:focus-within { border-color: var(--gold); }
+  .box input { flex: 1; min-width: 0; width: 100%; border: 0; background: none; color: var(--text); font: 600 1.05rem 'Geist Mono Variable', monospace; text-align: center; padding: 10px 4px; outline: none; appearance: textfield; -moz-appearance: textfield; }
+  .box input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .box em { font-style: normal; color: var(--muted); padding-right: 6px; }
+  .box button { border: 0; background: none; color: var(--text); width: 40px; min-height: 42px; font-size: 1.1rem; transition: background 0.2s var(--ease-snap); }
+  .box button:hover { background: var(--surface-2); }
+  .quick { display: flex; gap: 4px; flex-wrap: wrap; }
+  .quick button, .abc button { border: 1px solid var(--line-2); background: none; color: var(--muted); border-radius: 999px; padding: 8px 12px; font-size: 0.8rem; font-weight: 600; transition: background 0.25s var(--ease-snap), color 0.25s var(--ease-snap); }
+  .quick button.on, .abc button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .abc { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; }
+  .abc button { padding: 7px 0; border-radius: 8px; font-family: 'Geist Mono Variable', monospace; }
+  @media (max-width: 520px) { .abc { grid-template-columns: repeat(7, 1fr); } }
   .joker { min-height: 46px; background: linear-gradient(90deg, #ff7a2a, #e5484d); color: #fff; border: 0; }
   .armed { margin: 0; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, #ff7a2a 22%, transparent); font-weight: 600; font-size: 0.88rem; }
 
