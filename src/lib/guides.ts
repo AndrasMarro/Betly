@@ -225,6 +225,22 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Payout', p: 'The less likely the bet, the higher the multiplier. Chance and multiplier are shown next to the button.' },
     ],
   },
+  words: {
+    de: [
+      { h: 'Ziel', p: 'Errate das Wort mit 5 Buchstaben. Nach jedem Versuch zeigen die Felder, wie nah du bist.' },
+      { h: 'Farben', li: ['Grün: Der Buchstabe steht an der richtigen Stelle.', 'Gold: Der Buchstabe kommt vor, aber an einer anderen Stelle.', 'Grau: Der Buchstabe kommt nicht (mehr) vor. Doppelte Buchstaben zählen nur so oft, wie sie im Wort stehen.', 'Nur echte Wörter zählen; Ä, Ö und Ü sind eigene Buchstaben.'] },
+      { h: 'Tageswort', p: 'Jeden Tag ein neues Wort, für alle gleich, auf Deutsch und auf Englisch. Wer es löst, bekommt Coins: in 1 Versuch 250, in 2 Versuchen 150, dann 100, 60, 40 und 25. Mit «Teilen» kopierst du dein Ergebnis ohne Lösung.' },
+      { h: 'Arcade', li: ['Löse 1, 2, 4 oder 8 Wörter gleichzeitig: Jeder Versuch gilt für alle Felder. Dafür gibt es 6, 7, 9 oder 13 Versuche.', 'Die Tasten zeigen pro Feld einen eigenen Streifen.', 'Mit Einsatz zahlt das Lösen aller Wörter: je mehr Wörter, desto mehr, und jeder übrige Versuch ×1.35 dazu.'] },
+      { h: 'Schwer', p: 'Im schweren Modus musst du jeden gefundenen Hinweis weiterverwenden: Grüne Buchstaben bleiben an ihrer Stelle, goldene müssen wieder vorkommen.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Guess the 5-letter word. After every guess the tiles show how close you are.' },
+      { h: 'Colours', li: ['Green: the letter is in the right spot.', 'Gold: the letter is in the word, but in another spot.', 'Grey: the letter is not (or no more) in the word. Repeated letters count only as often as the word has them.', 'Only real words count.'] },
+      { h: 'Daily word', p: 'A new word every day, the same for everyone, in German and in English. Solving it pays coins: 250 in 1 guess, 150 in 2, then 100, 60, 40 and 25. "Share" copies your result without the answer.' },
+      { h: 'Arcade', li: ['Solve 1, 2, 4 or 8 words at once: every guess counts on all boards. You get 6, 7, 9 or 13 guesses.', 'The keys show one stripe per board.', 'With a stake, solving all words pays: more words pay more, and every guess left over ×1.35 on top.'] },
+      { h: 'Hard', p: 'In hard mode every hint you found must be used again: green letters stay in place, gold ones must appear again.' },
+    ],
+  },
   cups: {
     de: [
       { h: 'Ziel', p: 'Am Anfang siehst du, unter welchem Becher die goldene Kugel liegt. Dann werden die Becher gemischt. Wähle danach den Becher mit der Kugel.' },

@@ -666,3 +666,30 @@ import * as TT from '../src/games/tetris.ts';
   assert(TT.speed(1) === 800 && TT.speed(30) === 60, 'gravity');
   console.log('tetris checks passed, bot lines', total);
 }
+
+// Word game: marks with repeated letters, hard mode, the word lists
+import { judge, hardRule, multFor as wordMult, dailyWord, dayNo } from '../src/games/words.ts';
+import { readFileSync } from 'node:fs';
+{
+  const j = (g: string, a: string) => judge(g, a).map((m) => (m === 'hit' ? 'G' : m === 'near' ? 'Y' : '.')).join('');
+  assert.equal(j('CRANE', 'CRANE'), 'GGGGG');
+  assert.equal(j('SPEED', 'ABIDE'), '..Y.Y', 'one E near, the second E not, D near');
+  assert.equal(j('EERIE', 'THEME'), 'Y...G', 'E: one hit at the end, one near, the rest miss');
+  assert.equal(j('LLAMA', 'HELLO'), 'YY...');
+  assert.equal(j('ÄPFEL', 'APFEL'), '.GGGG', 'umlauts are letters of their own');
+  const rows = [{ w: 'CRANE', m: judge('CRANE', 'CAIRN') }];
+  assert.equal(hardRule('CRIMN'.replace('M', 'A'), rows), '', 'keeps C and uses R, A, N');
+  assert.notEqual(hardRule('BLOOD', rows), '', 'must keep the green C');
+  assert.equal(wordMult(1, 0), 0.6);
+  assert(wordMult(4, 2) > wordMult(4, 1) && wordMult(8, 0) > wordMult(1, 0));
+  for (const lang of ['de', 'en']) {
+    const d = JSON.parse(readFileSync(new URL(`../src/assets/words/${lang}.json`, import.meta.url), 'utf8'));
+    assert(d.sol.length % 5 === 0 && d.valid.length % 5 === 0, 'lists are 5-letter blocks');
+    const sol = d.sol.match(/.{5}/gu), valid = new Set(d.valid.match(/.{5}/gu));
+    assert(sol.length > 800 && new Set(sol).size === sol.length, 'enough solutions, no repeats');
+    assert(sol.every((w: string) => valid.has(w) && /^[A-ZÄÖÜ]{5}$/.test(w)), 'solutions are valid guesses');
+    const l = { sol, valid };
+    assert.notEqual(dailyWord(l, dayNo()), dailyWord(l, dayNo() + 1), 'a new word every day');
+  }
+  console.log('word game checks passed');
+}

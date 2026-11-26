@@ -169,6 +169,12 @@
     </div>
   {:else if id === 'scratch'}
     <div class="tk">{#each ['seven', 'seven', 'seven'] as s, i}<i class:foil={i === 2}><SlotSymbol sym={s} /></i>{/each}</div>
+  {:else if id === 'words'}
+    <div class="wd">
+      {#each [['LICHT', '....n'], ['TRAUM', 'nn...'], ['WORTE', 'hhhhh']] as [w, m], r}
+        <div class="wr">{#each w.split('') as c, i}<i class="w{m[i]}" class:last={r === 2} style="--i:{i}">{c}</i>{/each}</div>
+      {/each}
+    </div>
   {:else if id === 'cups'}
     <div class="cp">
       {#each [0, 1, 2] as i}
@@ -223,6 +229,13 @@
   .ltb b.g { background: radial-gradient(circle at 35% 30%, #fff1b8, #e0a92a 70%, #9a6b10); font-size: 0.66rem; }
   :global(.game:hover) .ltb b, :global(.dailycard:hover) .ltb b { transform: translateY(-14px); }
   :global(.game:hover) .lt .drum, :global(.dailycard:hover) .lt .drum { transform: rotate(-4deg) scale(1.04); }
+  .art.words { background: radial-gradient(ellipse at 50% 0%, #22264a, #0d0f1d 80%); }
+  .wd { display: grid; gap: 6px; }
+  .wr { display: flex; gap: 6px; }
+  .wd i { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 6px; font: 800 1rem 'Geist Variable', sans-serif; font-style: normal; color: #fff; background: #3a3d4a; }
+  .wd i.wn { background: #d9a531; } .wd i.wh { background: #2fa968; }
+  .wd i.last { transition: transform 0.45s var(--ease-snap) calc(var(--i) * 80ms); }
+  :global(.game:hover) .wd i.last, :global(.dailycard:hover) .wd i.last { transform: rotateX(360deg); }
   .art.cups { background: radial-gradient(ellipse at 50% 30%, #5a1830, #22070f 80%); }
   .cp { display: flex; gap: 6px; align-items: end; padding-top: 30px; }
   .cupa { position: relative; width: 74px; aspect-ratio: 100 / 110; }
