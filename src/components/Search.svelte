@@ -34,7 +34,9 @@
   }
   function global(e: KeyboardEvent) {
     const typing = (e.target as HTMLElement).closest('input, textarea, select, [contenteditable]');
-    if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
+    // F as well, except at the poker tables where F folds
+    const f = (e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey && !/^#\/(holdem|threecard)/.test(location.hash);
+    if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || ((e.key === '/' || f) && !typing)) {
       e.preventDefault();
       viaKeys = true;
       ui.search = true;

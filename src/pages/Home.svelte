@@ -2,6 +2,7 @@
   import Wheel from '../components/Wheel.svelte';
   import GameSection from '../components/GameSection.svelte';
   import DailyCard from '../components/DailyCard.svelte';
+  import YourGames from '../components/YourGames.svelte';
   import TodayStrip from '../components/TodayStrip.svelte';
   import { GAMES, byId, matches, score, gameName, href, type Game } from '../lib/games';
   import { dailyGame, dailyClassic } from '../lib/daily';
@@ -70,7 +71,7 @@
   </div>
   {#if !q}
     <div class="dailies">{#each dailies as g (g.id)}<DailyCard {g} />{/each}</div>
-    <TodayStrip />
+    <TodayStrip /><YourGames />
     <div class="gap"></div>
   {/if}
   {#if filter === 'party'}

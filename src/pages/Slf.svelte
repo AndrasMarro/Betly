@@ -298,10 +298,21 @@
       {#if share.phase === 'lobby' || share.phase === 'end'}
         <div class="field">{L('Dein Einsatz im Topf', 'Your stake in the pot')}<BetInput bind:value={bet} /></div>
         {#if isHost}
-          <button class="setup" onclick={() => (setupOpen = true)}>
-            <span class="eyebrow">⚙ {L('Einstellungen', 'Settings')}</span>
-            <span class="sum">{cfg.rounds} {L('Runden', 'rounds')} · {cfg.time}s · {cfg.stop ? (cfg.grace ? L(`Stopp +${cfg.grace}s`, `stop +${cfg.grace}s`) : L('Stopp: sofort', 'stop: instant')) : L('ohne Stopp', 'no stop')} · {cfg.jokers} Joker · {cfg.bots} Bots</span>
-          </button>
+          <div class="quickset">
+            <div class="qhead"><span class="eyebrow">{L('Einstellungen', 'Settings')}</span>
+              <button class="gear" onclick={() => (setupOpen = true)} aria-label={L('Alle Einstellungen', 'All settings')} title={L('Alle Einstellungen', 'All settings')}>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.7 7.7 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4L10.7 6a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.7 7.7 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.3 2.5h4l.3-2.5c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+              </button>
+            </div>
+            <div class="qgrid">
+              {@render num(L('Runden', 'Rounds'), 'rounds', 1, 26, '')}
+              {@render num(L('Bots', 'Bots'), 'bots', 0, 5, '')}
+            </div>
+            <div class="seg" role="radiogroup" aria-label={L('Zeit pro Runde', 'Time per round')}>
+              {#each [60, 90, 120, 180] as s2}<button role="radio" aria-checked={cfg.time === s2} class:on={cfg.time === s2} onclick={() => (cfg.time = s2)}>{s2}s</button>{/each}
+            </div>
+            <label class="tog"><input type="checkbox" checked={cfg.stop && cfg.grace === 0} onchange={(e) => { const on = e.currentTarget.checked; cfg.stop = true; cfg.grace = on ? 0 : 10; }} /> {L('Bei Stopp sofort abgeben', 'Hand in at once on stop')}</label>
+          </div>
           <button class="btn primary big" disabled={cats.length < 3 || lobby.length < 2 || bet > wallet.balance} onclick={startGame}>{lobby.length < 2 ? L('Bot oder Freund dazunehmen', 'Add a bot or a friend') : share.phase === 'end' ? L('Neues Spiel', 'New game') : 'Start'}</button>
         {:else}<p class="muted small">{L('Der Gastgeber stellt ein und startet.', 'The host sets up and starts.')}</p>{/if}
       {:else}
@@ -497,10 +508,19 @@
   .bigletter span { font-size: 5rem; font-weight: 800; color: #3a2408; line-height: 1; }
   .bigletter.land span { animation: land 0.6s var(--spring-snappy); }
   @keyframes land { from { transform: scale(1.25); } }
-  .setup { display: grid; gap: 4px; text-align: left; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); transition: border-color 0.3s var(--ease-snap), transform 0.16s var(--ease-snap); }
+  .quickset { display: grid; gap: 10px; padding: 12px; border-radius: 18px; border: 1px solid var(--line-2); background: var(--surface-2); }
+  .qhead { display: flex; align-items: center; justify-content: space-between; }
+  .gear { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--text); transition: transform 0.5s var(--spring-snappy), border-color 0.3s var(--ease-snap); }
+  .gear:hover { transform: rotate(60deg); border-color: var(--gold); }
+  .gear:active { transform: rotate(60deg) scale(0.92); }
+  .qgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 3px; border-radius: 12px; background: var(--bg-2); }
+  .seg button { border: 0; background: none; color: var(--muted); border-radius: 9px; padding: 7px 0; font: 600 0.8rem 'Geist Mono Variable', monospace; transition: background 0.25s var(--ease-snap), color 0.25s var(--ease-snap); }
+  .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .tog { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
+  .tog input { accent-color: var(--gold); width: 16px; height: 16px; }
   .setup:hover { border-color: var(--gold); }
   .setup:active { transform: scale(0.98); }
-  .setup .sum { font-size: 0.85rem; color: var(--muted); }
   .cfg { width: min(620px, calc(100% - 24px)); max-height: calc(100dvh - 40px); overflow-y: auto; }
   .cfg .dlg { display: grid; gap: 18px; padding: 22px; }
   .cfg header, .cfg footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; }

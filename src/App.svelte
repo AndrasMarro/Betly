@@ -6,11 +6,14 @@
   let tamperNote = $state(tampered);
   import { t } from './lib/i18n';
   import { byId } from './lib/games';
+  import { visit } from './lib/mine.svelte';
+  import { VERSION } from './lib/version';
   import { menuMusic, setVolumes } from './lib/sfx';
   import { account, hasSession } from './lib/account.svelte';
   let avatarOk = $state(true);
 
   let hash = $state(location.hash);
+  visit(location.hash.slice(2).split(/[?/]/)[0]);
   const path = $derived(hash.slice(1).split('?')[0] || '/');
   const [section, arg] = $derived(path.split('/').filter(Boolean));
 
@@ -66,7 +69,7 @@
     }
     const prev = hash.split('?')[0];
     hash = location.hash;
-    if (prev !== hash.split('?')[0]) scrollTo(0, 0);
+    if (prev !== hash.split('?')[0]) { scrollTo(0, 0); visit(hash.slice(2).split(/[?/]/)[0]); }
   }
 
   let now = $state(Date.now());
@@ -160,6 +163,7 @@
       </nav>
     </div>
     <p>{t('footer.note')}</p>
+    <p class="ver mono">Version {VERSION} - Andras Marro</p>
     <details class="help">
       <summary>{t('footer.helpTitle')}</summary>
       <p class="muted">{t('footer.helpText')}</p>
@@ -221,6 +225,9 @@
   .foot nav a { color: var(--muted); text-decoration: none; }
   .foot nav a:hover { color: var(--text); }
   .foot p { margin: 4px 0; }
+  /* only for those who look closely */
+  .foot .ver { margin-top: 14px; font-size: 0.68rem; letter-spacing: 0.06em; color: var(--muted); opacity: 0.35; transition: opacity 0.4s var(--ease-snap); }
+  .foot .ver:hover { opacity: 0.8; }
   .muted { color: var(--muted); }
   .help { margin-top: 6px; color: var(--muted); }
   .help summary { cursor: pointer; width: fit-content; list-style: none; display: inline-flex; align-items: center; gap: 6px; }

@@ -4,6 +4,7 @@
   import { GAMES, gameName, href, byId, matches, type Cat, type Game } from '../lib/games';
   import { dailyGame, dailyClassic } from '../lib/daily';
   import { t, type Key } from '../lib/i18n';
+  import FavButton from './FavButton.svelte';
   // q: search text; daily: show this category's game of the day on top (the home page shows both together instead)
   // party: only the games to play together, from both categories
   let { cat, title = true, q = '', daily = true, party = false }: { cat: Cat; title?: boolean; q?: string; daily?: boolean; party?: boolean } = $props();
@@ -33,15 +34,19 @@
     {#if grp.k}<h3 class="grp eyebrow">{t(('group.' + grp.k) as Key)}</h3>{/if}
     <div class="grid">
       {#each grp.games as g, i (g.id)}
-        <a class="game rise" class:isdaily={g.id === today?.id} style="--i:{Math.min(i, 6)}" href={href(g)}>
+        <div class="slot rise" style="--i:{Math.min(i, 6)}">
+        <a class="game" class:isdaily={g.id === today?.id} href={href(g)}>
           <div class="art"><GameArt id={g.id} /></div>
           {#if g.party}<span class="pty" title={t('party.badge')}>👥</span>{/if}
+          {#if g.id === today?.id}<span class="dbadge mono">Daily +20 %</span>{/if}
           <div class="txt">
             <h3>{gameName(g)}</h3>
             <p>{t(('game.' + g.id) as Key)}</p>
           </div>
           <span class="arrow" aria-hidden="true">→</span>
         </a>
+        <span class="fav" class:pty2={g.party}><FavButton id={g.id} /></span>
+        </div>
       {/each}
     </div>
   {/each}
@@ -56,8 +61,18 @@
 {/if}
 
 <style>
+  .slot { position: relative; display: grid; }
+  .fav { position: absolute; top: 14px; right: 14px; z-index: 3; }
+  .fav.pty2 { right: 54px; }
+  .fav { transition: transform 0.4s var(--ease-snap); }
+  .slot:hover .fav { transform: translateY(-4px); }
   .pty { position: absolute; top: 14px; right: 14px; z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,.45); backdrop-filter: blur(6px); font-size: 0.85rem; }
-  .game.isdaily { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 60%, transparent); }
+  /* the game of the day: gold ring drawn above the art, a soft glow and a badge */
+  .game.isdaily { border-color: transparent; box-shadow: 0 18px 50px -24px color-mix(in srgb, var(--gold) 70%, transparent); }
+  .game.isdaily::after { content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--gold) 75%, transparent); }
+  .dbadge { position: absolute; top: 14px; left: 14px; z-index: 1; padding: 5px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: #2b1d05; background: linear-gradient(135deg, #f6dc8f, #d9a93f); box-shadow: 0 4px 14px rgba(0,0,0,.35); animation: glint 3.2s var(--ease-snap) infinite; }
+  @keyframes glint { 0%, 80%, 100% { filter: brightness(1); } 88% { filter: brightness(1.35); } }
+  @media (prefers-reduced-motion: reduce) { .dbadge { animation: none; } }
   .grp { margin: 26px 0 12px; font: 500 0.72rem/1 'Geist Mono Variable', monospace; letter-spacing: 0.14em; }
   .grp:first-of-type { margin-top: 0; }
   .sec { padding-top: 24px; scroll-margin-top: calc(var(--nav-h) + 12px); }
@@ -66,7 +81,7 @@
   .sh p:last-child { margin: 0; color: var(--muted); max-width: 46ch; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
   .game {
-    position: relative; display: grid; grid-template-rows: 220px auto; text-decoration: none; border-radius: 28px; overflow: hidden;
+    position: relative; display: grid; grid-template-rows: 220px auto; text-decoration: none; border-radius: 28px; overflow: hidden; isolation: isolate; clip-path: inset(0 round 28px);
     background: var(--surface); border: 1px solid var(--line); transition: transform 0.4s var(--ease-snap), border-color 0.3s var(--ease-snap);
   }
   .game:hover { transform: translateY(-4px); border-color: var(--line-2); }

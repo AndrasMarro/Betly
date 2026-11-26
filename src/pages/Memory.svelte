@@ -18,7 +18,7 @@
 
   const L = (de: string, en: string) => (settings.lang === 'de' ? de : en);
   const saved = (() => { try { return JSON.parse(localStorage.getItem('betly:memory') || '{}'); } catch { return {}; } })();
-  let theme = $state<Theme>(saved.theme ?? 'symbols');
+  let theme = $state<Theme>(saved.theme === 'cards' ? 'cards' : 'symbols');
   let size = $state<number>(saved.size ?? 16);
   let diff = $state<Diff>(saved.diff ?? 'normal');
   let botCount = $state<number>(saved.bots ?? 1);
@@ -254,7 +254,7 @@
         {#if isHost}
           <div class="field">{L('Motive', 'Pictures')}
             <div class="themes">
-              {#each [['symbols', L('Symbole', 'Symbols'), 11], ['cards', L('Karten', 'Cards'), 13], ['jass', 'Jass', 17], ['arcade', 'Arcade', 9]] as [th, lb, f]}
+              {#each [['symbols', L('Symbole', 'Symbols'), 11], ['cards', L('Karten', 'Cards'), 13]] as [th, lb, f]}
                 <button class:on={theme === th} onclick={() => (theme = th as Theme)}><span class="mini"><MemoryFace theme={th as Theme} face={f as number} /></span>{lb}</button>
               {/each}
             </div>
@@ -352,7 +352,7 @@
   .seg { display: flex; border: 1px solid var(--line-2); border-radius: 999px; padding: 3px; gap: 3px; }
   .seg button { flex: 1; border: 0; background: none; min-height: 34px; border-radius: 999px; color: var(--muted); font-size: 0.82rem; font-weight: 600; transition: background 0.3s var(--ease-snap), color 0.3s var(--ease-snap); }
   .seg button.on { background: var(--text); color: var(--bg); }
-  .themes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .themes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .themes button { display: grid; justify-items: center; gap: 4px; padding: 6px 2px 8px; border-radius: 12px; border: 1px solid var(--line-2); background: none; color: var(--muted); font-size: 0.7rem; transition: border-color 0.3s var(--ease-snap), transform 0.16s var(--ease-snap); }
   .themes button:active { transform: scale(0.97); }
   .themes button.on { border-color: var(--gold); color: var(--text); background: color-mix(in srgb, var(--gold) 12%, transparent); }
@@ -384,15 +384,20 @@
     transition: transform 0.7s var(--spring-smooth);
   }
   .card:disabled { cursor: default; }
-  .inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.55s var(--spring-smooth); }
-  .card.up .inner { transform: rotateY(180deg); }
-  .back, .front { position: absolute; inset: 0; border-radius: 10px; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: grid; place-items: center; overflow: hidden; }
+  /* the flip is drawn flat (squeeze, swap the side at the middle, open up): 3D layers left thin seams over the board */
+  .inner { position: absolute; inset: 0; transition: transform 0.3s var(--ease-snap); animation: flipdown 0.34s var(--ease-snap); }
+  .card.up .inner { animation-name: flipup; }
+  @keyframes flipup { 50% { transform: scaleX(0) translateY(-4px); } }
+  @keyframes flipdown { 50% { transform: scaleX(0) translateY(-4px); } }
+  .back, .front { position: absolute; inset: 0; border-radius: 10px; display: grid; place-items: center; overflow: hidden; transition: visibility 0s linear 0.17s; }
+  .front, .card.up .back { visibility: hidden; }
+  .card.up .front { visibility: visible; }
   .back {
     background: repeating-linear-gradient(45deg, rgba(255,255,255,.06) 0 6px, transparent 6px 12px), linear-gradient(160deg, #8e1b22, #4e0b10);
     box-shadow: inset 0 0 0 2px rgba(232,196,120,.7), inset 0 0 0 5px rgba(0,0,0,.2), 0 6px 12px -6px rgba(0,0,0,.6);
   }
   .logo { width: 34%; aspect-ratio: 1; border-radius: 50%; border: 3px solid rgba(243,212,136,.85); box-shadow: inset 0 0 0 4px rgba(0,0,0,.2), inset 0 0 0 9px rgba(243,212,136,.85); }
-  .front { transform: rotateY(180deg); background: #fbf6e8; box-shadow: inset 0 0 0 2px rgba(232,196,120,.6), 0 6px 12px -6px rgba(0,0,0,.6); }
+  .front { background: #fbf6e8; box-shadow: inset 0 0 0 2px rgba(232,196,120,.6), 0 6px 12px -6px rgba(0,0,0,.6); }
   @media (hover: hover) and (pointer: fine) { .card.hint:hover .inner { transform: translateY(-3px); } }
   .card:active:not(:disabled) .inner { transform: scale(0.97); }
   /* found pairs: a coloured frame of the finder; no opacity on the card itself, that would flatten the 3D flip */
@@ -406,5 +411,5 @@
   .fan { display: flex; }
   .fan .card { position: relative; width: 84px; height: 112px; margin: 0 -12px; transform: rotate(calc((var(--i) - 1.5) * 9deg)) translateY(calc(var(--i) * (3 - var(--i)) * -4px)); animation: deal 0.6s var(--spring-snappy) calc(var(--i) * 90ms) backwards; }
   @keyframes deal { from { opacity: 0; transform: translateY(20px) rotate(0); } }
-  @media (prefers-reduced-motion: reduce) { .inner, .card { transition-duration: 0.01s; } .fan .card, .card.taken .front, .status .turn.mine { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .inner, .card { transition-duration: 0.01s; animation: none; } .back, .front { transition: none; } .fan .card, .card.taken .front, .status .turn.mine { animation: none; } }
 </style>

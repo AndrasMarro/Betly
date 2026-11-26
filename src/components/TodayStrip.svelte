@@ -64,7 +64,7 @@
   .today { display: grid; gap: 12px; margin-top: 18px; }
   header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   h2 { margin: 0; font-size: 1.4rem; letter-spacing: -0.03em; }
-  .row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(170px, 1fr); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; scrollbar-width: thin; }
+  .row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(170px, 1fr); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px 2px 8px; margin: -8px -2px 0; scrollbar-width: thin; }
   .tile {
     position: relative; display: grid; align-content: start; gap: 3px; min-height: 118px; padding: 14px; border-radius: 20px; text-align: left; text-decoration: none; color: var(--text);
     background: var(--surface); border: 1px solid var(--line); scroll-snap-align: start; font: inherit;

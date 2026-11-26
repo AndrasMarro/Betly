@@ -1,17 +1,13 @@
 // Memory: turn two cards, keep pairs. Faces are numbers into a theme's list of pictures (see Memory.svelte).
-export type Theme = 'symbols' | 'cards' | 'jass' | 'arcade';
+export type Theme = 'symbols' | 'cards';
 export const SIZES = [
   { n: 12, cols: 4 }, { n: 16, cols: 4 }, { n: 24, cols: 6 }, { n: 36, cols: 6 },
 ] as const;
 export type Diff = 'easy' | 'normal' | 'hard';
 
 export const SYMBOLS = ['cherry', 'lemon', 'plum', 'bell', 'bar', 'seven', 'amethyst', 'emerald', 'sapphire', 'ruby', 'crown', 'star', 'clover', 'coin', 'horseshoe', 'hat', 'pot', 'comet', 'moon', 'planet', 'sun', 'ufo', 'wild'];
-/** The arcade set: only the Crossy Run world, so every card is in the same blocky style. */
-export const ARCADE = ['cr-tree', 'cr-rock', 'cr-coin', 'cr-flag', 'cr-pad', 'cr-duck', 'cr-train', 'cr-signal', 'cr-car', 'cr-car1', 'cr-car2', 'cr-car3', 'cr-car4', 'cr-car5', 'cr-taxi', 'cr-police', 'cr-fire', 'cr-truck0', 'cr-truck2', 'cr-truck4'];
-/** How many different pictures a theme has. */
-/** Playing cards: always the same picture deck, ranks 6 to ace (the scans of 2 to 5 are rebuilt and less clean). */
-export const CARD_RANKS = [1, 6, 7, 8, 9, 10, 11, 12, 13];
-export const FACES: Record<Theme, number> = { symbols: SYMBOLS.length, cards: CARD_RANKS.length * 4, jass: 36, arcade: ARCADE.length };
+/** Playing cards: the same 52 cards as at the Blackjack table. */
+export const FACES: Record<Theme, number> = { symbols: SYMBOLS.length, cards: 52 };
 
 /** Shuffle 2 × pairs cards with different faces drawn from the theme. */
 export function deal(pairs: number, theme: Theme, rnd = Math.random) {
