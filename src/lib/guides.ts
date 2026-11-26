@@ -241,6 +241,20 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Hard', p: 'In hard mode every hint you found must be used again: green letters stay in place, gold ones must appear again.' },
     ],
   },
+  memory: {
+    de: [
+      { h: 'Ziel', p: 'Decke pro Zug zwei Karten auf. Zeigen sie dasselbe Bild, gehört dir das Paar; sonst werden sie wieder umgedreht. Merk dir, wo was liegt.' },
+      { h: 'Einstellungen', li: ['Motive: Slot-Symbole, Spielkarten, Jass-Karten oder Arcade-Figuren.', 'Grösse: 12, 16, 24 oder 36 Karten.', 'Leicht: Am Anfang liegen alle Karten kurz offen. Schwer: Nach jedem zweiten Fehlgriff tauschen zwei verdeckte Karten sichtbar den Platz.'] },
+      { h: 'Solo', p: 'Räume das Brett in möglichst wenigen Zügen ab. Mit Einsatz zahlt das Verhältnis Züge pro Paar: unter 1.3 am meisten, ab etwa 2.6 nichts mehr. Grössere Bretter und Schwer zahlen mehr, Leicht weniger.' },
+      { h: 'Duell', li: ['Abwechselnd gegen Bots, Leute am selben Gerät oder Freunde im Raum. Wer ein Paar findet, ist nochmal dran.', 'Jeder legt seinen eigenen Einsatz in den Topf, alle sehen ihn. Wer die meisten Paare hat, gewinnt.', 'Wie bei Poker-Side-Pots kann man von jedem nur so viel gewinnen, wie man selbst gesetzt hat. Wer wenig setzt, riskiert wenig, gewinnt aber auch wenig.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'Turn two cards per turn. If they show the same picture the pair is yours; otherwise they turn back. Remember where everything is.' },
+      { h: 'Settings', li: ['Pictures: slot symbols, playing cards, Jass cards or arcade characters.', 'Size: 12, 16, 24 or 36 cards.', 'Easy: all cards are shown briefly at the start. Hard: after every second miss two hidden cards visibly swap places.'] },
+      { h: 'Solo', p: 'Clear the board in as few turns as possible. With a stake, turns per pair decide: under 1.3 pays most, from about 2.6 nothing. Bigger boards and hard pay more, easy less.' },
+      { h: 'Duel', li: ['Take turns against bots, people at the same device or friends in a room. Find a pair and you go again.', 'Everyone puts their own stake in the pot, visible to all. Most pairs wins.', 'Like poker side pots you can win from each player only as much as you staked yourself. Bet small, risk little, win little.'] },
+    ],
+  },
   cups: {
     de: [
       { h: 'Ziel', p: 'Am Anfang siehst du, unter welchem Becher die goldene Kugel liegt. Dann werden die Becher gemischt. Wähle danach den Becher mit der Kugel.' },

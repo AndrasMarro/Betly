@@ -42,6 +42,7 @@ export const GAMES: Game[] = [
   { id: 'cups', live: true, name: ['Hütchenspiel', 'Shell Game'], cat: 'arcade', tags: 'becher hütchen kugel ball shell' },
   { id: 'g2048', live: true, name: '2048', cat: 'arcade', tags: 'zahlen puzzle kacheln tiles' },
   { id: 'words', live: true, name: ['Wortjagd', 'Word Hunt'], cat: 'arcade', tags: 'wort word rätsel puzzle buchstaben letters täglich daily raten guess' },
+  { id: 'memory', live: true, name: 'Memory', cat: 'arcade', party: true, tags: 'paare pairs karten cards gedächtnis concentration' },
   { id: 'tetris', live: true, name: 'Tetris', cat: 'arcade', party: true, tags: 'blöcke blocks steine puzzle versus' },
 ];
 

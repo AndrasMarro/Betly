@@ -175,6 +175,8 @@
         <div class="wr">{#each w.split('') as c, i}<i class="w{m[i]}" class:last={r === 2} style="--i:{i}">{c}</i>{/each}</div>
       {/each}
     </div>
+  {:else if id === 'memory'}
+    <div class="mem">{#each ['', 'seven', '', 'cherry', 'seven', '', 'bell', '', 'cherry', '', '', 'bell'] as sym, i}<i class:open={!!sym} class:late={sym === 'bell'} style="--i:{i}"><b class="bk"></b><b class="fr">{#if sym}<SlotSymbol {sym} />{/if}</b></i>{/each}</div>
   {:else if id === 'cups'}
     <div class="cp">
       {#each [0, 1, 2] as i}
@@ -236,6 +238,15 @@
   .wd i.wn { background: #d9a531; } .wd i.wh { background: #2fa968; }
   .wd i.last { transition: transform 0.45s var(--ease-snap) calc(var(--i) * 80ms); }
   :global(.game:hover) .wd i.last, :global(.dailycard:hover) .wd i.last { transform: rotateX(360deg); }
+  .art.memory { background: radial-gradient(ellipse at 50% 30%, #1c4d3a, #0a2219 80%); }
+  .mem { display: grid; grid-template-columns: repeat(4, 42px); gap: 6px; perspective: 600px; }
+  .mem i { position: relative; height: 54px; transform-style: preserve-3d; transition: transform 0.55s var(--spring-smooth) calc(var(--i) * 30ms); }
+  .mem i.open:not(.late) { transform: rotateY(180deg); }
+  :global(.game:hover) .mem i.late, :global(.dailycard:hover) .mem i.late { transform: rotateY(180deg); }
+  .mem b { position: absolute; inset: 0; border-radius: 6px; backface-visibility: hidden; display: grid; place-items: center; }
+  .mem .bk { background: repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 4px, transparent 4px 8px), linear-gradient(160deg, #8e1b22, #4e0b10); box-shadow: inset 0 0 0 1.5px rgba(232,196,120,.7); }
+  .mem .fr { transform: rotateY(180deg); background: #fbf6e8; padding: 6px; box-shadow: inset 0 0 0 1.5px rgba(232,196,120,.7); }
+  .mem .fr :global(svg) { width: 100%; height: 100%; }
   .art.cups { background: radial-gradient(ellipse at 50% 30%, #5a1830, #22070f 80%); }
   .cp { display: flex; gap: 6px; align-items: end; padding-top: 30px; }
   .cupa { position: relative; width: 74px; aspect-ratio: 100 / 110; }

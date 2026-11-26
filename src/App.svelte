@@ -45,6 +45,7 @@
     g2048: () => import('./pages/Game2048.svelte'),
     tetris: () => import('./pages/Tetris.svelte'),
     words: () => import('./pages/Words.svelte'),
+    memory: () => import('./pages/Memory.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),
     soon: () => import('./pages/Soon.svelte'),

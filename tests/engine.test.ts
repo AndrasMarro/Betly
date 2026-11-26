@@ -693,3 +693,55 @@ import { readFileSync } from 'node:fs';
   }
   console.log('word game checks passed');
 }
+
+// Party pot: side pots by stake, ties share, nothing is created or lost
+import { sidePots, ranks as potRanks } from '../src/games/pot.ts';
+{
+  const p = sidePots([{ id: 'a', stake: 10, rank: 1 }, { id: 'b', stake: 50, rank: 2 }, { id: 'c', stake: 50, rank: 3 }]);
+  assert.deepEqual(p, { a: 30, b: 80, c: 0 }, 'a can only win 10 from each; the rest goes to b');
+  const q = sidePots([{ id: 'a', stake: 100, rank: 1 }, { id: 'b', stake: 20, rank: 2 }, { id: 'c', stake: 0, rank: 3 }]);
+  assert.deepEqual(q, { a: 120, b: 0, c: 0 }, 'a zero stake neither pays nor wins');
+  const t = sidePots([{ id: 'a', stake: 25, rank: 1 }, { id: 'b', stake: 25, rank: 1 }, { id: 'c', stake: 25, rank: 3 }]);
+  assert.equal(t.a + t.b, 75, 'a tie splits');
+  for (let k = 0; k < 300; k++) {
+    const seats = Array.from({ length: 2 + (k % 5) }, (_, i) => ({ id: 'p' + i, stake: [0, 5, 10, 33.33, 100][(k + i * 3) % 5], rank: 1 + ((k * 7 + i) % 3) }));
+    const out = sidePots(seats);
+    const inn = seats.reduce((a, s) => a + s.stake, 0), back = Object.values(out).reduce((a, x) => a + x, 0);
+    assert(Math.abs(inn - back) < 0.011, 'pot is conserved');
+    for (const s of seats) assert(out[s.id] <= s.stake * seats.length + 0.01, 'nobody wins more than their stake from each');
+  }
+  assert.deepEqual(potRanks([{ id: 'x', score: 5 }, { id: 'y', score: 7 }, { id: 'z', score: 5 }]), { y: 1, x: 2, z: 2 });
+  console.log('party pot checks passed');
+}
+
+// Memory: deals pairs, a perfect brain clears the board quickly, a forgetful one takes longer
+import { deal as memDeal, Brain, soloMult, FACES } from '../src/games/memory.ts';
+{
+  for (const th of ['symbols', 'cards', 'jass', 'arcade'] as const) {
+    assert(FACES[th] >= 18, th + ' has enough faces for 36 cards');
+    const f = memDeal(18, th);
+    const count: Record<number, number> = {};
+    for (const x of f) count[x] = (count[x] ?? 0) + 1;
+    assert(f.length === 36 && Object.values(count).every((c) => c === 2), 'every face exactly twice');
+  }
+  const play = (forget: number) => {
+    let turns = 0, total = 0;
+    for (let g = 0; g < 200; g++) {
+      const faces = memDeal(8, 'symbols'), b = new Brain(forget);
+      let open = faces.map((_, i) => i);
+      turns = 0;
+      while (open.length) {
+        turns++;
+        const a = b.first(open); b.see(a, faces[a]);
+        const c = b.second(open, a, faces[a]); b.see(c, faces[c]);
+        if (faces[a] === faces[c]) { open = open.filter((p) => p !== a && p !== c); b.drop(a); b.drop(c); }
+      }
+      total += turns;
+    }
+    return total / 200;
+  };
+  const good = play(0), bad = play(0.6);
+  assert(good < 14 && bad > good, `perfect memory ${good.toFixed(1)} turns, forgetful ${bad.toFixed(1)}`);
+  assert(soloMult(8, 8, 16, 'normal') > soloMult(14, 8, 16, 'normal') && soloMult(30, 8, 16, 'normal') === 0);
+  console.log('memory checks passed', good.toFixed(1), bad.toFixed(1));
+}
