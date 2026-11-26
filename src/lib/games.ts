@@ -44,6 +44,7 @@ export const GAMES: Game[] = [
   { id: 'words', live: true, name: ['Wortjagd', 'Word Hunt'], cat: 'arcade', tags: 'wort word rätsel puzzle buchstaben letters täglich daily raten guess' },
   { id: 'memory', live: true, name: 'Memory', cat: 'arcade', party: true, tags: 'paare pairs karten cards gedächtnis concentration' },
   { id: 'ships', live: true, name: ['Schiffe versenken', 'Battleships'], cat: 'arcade', party: true, tags: 'schiffe battleship seeschlacht flotte fleet 2v2 team' },
+  { id: 'slf', live: true, name: ['Stadt Land Fluss', 'Categories'], cat: 'arcade', party: true, tags: 'stadt land fluss kategorien categories buchstabe letter wörter words' },
   { id: 'tetris', live: true, name: 'Tetris', cat: 'arcade', party: true, tags: 'blöcke blocks steine puzzle versus' },
 ];
 

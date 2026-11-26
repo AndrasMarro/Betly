@@ -771,3 +771,30 @@ import * as SH from '../src/games/ships.ts';
   assert.deepEqual(SH.alive(shots), [5, 4, 3, 3], 'the sunk 2 is no longer alive');
   console.log('battleship checks passed', e.toFixed(0), m.toFixed(0), h.toFixed(0));
 }
+
+// Stadt Land Fluss: scoring, letters with umlauts, votes, bots
+import * as SLF from '../src/games/slf.ts';
+{
+  assert(SLF.fits('Österreich', 'O') && SLF.fits('  Ägypten', 'A') && !SLF.fits('Berlin', 'A'), 'first letter, umlauts count as their base');
+  const ans = { a: ['Bern', 'Belgien', 'Bode'], b: ['bern', 'Brasilien', ''], c: ['Basel', 'Belgien', 'Rhein'] };
+  const pts = SLF.scoreRound(3, 'B', ans, () => false);
+  assert.deepEqual(pts, { a: [5, 5, 20], b: [5, 10, 0], c: [10, 5, 0] }, 'same 5, unique 10, only one 20, wrong letter 0');
+  const voted = SLF.scoreRound(3, 'B', ans, (id, ci) => id === 'a' && ci === 2);
+  assert.equal(voted.a[2], 0, 'voted down');
+  assert(SLF.isRejected(1, 1) && !SLF.isRejected(1, 2) && SLF.isRejected(2, 3), 'more than half of the others');
+  for (const lang of ['de', 'en'] as const) for (const c of SLF.CLASSIC) {
+    const words = SLF.botWords(lang, c.k);
+    assert(words.length >= 30, `${lang} ${c.k} has words`);
+    const missing = SLF.letters(false).filter((l) => !words.some((w) => SLF.fits(w, l)));
+    assert(missing.length <= 9, `${lang} ${c.k} covers most letters (missing ${missing.join('')})`);
+    for (const w of words) assert(/^[A-Za-zÄÖÜäöüéè' .-]+$/.test(w), 'clean word ' + w);
+  }
+  const b = SLF.botAnswers(SLF.defaultCats('de'), 'S', 'de', 'hard', () => 0.1);
+  assert(b.every((w) => !w || SLF.fits(w, 'S')) && b.filter(Boolean).length >= 4, 'bots answer with the letter');
+  console.log('stadt land fluss checks passed');
+}
+// Stadt Land Fluss: what bots vote down
+{
+  assert(SLF.looksFake('lab0') && SLF.looksFake('Ixyz') && SLF.looksFake('Ksdfgh') && SLF.looksFake('Aaa'), 'mash is fake');
+  assert(!SLF.looksFake('Istanbul') && !SLF.looksFake('Ägypten') && !SLF.looksFake('Rio de Janeiro') && !SLF.looksFake(''), 'real words pass');
+}

@@ -182,6 +182,11 @@
       {#each Array(36) as _, i}<i class:w={[3, 8, 22, 26, 31].includes(i)} class:h={[13, 14].includes(i)} class:x={i === 25}></i>{/each}
       <span class="hl" style="--x:1; --y:2; --len:3"></span><span class="hl v" style="--x:4; --y:0; --len:2"></span>
     </div>
+  {:else if id === 'slf'}
+    <div class="sheet">
+      <span class="lt2 mono">B</span>
+      {#each [['Stadt', 'Bern'], ['Land', 'Brasilien'], ['Fluss', 'Bode']] as [c, w], i}<div class="ln"><small>{c}</small><b style="--i:{i}">{w}</b></div>{/each}
+    </div>
   {:else if id === 'cups'}
     <div class="cp">
       {#each [0, 1, 2] as i}
@@ -261,6 +266,14 @@
   :global(.game:hover) .sea2 i.x::after, :global(.dailycard:hover) .sea2 i.x::after { transform: scale(1.2); }
   .hl { position: absolute; left: calc(var(--x) * 30px + 3px); top: calc(var(--y) * 30px + 4px); width: calc(var(--len) * 30px - 6px); height: 22px; border-radius: 40% 12% 12% 40% / 50%; background: linear-gradient(180deg, #c3ccd8, #7d8796 55%, #555e6c); }
   .hl.v { width: 22px; height: calc(var(--len) * 30px - 6px); left: calc(var(--x) * 30px + 4px); top: calc(var(--y) * 30px + 3px); border-radius: 50% / 40% 40% 12% 12%; background: linear-gradient(90deg, #c3ccd8, #7d8796 55%, #555e6c); }
+  .art.slf { background: radial-gradient(ellipse at 50% 30%, #3a2a5a, #160e24 80%); }
+  .sheet { position: relative; width: 190px; padding: 18px 16px 14px; border-radius: 10px; transform: rotate(-3deg); color: #2b2a3a; display: grid; gap: 6px; box-shadow: 0 16px 30px rgba(0,0,0,.5); transition: transform 0.5s var(--spring-smooth);
+    background: linear-gradient(rgba(70,110,200,.16) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgba(70,110,200,.16) 1px, transparent 1px) 0 0 / 14px 14px, #fbf8ef; }
+  :global(.game:hover) .sheet, :global(.dailycard:hover) .sheet { transform: rotate(0) scale(1.04); }
+  .lt2 { position: absolute; top: -18px; right: -14px; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; font-size: 1.7rem; font-weight: 800; color: #3a2408; background: radial-gradient(circle at 40% 30%, #fff8e1, #f0d48c); box-shadow: inset 0 0 0 2px #c9973f, 0 6px 12px rgba(0,0,0,.4); }
+  .ln { display: grid; border-bottom: 1.5px solid rgba(0,0,0,.12); }
+  .ln small { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: #6b6a78; font-weight: 700; }
+  .ln b { font: italic 600 1.05rem 'Instrument Serif', Georgia, serif; }
   .art.cups { background: radial-gradient(ellipse at 50% 30%, #5a1830, #22070f 80%); }
   .cp { display: flex; gap: 6px; align-items: end; padding-top: 30px; }
   .cupa { position: relative; width: 74px; aspect-ratio: 100 / 110; }

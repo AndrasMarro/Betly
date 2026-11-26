@@ -271,6 +271,22 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Stakes', p: 'Everyone puts their own stake in the pot, visible to all. Like poker side pots you can win from each player only as much as you staked yourself. Team winners share.' },
     ],
   },
+  slf: {
+    de: [
+      { h: 'Ziel', p: 'Ein Buchstabe wird gezogen. Finde für jede Kategorie ein Wort, das damit anfängt, bevor die Zeit abläuft. Wer am Ende die meisten Punkte hat, gewinnt.' },
+      { h: 'Einstellen', li: ['Der Gastgeber wählt die Kategorien: Klassiker auf Deutsch oder Englisch, dazu eigene (3 bis 12).', 'Spiellänge: 3, 5, 8 oder 10 Runden mit 60 bis 180 Sekunden.', 'Mit der Stopp-Taste kann beenden, wer alles ausgefüllt hat: Dann bleiben allen noch 10 Sekunden.', 'Q, X und Y sind nur dabei, wenn man sie einschaltet.'] },
+      { h: 'Punkte', li: ['Einzige gültige Antwort in der Kategorie: 20', 'Eine Antwort, die sonst niemand hat: 10', 'Dieselbe Antwort wie jemand anderes: 5', 'Falscher Anfangsbuchstabe oder leer: 0. Ä zählt als A, Ö als O, Ü als U.'] },
+      { h: 'Abstimmen', p: 'Nach jeder Runde stehen alle Antworten nebeneinander. Passt eine nicht, tippst du auf 👎. Ist mehr als die Hälfte der anderen Spieler dagegen, gibt sie 0 Punkte. Mit «Fertig geprüft» geht es weiter.' },
+      { h: 'Joker und Einsatz', li: ['Einmal pro Spiel kannst du den Joker zünden: Die Runde zählt doppelt. Alle sehen das 🔥.', 'Jeder legt seinen eigenen Einsatz in den Topf. Wie bei Poker-Side-Pots kann man von jedem nur so viel gewinnen, wie man selbst gesetzt hat.', 'Bots kennen Wörter für die klassischen Kategorien und lassen eigene leer.'] },
+    ],
+    en: [
+      { h: 'Goal', p: 'A letter is drawn. Find a word for every category that starts with it before the time runs out. Most points at the end wins.' },
+      { h: 'Setup', li: ['The host picks the categories: classics in German or English, plus your own (3 to 12).', 'Length: 3, 5, 8 or 10 rounds of 60 to 180 seconds.', 'With the stop button whoever has filled everything can end the round: then everyone has 10 seconds left.', 'Q, X and Y only when switched on.'] },
+      { h: 'Points', li: ['The only valid answer in the category: 20', 'An answer nobody else has: 10', 'The same answer as someone else: 5', 'Wrong first letter or empty: 0. Accented letters count as their base letter.'] },
+      { h: 'Voting', p: 'After every round all answers are shown side by side. If one does not fit, tap 👎. If more than half of the other players are against it, it scores 0. "Done checking" moves on.' },
+      { h: 'Joker and stakes', li: ['Once per game you can light the joker: that round counts double. Everyone sees the 🔥.', 'Everyone puts their own stake in the pot. Like poker side pots you can win from each player only as much as you staked yourself.', 'Bots know words for the classic categories and leave your own ones empty.'] },
+    ],
+  },
   cups: {
     de: [
       { h: 'Ziel', p: 'Am Anfang siehst du, unter welchem Becher die goldene Kugel liegt. Dann werden die Becher gemischt. Wähle danach den Becher mit der Kugel.' },

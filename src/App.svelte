@@ -47,6 +47,7 @@
     words: () => import('./pages/Words.svelte'),
     memory: () => import('./pages/Memory.svelte'),
     ships: () => import('./pages/Ships.svelte'),
+    slf: () => import('./pages/Slf.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),
     soon: () => import('./pages/Soon.svelte'),
