@@ -17,7 +17,7 @@
   let mods = $state<Mods>({ ...DEFAULT_MODS, ...saved.mods });
   let paid = $state<boolean>(saved.paid ?? true);
   let bet = $state(10);
-  let mode = $state<'free' | 'daily'>('free');
+  let mode = $state<'free' | 'daily'>(/[?&]daily/.test(location.hash) ? 'daily' : 'free'); // #/snake?daily opens the challenge
   const stored = { free: 0, day: 0, daily: 0, ...saved.best };
   let best = $state<{ free: number; day: number; daily: number }>(stored.day === today() ? stored : { ...stored, day: today(), daily: 0 });
   $effect(() => { try { localStorage.setItem('betly:snake', JSON.stringify({ mods, paid, best })); } catch {} });

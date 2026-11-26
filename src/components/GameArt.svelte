@@ -200,8 +200,8 @@
     <div class="tt">
       {#each [
         '..........', '..........', '..........', '..........', '..........', '....T.....', '...TTT....', '..........',
-        'L.........', 'L.....OO..', 'LL..S.OO.I', 'ZZ.SSJJJ.I', 'GZZSGJIIII', 'GGGGG.GGGG'] as row, y}
-        {#each row.split('') as c, x}<i class="t{c}" class:fall={c === 'T'} style="--x:{x}; --y:{y}"></i>{/each}
+        'L.........', 'L......OO.', 'LLZ...JOOI', 'ZZ.SSJJJ.I', 'GZZSGJIIII', 'GGGGG.GGGG'] as row, y}
+        {#each row.split('') as c, x}<i class="t{c}" class:fall={c === 'T'} class:line={(y === 10 && c !== '.') || (c === 'T' && y === 6)} style="--x:{x}; --y:{y}"></i>{/each}
       {/each}
     </div>
   {/if}
@@ -288,8 +288,11 @@
   .tt i { position: absolute; left: calc(var(--x) * 14px); top: calc(var(--y) * 14px); width: 14px; height: 14px; box-shadow: inset 2px 2px 0 rgba(255,255,255,.35), inset -2px -2px 0 rgba(0,0,0,.3); }
   .tt i.t\. { display: none; }
   .tI { background: #36d6e7; } .tO { background: #f6d23a; } .tT { background: #a35cf0; } .tS { background: #46d36b; } .tZ { background: #ef4b5a; } .tJ { background: #3d7cf0; } .tL { background: #f39a2b; } .tG { background: #6b6f7a; }
-  .tt i.fall { transition: transform 0.8s cubic-bezier(.5, 0, .9, .6); }
+  /* the T drops row by row into its gap and completes a line, which flashes */
+  .tt i.fall { transition: transform 0.6s steps(4, end); }
   :global(.game:hover) .tt i.fall, :global(.dailycard:hover) .tt i.fall { transform: translateY(56px); }
+  :global(.game:hover) .tt i.line, :global(.dailycard:hover) .tt i.line { animation: clear 0.5s var(--ease-snap) 0.65s; }
+  @keyframes clear { 40% { background: #fff8dc; box-shadow: 0 0 10px #fff2b0; } }
   .art.dice { background: #2a1640; }
   .diceimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s var(--spring-smooth); }
   :global(.game:hover) .diceimg, :global(.dailycard:hover) .diceimg { transform: scale(1.08) rotate(-1.5deg); }

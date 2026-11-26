@@ -9,12 +9,16 @@
   let sel = $state(0);
   let viaKeys = false; // opened by keyboard: no animation, speed is the point
   const live = GAMES.filter((g) => g.live);
+  let filter = $state<'all' | 'classic' | 'arcade' | 'party'>('all');
+  const inFilter = (g: Game) => filter === 'all' || (filter === 'party' ? !!g.party : g.cat === filter);
+  // empty query: the quick words, or with a filter set every game in it
   const results = $derived(q.trim()
-    ? live.filter((g) => matches(g, q, t(('game.' + g.id) as Key))).sort((a, b) => score(a, q) - score(b, q) || gameName(a).localeCompare(gameName(b)))
-    : []); // empty query: only the quick words
+    ? live.filter((g) => inFilter(g) && matches(g, q, t(('game.' + g.id) as Key))).sort((a, b) => score(a, q) - score(b, q) || gameName(a).localeCompare(gameName(b)))
+    : filter === 'all' ? [] : live.filter(inFilter).sort((a, b) => gameName(a).localeCompare(gameName(b))));
+  $effect(() => { void filter; sel = 0; });
   $effect(() => { void q; sel = 0; });
   $effect(() => {
-    if (ui.search && !dlg.open) { q = ''; dlg.classList.toggle('instant', viaKeys); dlg.showModal(); input.focus(); }
+    if (ui.search && !dlg.open) { q = ''; filter = 'all'; dlg.classList.toggle('instant', viaKeys); dlg.showModal(); input.focus(); }
     else if (!ui.search && dlg.open) dlg.close();
     viaKeys = false;
   });
@@ -48,7 +52,12 @@
       <input bind:this={input} bind:value={q} onkeydown={key} placeholder={t('search.hint')} aria-label={t('search.title')} autocomplete="off" spellcheck="false" />
       <kbd>Esc</kbd>
     </label>
-    {#if q.trim()}
+    <div class="chips" role="tablist">
+      {#each [['all', t('party.all')], ['classic', 'Classic'], ['arcade', 'Arcade'], ['party', '👥 ' + t('party.title')]] as [k, lb]}
+        <button role="tab" aria-selected={filter === k} class:on={filter === k} onclick={() => { filter = k as typeof filter; input.focus(); }}>{lb}</button>
+      {/each}
+    </div>
+    {#if results.length || q.trim()}
       {#if results.length}
         <ul role="listbox" aria-label={t('search.title')}>
           {#each results as g, i (g.id)}
@@ -80,7 +89,7 @@
   .field { display: flex; align-items: center; gap: 10px; padding: 0 16px; min-height: 58px; border-bottom: 1px solid var(--line); color: var(--muted); }
   .field input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 1.05rem; outline: none; }
   kbd { font: 600 0.68rem 'Geist Mono Variable', monospace; padding: 3px 6px; border-radius: 6px; background: var(--surface-2); color: var(--muted); }
-  ul { list-style: none; margin: 0; padding: 6px; overflow-y: auto; max-height: calc(min(560px, 80dvh) - 60px); }
+  ul { list-style: none; margin: 0; padding: 6px; overflow-y: auto; max-height: calc(min(560px, 80dvh) - 104px); }
   a { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 12px; border-radius: 14px; text-decoration: none; color: var(--text); }
   a.sel { background: var(--surface-2); }
   .nm { font-weight: 600; display: flex; gap: 6px; align-items: center; }
@@ -88,6 +97,9 @@
   .ds { grid-column: 1; font-size: 0.82rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ct { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; }
   .empty { margin: 0; padding: 22px 18px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px 0; }
+  .chips button { border: 1px solid var(--line-2); background: none; color: var(--muted); border-radius: 999px; padding: 5px 11px; font-size: 0.78rem; font-weight: 600; }
+  .chips button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
   .quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 16px 16px; }
   .quick button { border: 1px solid var(--line-2); background: none; color: var(--muted); border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; transition: background 0.3s var(--ease-snap), color 0.3s var(--ease-snap); }
   .quick button:hover { background: var(--surface-2); color: var(--text); }
