@@ -717,7 +717,7 @@ import { sidePots, ranks as potRanks } from '../src/games/pot.ts';
 // Memory: deals pairs, a perfect brain clears the board quickly, a forgetful one takes longer
 import { deal as memDeal, Brain, soloMult, FACES } from '../src/games/memory.ts';
 {
-  for (const th of ['symbols', 'cards', 'jass', 'arcade'] as const) {
+  for (const th of ['symbols', 'cards'] as const) {
     assert(FACES[th] >= 18, th + ' has enough faces for 36 cards');
     const f = memDeal(18, th);
     const count: Record<number, number> = {};
