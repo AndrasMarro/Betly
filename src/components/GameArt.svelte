@@ -185,6 +185,13 @@
       <span class="hitf"></span>
       <span class="splash"><i></i><i></i><i></i></span>
     </div>
+  {:else if id === 'doodle'}
+    <div class="kp">
+      <div class="card c1"><svg viewBox="0 0 120 90" aria-hidden="true"><path class="ln" d="M20 70 L20 40 L45 20 L70 40 L70 70 Z M38 70 L38 55 L52 55 L52 70" /><circle class="sun" cx="96" cy="22" r="10" /></svg></div>
+      <div class="card c2"><span>«Ein Haus mit Sonne»</span></div>
+      <div class="card c3"><svg viewBox="0 0 120 90" aria-hidden="true"><path class="ln wob" d="M24 72 L28 44 L50 26 L66 46 L64 72 Z" /><circle class="sun" cx="90" cy="28" r="12" /><path class="ln2" d="M90 8 v6 M106 28 h6 M74 28 h-6" /></svg></div>
+      <span class="pen"></span>
+    </div>
   {:else if id === 'slf'}
     <div class="sheet">
       <span class="lt2 mono">B</span>
@@ -276,6 +283,23 @@
   .splash i:nth-child(2) { animation-delay: 0.15s !important; } .splash i:nth-child(3) { animation-delay: 0.3s !important; }
   @keyframes rip { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(3.4); opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .naval .bship, .naval .dship, .hitf, .splash i { animation: none !important; } }
+  .art.doodle { background: radial-gradient(circle at 25% 20%, rgba(255,255,255,.16), transparent 45%), linear-gradient(160deg, #c79a62, #9c6c3a); }
+  .kp { position: relative; width: 250px; height: 170px; }
+  .kp .card { position: absolute; width: 118px; height: 88px; border-radius: 4px; background: #fffdf6; box-shadow: 0 10px 18px -8px rgba(0,0,0,.55); display: grid; place-items: center; transition: transform 0.6s var(--spring-smooth); }
+  .kp .card svg { width: 100%; height: 100%; }
+  .kp .c1 { left: 0; top: 8px; rotate: -7deg; }
+  .kp .c2 { left: 66px; top: 50px; z-index: 1; background: #fff7c2; rotate: 3deg; padding: 6px; text-align: center; font: italic 600 0.85rem 'Instrument Serif', Georgia, serif; color: #2b2a3a; }
+  .kp .c3 { right: 0; top: 4px; rotate: 6deg; }
+  .kp .ln, .kp .ln2 { fill: none; stroke: #2b2a3a; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .kp .ln2 { stroke: #f76b15; }
+  .kp .sun { fill: #f5d90a; }
+  .kp .wob { stroke: #3e63dd; stroke-dasharray: 200; stroke-dashoffset: 0; }
+  :global(.game:hover) .kp .c1, :global(.dailycard:hover) .kp .c1 { transform: translate(-6px, -4px) rotate(-4deg); }
+  :global(.game:hover) .kp .c3, :global(.dailycard:hover) .kp .c3 { transform: translate(6px, -4px) rotate(4deg); }
+  :global(.game:hover) .kp .wob, :global(.dailycard:hover) .kp .wob { animation: sketch 1.2s var(--ease-snap); }
+  @keyframes sketch { from { stroke-dashoffset: 200; } }
+  .kp .pen { position: absolute; right: 18px; bottom: 6px; width: 74px; height: 10px; border-radius: 3px; rotate: -32deg; background: linear-gradient(90deg, #2b2a3a 0 14%, #f5d90a 14% 86%, #e5484d 86%); box-shadow: 0 4px 8px rgba(0,0,0,.35); }
+  .kp .pen::before { content: ''; position: absolute; left: -12px; top: 0; border: 5px solid transparent; border-right: 12px solid #f3d6a4; border-left: 0; }
   .art.slf { background: radial-gradient(ellipse at 50% 30%, #3a2a5a, #160e24 80%); }
   .sheet { position: relative; width: 190px; padding: 18px 16px 14px; border-radius: 10px; transform: rotate(-3deg); color: #2b2a3a; display: grid; gap: 6px; box-shadow: 0 16px 30px rgba(0,0,0,.5); transition: transform 0.5s var(--spring-smooth);
     background: linear-gradient(rgba(70,110,200,.16) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgba(70,110,200,.16) 1px, transparent 1px) 0 0 / 14px 14px, #fbf8ef; }

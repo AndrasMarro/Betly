@@ -9,7 +9,8 @@ Betly folgt [Semantic Versioning](https://semver.org/lang/de/): `MAJOR.MINOR.PAT
 
 Jede Version gehört zu einem Commit (Kurz-Hash in der Liste); `bash scripts/tag-versions.sh` setzt dafür die Git-Tags `vX.Y.Z` und pusht sie. Die Version steht auch in `package.json` und klein im Footer der Seite. Die drei Commits mit dem vorläufigen Präfix `v2.1.10a` sind nachträglich als 2.20.0, 2.20.1 und 2.21.0 eingeordnet.
 
-- **2.23.0** (2026-11-27) Stadt Land Fluss: grösser auf grossen Bildschirmen, neun neue Standardkategorien und viel mehr Bot-Wörter, DE/EN-Knopf repariert
+- **2.24.0** (2026-11-27) Neues Party-Spiel Kritzelpost: Stille Post mit Bildern, Modi Normal, Gedächtnis und Monster, Herzen und Topf
+- **2.23.0** `847ca5b` (2026-11-27) Stadt Land Fluss: grösser auf grossen Bildschirmen, neun neue Standardkategorien und viel mehr Bot-Wörter, DE/EN-Knopf repariert
 - **2.22.2** `d782a86` (2026-11-26) Schiffe-Vorschaubild: der Zerstörer fährt ohne Spiegelung in dieselbe Richtung wie das Schlachtschiff
 - **2.22.1** `497664b` (2026-11-26) Skript `scripts/tag-versions.sh`, das alle Versions-Tags setzt
 - **2.22.0** `0d9abc3` (2026-11-26) Ein- und Ausklappen von Heute und Deine Spiele, Schiffe-Vorschau, Versionierung nach SemVer

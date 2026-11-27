@@ -45,6 +45,7 @@ export const GAMES: Game[] = [
   { id: 'memory', live: true, name: 'Memory', cat: 'arcade', party: true, tags: 'paare pairs karten cards gedächtnis concentration' },
   { id: 'ships', live: true, name: ['Schiffe versenken', 'Battleships'], cat: 'arcade', party: true, tags: 'schiffe battleship seeschlacht flotte fleet 2v2 team' },
   { id: 'slf', live: true, name: ['Stadt Land Fluss', 'Categories'], cat: 'arcade', party: true, tags: 'stadt land fluss kategorien categories buchstabe letter wörter words' },
+  { id: 'doodle', live: true, name: ['Kritzelpost', 'Doodle Post'], cat: 'arcade', party: true, tags: 'zeichnen draw malen paint stille post telephone raten guess kritzeln doodle monster gedächtnis memory' },
   { id: 'tetris', live: true, name: 'Tetris', cat: 'arcade', party: true, tags: 'blöcke blocks steine puzzle versus' },
 ];
 

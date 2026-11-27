@@ -828,3 +828,29 @@ import * as SLF from '../src/games/slf.ts';
   assert(SLF.looksFake('lab0') && SLF.looksFake('Ixyz') && SLF.looksFake('Ksdfgh') && SLF.looksFake('Aaa'), 'mash is fake');
   assert(!SLF.looksFake('Istanbul') && !SLF.looksFake('Ägypten') && !SLF.looksFake('Rio de Janeiro') && !SLF.looksFake(''), 'real words pass');
 }
+
+// Kritzelpost: every seat works on a different chain each step, chains pass every seat, drawings are cleaned
+import * as DD from '../src/games/doodle.ts';
+{
+  for (const n of [2, 3, 4, 7]) {
+    const steps = DD.stepsFor('normal', n);
+    for (let s = 0; s < steps; s++) {
+      const chains = Array.from({ length: n }, (_, i) => DD.chainOf(i, s, n));
+      assert.equal(new Set(chains).size, n, `step ${s}: every chain has exactly one worker`);
+      for (let i = 0; i < n; i++) assert.equal(DD.author(DD.chainOf(i, s, n), s, n), i, 'author and chainOf agree');
+    }
+    if (n >= 3) for (let c = 0; c < n; c++) assert.equal(new Set(Array.from({ length: n }, (_, s) => DD.author(c, s, n))).size, n, 'a chain visits every seat once');
+  }
+  assert.deepEqual([0, 1, 2, 3].map((s) => DD.kindOf('normal', s)), ['write', 'draw', 'guess', 'draw']);
+  assert.deepEqual([0, 1, 2].map((s) => DD.kindOf('memory', s)), ['draw', 'copy', 'copy']);
+  assert.equal(DD.stepsFor('monster', 8), 3);
+  assert(DD.timeFor('memory', 'copy', 4, { write: 40, draw: 100 }) < DD.timeFor('memory', 'copy', 1, { write: 40, draw: 100 }), 'memory gets faster');
+  const dirty = [{ c: 'red', w: 999, p: [1, 2, 3, 4, 5] }, { c: DD.PAPER, w: 60, p: [10, 10, 20, 20] }, { c: '#e5484d', w: 4, p: [1e9, -1e9] }, 'x'];
+  const clean = DD.cleanDrawing(dirty);
+  assert(clean.length === 3 && clean[0].c === DD.COLORS[0] && clean[0].w === 10 && clean[0].p.length === 4 && clean[1].c === DD.PAPER && clean[2].p[0] === 850, 'drawings are cleaned');
+  assert(DD.simplify([0, 0, 1, 1, 2, 2, 50, 50, 51, 51]).length < 10, 'close points are dropped');
+  for (const sk of DD.SKETCHES) assert(DD.cleanDrawing(sk.draw()).length === sk.draw().length, 'bot sketches are valid: ' + sk.en);
+  for (const parts of DD.MONSTER_PARTS) for (const d of parts) assert(DD.cleanDrawing(d).length === d.length);
+  assert.equal(DD.SKETCHES[DD.pickSketch('Ein Hund kocht Spaghetti')].en, 'A dog');
+  console.log('doodle checks passed');
+}

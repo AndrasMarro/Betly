@@ -273,6 +273,24 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Stakes', p: 'Everyone puts their own stake in the pot, visible to all. Like poker side pots you can win from each player only as much as you staked yourself. Team winners share.' },
     ],
   },
+  doodle: {
+    de: [
+      { h: 'Ziel', p: 'Stille Post mit Bildern. Jeder startet eine Kette, und mit jedem Schritt wandern die Ketten einen Platz weiter. Am Ende seht ihr, was aus jedem Anfang geworden ist.' },
+      { h: 'Normal', li: ['Schreib einen lustigen Satz (💡 gibt eine Idee).', 'Der Nächste zeichnet deinen Satz, ohne zu schreiben.', 'Der Übernächste sieht nur die Zeichnung und schreibt, was er erkennt.', 'So geht es abwechselnd weiter, bis die Kette einmal rum ist.'] },
+      { h: 'Gedächtnis', li: ['Zuerst zeichnet jeder irgendwas.', 'Der Nächste sieht das Bild nur ein paar Sekunden und zeichnet es aus dem Kopf nach.', 'Jeder Schritt hat weniger Zeit. Am Ende seht ihr, wie das Bild langsam zerfällt.'] },
+      { h: 'Monster', li: ['Drei Spieler zeichnen ein Wesen: Kopf, Körper, Beine.', 'Vom Teil darüber siehst du nur den unteren Rand, damit Hals und Hüfte anschliessen.', 'In der Auflösung werden die Teile zu einem Monster zusammengesetzt.'] },
+      { h: 'Zeichnen', li: ['12 Farben, 3 Pinselgrössen, Radierer, Rückgängig (Ctrl+Z) und Löschen.', 'Wenn die Zeit abläuft, wird abgegeben, was da ist.'] },
+      { h: 'Herzen und Topf', p: 'Der Gastgeber blättert durch die Ketten. Jeder kann Einträgen der anderen ein Herz geben. Die meisten Herzen gewinnen den Topf; wie bei Poker-Side-Pots gewinnt man von jedem höchstens so viel, wie man selbst gesetzt hat. Bots zeichnen aus ihrem eigenen Skizzenbuch und verteilen auch Herzen.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Telephone with pictures. Everyone starts a chain, and every step the chains move one seat on. At the end you see what became of every start.' },
+      { h: 'Normal', li: ['Write a funny sentence (💡 gives you an idea).', 'The next player draws your sentence, no writing allowed.', 'The one after only sees the drawing and writes what they recognise.', 'It goes on like that until the chain has been around once.'] },
+      { h: 'Memory', li: ['First everyone draws anything.', 'The next player sees the picture for a few seconds only and redraws it from memory.', 'Every step has less time. At the end you see the picture slowly fall apart.'] },
+      { h: 'Monster', li: ['Three players draw a creature: head, body, legs.', 'Of the part above you only see the bottom edge, so neck and hips line up.', 'In the reveal the parts are stacked into one monster.'] },
+      { h: 'Drawing', li: ['12 colours, 3 brush sizes, eraser, undo (Ctrl+Z) and clear.', 'When the time is up, whatever is there gets handed in.'] },
+      { h: 'Hearts and pot', p: 'The host leafs through the chains. Everyone can give a heart to other players\' entries. Most hearts win the pot; like poker side pots you can win at most your own stake from each player. Bots draw from their own sketchbook and hand out hearts too.' },
+    ],
+  },
   slf: {
     de: [
       { h: 'Ziel', p: 'Ein Buchstabe wird gezogen. Finde für jede Kategorie ein Wort, das damit anfängt, bevor die Zeit abläuft. Wer am Ende die meisten Punkte hat, gewinnt.' },
