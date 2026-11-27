@@ -308,7 +308,7 @@
               {@render num(L('Runden', 'Rounds'), 'rounds', 1, 26, '')}
               {@render num(L('Bots', 'Bots'), 'bots', 0, 5, '')}
             </div>
-            <div class="seg" role="radiogroup" aria-label={L('Zeit pro Runde', 'Time per round')}>
+            <div class="tseg" role="radiogroup" aria-label={L('Zeit pro Runde', 'Time per round')}>
               {#each [60, 90, 120, 180] as s2}<button role="radio" aria-checked={cfg.time === s2} class:on={cfg.time === s2} onclick={() => (cfg.time = s2)}>{s2}s</button>{/each}
             </div>
             <label class="tog"><input type="checkbox" checked={cfg.stop && cfg.grace === 0} onchange={(e) => { const on = e.currentTarget.checked; cfg.stop = true; cfg.grace = on ? 0 : 10; }} /> {L('Bei Stopp sofort abgeben', 'Hand in at once on stop')}</label>
@@ -490,6 +490,9 @@
 
 <style>
   .slf { width: min(100%, 1280px); margin-inline: auto; padding: 0 20px 48px; display: grid; gap: 14px; }
+  /* big screens: the whole sheet grows instead of floating small in the middle */
+  @media (min-width: 1600px) { .slf { zoom: 1.15; } }
+  @media (min-width: 2200px) { .slf { zoom: 1.35; } }
   .head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px 16px; padding: 12px 4px 0; min-height: 64px; }
   .right { display: flex; justify-content: flex-end; min-width: 0; }
   @media (max-width: 900px) { .head { grid-template-columns: 1fr; } .right { justify-content: flex-start; } }
@@ -514,9 +517,9 @@
   .gear:hover { transform: rotate(60deg); border-color: var(--gold); }
   .gear:active { transform: rotate(60deg) scale(0.92); }
   .qgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 3px; border-radius: 12px; background: var(--bg-2); }
-  .seg button { border: 0; background: none; color: var(--muted); border-radius: 9px; padding: 7px 0; font: 600 0.8rem 'Geist Mono Variable', monospace; transition: background 0.25s var(--ease-snap), color 0.25s var(--ease-snap); }
-  .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .tseg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 3px; border-radius: 12px; background: var(--bg-2); }
+  .tseg button { border: 0; background: none; color: var(--muted); border-radius: 9px; padding: 7px 0; font: 600 0.8rem 'Geist Mono Variable', monospace; transition: background 0.25s var(--ease-snap), color 0.25s var(--ease-snap); }
+  .tseg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
   .tog { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
   .tog input { accent-color: var(--gold); width: 16px; height: 16px; }
   .setup:hover { border-color: var(--gold); }
