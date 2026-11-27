@@ -13,6 +13,7 @@
   import { coinFace } from '../lib/coinface';
   import JassCard from './JassCard.svelte';
   import Warship from './Warship.svelte';
+  import { drawTank } from '../lib/tankDraw';
   import { settings } from '../lib/state.svelte';
   import diceArt from '../assets/dice-art.webp';
   import lottoDrum from '../assets/lotto-drum.webp';
@@ -20,6 +21,36 @@
   const coinImg = (side: 'heads' | 'tails') => (coinCache[side] ??= coinFace(side, 512).toDataURL('image/png'));
   const CASE_ART = [[deepTide, '#8847ff'], [golden, '#e4ae39'], [voidPulse, '#eb4b4b']] as const;
   let { id }: { id: string } = $props();
+  /** Tin tanks on the kitchen floor: the blue one fires a shell that bounces off a block toward the red hunter (hover plays it). */
+  function tinArt(node: HTMLCanvasElement) {
+    const c = node.getContext('2d')!, dpr = devicePixelRatio || 1, W = 300, H = 210;
+    node.width = W * dpr; node.height = H * dpr;
+    let t = 0, raf = 0, hot = false;
+    const card = node.closest('.game, .dailycard');
+    const on = () => { hot = true; }, off = () => { hot = false; };
+    card?.addEventListener('pointerenter', on); card?.addEventListener('pointerleave', off);
+    const frame = () => {
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      for (let y = 0; y < 7; y++) for (let x = 0; x < 10; x++) { c.fillStyle = (x + y) % 2 ? '#e9f1e6' : '#f7f0de'; c.fillRect(x * 30, y * 30, 30, 30); }
+      for (const [x, y] of [[4, 1], [4, 2], [4, 3], [5, 3]]) { const g = c.createLinearGradient(x * 30, y * 30, x * 30 + 30, y * 30 + 30); g.addColorStop(0, '#9fb3c9'); g.addColorStop(1, '#556b84'); c.fillStyle = 'rgba(40,30,20,.2)'; c.fillRect(x * 30 + 4, y * 30 + 5, 30, 30); c.fillStyle = g; c.beginPath(); c.roundRect(x * 30 + 1, y * 30 + 1, 28, 28, 4); c.fill(); }
+      c.fillStyle = '#c99a5e'; c.beginPath(); c.roundRect(7 * 30 + 2, 5 * 30 + 2, 26, 26, 3); c.fill(); c.fillStyle = 'rgba(233,215,160,.9)'; c.fillRect(7 * 30 + 12, 5 * 30 + 2, 6, 26);
+      if (hot) t = Math.min(1.6, t + 0.012); else t = Math.max(0, t - 0.03);
+      // the shell path: from the blue tank up to the block, bounce, down to the red one
+      const k = Math.min(1, t), p1 = { x: 82, y: 150 }, p2 = { x: 118, y: 86 }, p3 = { x: 222, y: 110 };
+      const sx = k < 0.5 ? p1.x + (p2.x - p1.x) * k * 2 : p2.x + (p3.x - p2.x) * (k - 0.5) * 2, sy = k < 0.5 ? p1.y + (p2.y - p1.y) * k * 2 : p2.y + (p3.y - p2.y) * (k - 0.5) * 2;
+      c.save(); c.scale(0.8, 0.8);
+      drawTank(c, { x: 72 / 0.8, y: 160 / 0.8, body: -0.3, turret: Math.atan2(p2.y - p1.y, p2.x - p1.x), kind: 'player', key: t * 4, odo: 0 });
+      if (t < 1) drawTank(c, { x: 232 / 0.8, y: 110 / 0.8, body: Math.PI + 0.2, turret: Math.PI - 0.4 + Math.sin(Date.now() / 600) * 0.3, kind: 'hunter', key: 0, odo: 0 });
+      c.restore();
+      if (t > 0.02 && t < 1) { c.fillStyle = '#c99a3e'; c.beginPath(); c.arc(sx, sy, 3.5, 0, 7); c.fill(); c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 2; c.setLineDash([3, 5]); c.beginPath(); c.moveTo(p1.x, p1.y); if (k > 0.5) c.lineTo(p2.x, p2.y); c.lineTo(sx, sy); c.stroke(); c.setLineDash([]); }
+      if (t >= 1) { const b = Math.min(1, (t - 1) / 0.5), r = 10 + b * 40; const g = c.createRadialGradient(p3.x, p3.y, 0, p3.x, p3.y, r); g.addColorStop(0, `rgba(255,240,200,${1 - b})`); g.addColorStop(0.5, `rgba(255,150,50,${0.8 * (1 - b)})`); g.addColorStop(1, 'rgba(200,50,30,0)'); c.fillStyle = g; c.beginPath(); c.arc(p3.x, p3.y, r, 0, 7); c.fill(); }
+      // a mine blinking near the crate
+      c.fillStyle = '#f5d90a'; c.beginPath(); c.arc(196, 172, 8, 0, 7); c.fill(); c.fillStyle = Math.sin(Date.now() / 200) > 0 ? '#ff3b3b' : '#7a1a1a'; c.beginPath(); c.arc(196, 172, 2.6, 0, 7); c.fill();
+      raf = requestAnimationFrame(frame);
+    };
+    frame();
+    return { destroy() { cancelAnimationFrame(raf); card?.removeEventListener('pointerenter', on); card?.removeEventListener('pointerleave', off); } };
+  }
 </script>
 
 <div class="art {id}" aria-hidden="true">
@@ -185,6 +216,8 @@
       <span class="hitf"></span>
       <span class="splash"><i></i><i></i><i></i></span>
     </div>
+  {:else if id === 'tanks'}
+    <canvas class="tin" use:tinArt></canvas>
   {:else if id === 'doodle'}
     <div class="kp">
       <div class="card c1"><svg viewBox="0 0 120 90" aria-hidden="true"><path class="ln" d="M20 70 L20 40 L45 20 L70 40 L70 70 Z M38 70 L38 55 L52 55 L52 70" /><circle class="sun" cx="96" cy="22" r="10" /></svg></div>
@@ -283,6 +316,8 @@
   .splash i:nth-child(2) { animation-delay: 0.15s !important; } .splash i:nth-child(3) { animation-delay: 0.3s !important; }
   @keyframes rip { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(3.4); opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .naval .bship, .naval .dship, .hitf, .splash i { animation: none !important; } }
+  .art.tanks { background: linear-gradient(160deg, #6b4a2b, #3f2a17); }
+  .tin { width: 300px; height: 210px; border-radius: 10px; box-shadow: 0 0 0 3px #2a1a0c, 0 16px 30px -12px rgba(0,0,0,.6); }
   .art.doodle { background: radial-gradient(circle at 25% 20%, rgba(255,255,255,.16), transparent 45%), linear-gradient(160deg, #c79a62, #9c6c3a); }
   .kp { position: relative; width: 250px; height: 170px; }
   .kp .card { position: absolute; width: 118px; height: 88px; border-radius: 4px; background: #fffdf6; box-shadow: 0 10px 18px -8px rgba(0,0,0,.55); display: grid; place-items: center; transition: transform 0.6s var(--spring-smooth); }

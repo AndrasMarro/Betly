@@ -52,6 +52,7 @@
     ships: () => import('./pages/Ships.svelte'),
     slf: () => import('./pages/Slf.svelte'),
     doodle: () => import('./pages/Doodle.svelte'),
+    tanks: () => import('./pages/Tanks.svelte'),
     classic: () => import('./pages/Lobby.svelte'),
     arcade: () => import('./pages/Lobby.svelte'),
     soon: () => import('./pages/Soon.svelte'),

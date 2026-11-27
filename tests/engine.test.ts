@@ -854,3 +854,39 @@ import * as DD from '../src/games/doodle.ts';
   assert.equal(DD.SKETCHES[DD.pickSketch('Ein Hund kocht Spaghetti')].en, 'A dog');
   console.log('doodle checks passed');
 }
+
+// Blechbüchsen: maps, bouncing shells, mines and crates, and every mission runs without errors
+import * as TK from '../src/games/tanks.ts';
+{
+  TK.MISSIONS.forEach((m, i) => {
+    assert.equal(m.length, TK.ROWS, `mission ${i + 1} has ${TK.ROWS} rows`);
+    m.forEach((r, y) => assert.equal(r.length, TK.COLS, `mission ${i + 1} row ${y} has ${TK.COLS} columns`));
+    assert(m.join('').includes('P') && TK.enemyCount(m) > 0, `mission ${i + 1} has a player and enemies`);
+  });
+  for (let n = 20; n < 30; n++) { const g = TK.genMission(n, rng(n)); assert(g.length === TK.ROWS && g.every((r) => r.length === TK.COLS) && TK.enemyCount(g) >= 4, 'generated mission ' + n); }
+  // a shell bounces once off a wall and comes back
+  const w = TK.newWorld(0, ['me']);
+  const me = w.tanks.find((t) => t.pid === 'me')!;
+  w.tanks = [me];
+  w.shells.push({ id: 999, x: 100, y: 20, vx: 0, vy: -200, b: 1, owner: -5, team: 'e', rocket: false, age: 1 });
+  for (let i = 0; i < 10; i++) TK.step(w, 0.016, {});
+  assert(w.shells[0]?.vy > 0, 'the shell turned around at the top wall');
+  // a mine blows up a crate and the tank next to it
+  const w2 = TK.newWorld(1, ['me']);
+  const p2 = w2.tanks.find((t) => t.pid === 'me')!;
+  const crate = { x: 8 * TK.T + 20, y: 6 * TK.T + 20 };
+  assert.equal(w2.grid[6][8], 'c');
+  w2.mines.push({ id: 998, x: crate.x - 30, y: crate.y, owner: p2.id, team: 'p', t: 9.99 });
+  TK.step(w2, 0.05, {});
+  assert.equal(w2.grid[6][8], '.', 'the crate is gone');
+  // the AI plays every mission for a while without errors, and a resting player is in danger sooner or later
+  let losses = 0;
+  for (let n = 0; n < 22; n++) {
+    const sim = TK.newWorld(n, ['me'], [], rng(n + 3));
+    for (let i = 0; i < 600 && !TK.wiped(sim); i++) TK.step(sim, 1 / 30, { me: { mx: 0, my: 0, aim: 0, fire: i % 20 === 0, mine: false } }, rng(i));
+    if (TK.wiped(sim)) losses++;
+  }
+  assert(losses >= 5, `enemies are dangerous (${losses} of 22 missions lost by standing still)`);
+  assert(TK.multFor(0) === 1 && TK.multFor(5) > 2 && TK.multFor(10) > TK.multFor(9), 'the run grows with every mission');
+  console.log('tanks checks passed', losses);
+}

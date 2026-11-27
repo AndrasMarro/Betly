@@ -273,6 +273,24 @@ export const GUIDES: Record<string, Guide> = {
       { h: 'Stakes', p: 'Everyone puts their own stake in the pot, visible to all. Like poker side pots you can win from each player only as much as you staked yourself. Team winners share.' },
     ],
   },
+  tanks: {
+    de: [
+      { h: 'Ziel', p: 'Räum in jeder Mission alle gegnerischen Blechpanzer ab, ohne selbst getroffen zu werden. Nach 20 Missionen geht es mit zufälligen Karten weiter.' },
+      { h: 'Steuerung', li: ['WASD oder Pfeiltasten: fahren. Der Turm folgt der Maus.', 'Linksklick (oder J): schiessen. Höchstens 5 eigene Geschosse gleichzeitig.', 'Leertaste, Rechtsklick (oder K): Mine legen, höchstens 2 gleichzeitig.', 'Auf dem Handy: Stick unten links zum Fahren, aufs Feld tippen zum Schiessen, 💣 für Minen. P pausiert.'] },
+      { h: 'Geschosse und Minen', li: ['Geschosse prallen einmal von Blechklötzen und Kisten ab, so triffst du um die Ecke. Vorsicht, auch dich selbst.', 'Geschosse schiessen sich gegenseitig ab: so wehrst du Treffer ab.', 'Minen gehen hoch, wenn ein Gegner vorbeirollt, wenn man sie anschiesst oder nach 10 Sekunden. Sie sprengen Kartonkisten weg.', 'Abflusslöcher halten Panzer auf, Geschosse fliegen darüber.'] },
+      { h: 'Gegner', li: ['Rostlaube, Patrouille, Pfeil (schnelle Raketen ohne Abpraller), Pionier (Minen), Jäger (zielt voraus), Scharfschütze (Banden-Schüsse), Kommandant, Phantom (unsichtbar, nur die Spuren verraten es) und Schatten (der Schnellste).', 'Zerstörte Gegner bleiben weg, wenn du eine Mission nach einem Treffer wiederholst.'] },
+      { h: 'Leben und Einsatz', li: ['3 Leben, alle 5 Missionen eins dazu.', 'Jede geschaffte Mission erhöht den Wert deines Einsatzes (×1.24, ×2.55 nach 5, ×5 nach 10 …). Zwischen den Missionen kannst du auszahlen.', 'Sind alle Leben weg, ist der Einsatz verloren. Mit Einsatz 0 spielst du gratis.'] },
+      { h: 'Koop', p: 'Öffne oben einen Raum und teile den Code. Dein Freund fährt den orangen Panzer, ihr kämpft euch zusammen durch die Missionen. Eigenbeschuss ist an: Geschosse und Minen treffen auch den Partner. Jeder setzt seinen eigenen Einsatz, der Gastgeber entscheidet über Weiter oder Auszahlen.' },
+    ],
+    en: [
+      { h: 'Goal', p: 'Clear every enemy tin tank in each mission without being hit. After 20 missions it goes on with random maps.' },
+      { h: 'Controls', li: ['WASD or arrow keys: drive. The turret follows the mouse.', 'Left click (or J): fire. At most 5 of your shells at once.', 'Space, right click (or K): lay a mine, at most 2 at once.', 'On a phone: stick bottom left to drive, tap the floor to fire, 💣 for mines. P pauses.'] },
+      { h: 'Shells and mines', li: ['Shells bounce once off tin blocks and crates, so you can hit around corners. Careful, that includes yourself.', 'Shells shoot each other down: that is how you block a hit.', 'Mines go off when an enemy rolls by, when shot, or after 10 seconds. They blow cardboard crates away.', 'Drain holes stop tanks, shells fly over them.'] },
+      { h: 'Enemies', li: ['Rust Bucket, Patrol, Dart (fast rockets that do not bounce), Sapper (mines), Hunter (leads its aim), Marksman (bank shots), Commander, Phantom (invisible, only its tracks give it away) and Shadow (the fastest).', 'Destroyed enemies stay gone when you retry a mission after being hit.'] },
+      { h: 'Lives and stake', li: ['3 lives, one more every 5 missions.', 'Every cleared mission raises your stake (×1.24, ×2.55 after 5, ×5 after 10 …). Cash out between missions.', 'Lose all lives and the stake is gone. With a stake of 0 you play for free.'] },
+      { h: 'Co-op', p: 'Open a room at the top and share the code. Your friend drives the orange tank and you fight through the missions together. Friendly fire is on: shells and mines hit your partner too. Each puts in their own stake; the host decides to go on or cash out.' },
+    ],
+  },
   doodle: {
     de: [
       { h: 'Ziel', p: 'Stille Post mit Bildern. Jeder startet eine Kette, und mit jedem Schritt wandern die Ketten einen Platz weiter. Am Ende seht ihr, was aus jedem Anfang geworden ist.' },

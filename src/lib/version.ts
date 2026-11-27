@@ -1,2 +1,2 @@
 // Shown very small at the bottom of every page. Raise it with every release.
-export const VERSION = '2.24.0';
+export const VERSION = '2.25.0';
