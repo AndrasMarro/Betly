@@ -5,13 +5,14 @@
   import JassSteps from './JassSteps.svelte';
   import PokerSteps from './PokerSteps.svelte';
   import DrawSteps from './DrawSteps.svelte';
+  import TankSteps from './TankSteps.svelte';
   import { settings } from '../lib/state.svelte';
   import { t } from '../lib/i18n';
   let { id, label = true }: { id: string; label?: boolean } = $props();
   const guide = $derived(GUIDES[id]);
   let dlg = $state<HTMLDialogElement>()!;
   // games with an animated step-by-step guide open on it; the full text stays one tab away
-  const STEPS: Record<string, typeof JassSteps | undefined> = { jass: JassSteps, holdem: PokerSteps };
+  const STEPS: Record<string, typeof JassSteps | undefined> = { jass: JassSteps, holdem: PokerSteps, tanks: TankSteps as typeof JassSteps };
   const Steps = $derived(STEPS[id]);
   const draw = $derived(id === 'keno' || id === 'lotto' ? id : null); // the number games share one animated guide
   let open = $state(false), tab = $state<'steps' | 'text'>('steps');

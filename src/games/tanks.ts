@@ -1,4 +1,4 @@
-// Blechbüchsen (Tin Tanks): wind-up tin tanks on a kitchen floor. Clear every enemy tank in a mission without
+// Pappkameraden (Cardboard Tanks): cardboard tanks in a big cardboard box. Clear every enemy tank in a mission without
 // being hit. Shells bounce off walls, shells shoot each other down, mines go off when an enemy rolls by, when shot
 // or after their fuse, and blow up cardboard crates. Holes in the floor stop tanks but not shells.
 // Pure game logic: the page feeds inputs, calls step() and draws the world (lib/tankDraw.ts).
@@ -6,7 +6,7 @@ export const T = 40, COLS = 20, ROWS = 14, AW = COLS * T, AH = ROWS * T;
 export const TANK_R = 15, SHELL_R = 4, MINE_R = 9, BLAST = 66;
 
 export type Team = 'p' | 'e';
-export type Kind = 'player' | 'rust' | 'patrol' | 'arrow' | 'sapper' | 'hunter' | 'sniper' | 'commander' | 'phantom' | 'shadow';
+export type Kind = 'player' | 'dummy' | 'rust' | 'patrol' | 'arrow' | 'sapper' | 'hunter' | 'sniper' | 'commander' | 'phantom' | 'shadow';
 type Spec = {
   speed: number; turn: number; cd: [number, number]; max: number; bounce: number; shell: number; rocket?: boolean;
   mines?: number; mineCd?: number; aim: 'direct' | 'lead' | 'bank'; move: 'still' | 'wander' | 'chase'; dodge?: boolean; stealth?: boolean; noise?: number;
@@ -14,6 +14,7 @@ type Spec = {
 /** Each enemy kind: how it drives, aims and shoots. */
 export const SPEC: Record<Kind, Spec> = {
   player: { speed: 95, turn: 99, cd: [0.12, 0.12], max: 5, bounce: 1, shell: 190, mines: 2, aim: 'direct', move: 'still' },
+  dummy: { speed: 0, turn: 0.6, cd: [99, 99], max: 0, bounce: 0, shell: 0, aim: 'direct', move: 'still' },
   rust: { speed: 0, turn: 1.1, cd: [2.8, 4.5], max: 1, bounce: 1, shell: 140, aim: 'direct', move: 'still', noise: 0.22 },
   patrol: { speed: 42, turn: 1.6, cd: [2, 3.4], max: 1, bounce: 1, shell: 150, aim: 'direct', move: 'wander', noise: 0.12 },
   arrow: { speed: 0, turn: 2.2, cd: [1.8, 3], max: 1, bounce: 0, shell: 330, rocket: true, aim: 'direct', move: 'still' },
@@ -24,9 +25,9 @@ export const SPEC: Record<Kind, Spec> = {
   phantom: { speed: 78, turn: 2.8, cd: [0.9, 1.8], max: 2, bounce: 1, shell: 190, aim: 'lead', move: 'chase', dodge: true, stealth: true },
   shadow: { speed: 128, turn: 4.2, cd: [0.5, 1.1], max: 3, bounce: 0, shell: 340, rocket: true, mines: 2, mineCd: 4, aim: 'lead', move: 'chase', dodge: true },
 };
-export const KIND_OF: Record<string, Kind> = { b: 'rust', g: 'patrol', t: 'arrow', y: 'sapper', r: 'hunter', s: 'sniper', p: 'commander', w: 'phantom', k: 'shadow' };
+export const KIND_OF: Record<string, Kind> = { d: 'dummy', b: 'rust', g: 'patrol', t: 'arrow', y: 'sapper', r: 'hunter', s: 'sniper', p: 'commander', w: 'phantom', k: 'shadow' };
 export const NAMES: Record<Kind, [string, string]> = {
-  player: ['Du', 'You'], rust: ['Rostlaube', 'Rust Bucket'], patrol: ['Patrouille', 'Patrol'], arrow: ['Pfeil', 'Dart'], sapper: ['Pionier', 'Sapper'],
+  player: ['Du', 'You'], dummy: ['Zielscheibe', 'Target'], rust: ['Rostlaube', 'Rust Bucket'], patrol: ['Patrouille', 'Patrol'], arrow: ['Pfeil', 'Dart'], sapper: ['Pionier', 'Sapper'],
   hunter: ['Jäger', 'Hunter'], sniper: ['Scharfschütze', 'Marksman'], commander: ['Kommandant', 'Commander'], phantom: ['Phantom', 'Phantom'], shadow: ['Schatten', 'Shadow'],
 };
 
@@ -39,9 +40,11 @@ export type Shell = { id: number; x: number; y: number; vx: number; vy: number; 
 export type Mine = { id: number; x: number; y: number; owner: number; team: Team; t: number };
 export type Boom = { x: number; y: number; t: number; big: boolean };
 export type Mark = { x: number; y: number; a: number; t: number };
+/** What stays on the floor: scraps of a crate or a tank (k: 'crate' or the tank kind). */
+export type Scrap = { x: number; y: number; a: number; s: number; k: string };
 export type World = {
   mission: number; grid: string[][]; tanks: Tank[]; shells: Shell[]; mines: Mine[]; booms: Boom[]; tracks: Mark[]; scorch: { x: number; y: number; r: number }[];
-  t: number; seq: number; events: string[]; dirty: boolean;
+  t: number; seq: number; events: string[]; dirty: boolean; debris: Scrap[]; shake: number; flag?: { x: number; y: number } | null;
 };
 export type Input = { mx: number; my: number; aim: number; fire: boolean; mine: boolean };
 
@@ -95,10 +98,10 @@ export const multFor = (cleared: number) => Math.round((1 + 0.22 * cleared + 0.0
 
 // ---------- the world ----------
 /** A fresh world for mission n. `players`: ids of the human tanks (1 or 2). `gone`: enemy slots already destroyed (kept on a retry). */
-export function newWorld(n: number, players: string[], gone: number[] = [], rnd = Math.random): World {
-  const rows = missionMap(n, rnd);
+export function newWorld(n: number, players: string[], gone: number[] = [], rnd = Math.random, custom?: string[]): World {
+  const rows = custom ?? missionMap(n, rnd);
   const grid = rows.map((r) => r.split(''));
-  const w: World = { mission: n, grid, tanks: [], shells: [], mines: [], booms: [], tracks: [], scorch: [], t: 0, seq: 1, events: [], dirty: true };
+  const w: World = { mission: n, grid, tanks: [], shells: [], mines: [], booms: [], tracks: [], scorch: [], t: 0, seq: 1, events: [], dirty: true, debris: [], shake: 0, flag: null };
   let slot = 0;
   const pts = { P: null as null | [number, number], Q: null as null | [number, number] };
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
@@ -115,7 +118,7 @@ export function newWorld(n: number, players: string[], gone: number[] = [], rnd 
   return w;
 }
 function mk(w: World, kind: Kind, team: Team, gx: number, gy: number, a: number, spawn: number): Tank {
-  return { id: w.seq++, kind, team, x: gx * T + T / 2, y: gy * T + T / 2, body: a, turret: a, alive: true, cool: 1 + Math.random(), mineCool: 2, vx: 0, vy: 0, goal: [], think: 0, want: a, aimOk: false, odo: 0, seen: 0, spawn, key: 0 };
+  return { id: w.seq++, kind, team, x: gx * T + T / 2, y: gy * T + T / 2, body: a, turret: a, alive: true, cool: team === 'p' ? 0 : 1 + Math.random(), mineCool: team === 'p' ? 0 : 2, vx: 0, vy: 0, goal: [], think: 0, want: a, aimOk: false, odo: 0, seen: 0, spawn, key: 0 };
 }
 const cell = (w: World, x: number, y: number) => { const gx = Math.floor(x / T), gy = Math.floor(y / T); return gx < 0 || gy < 0 || gx >= COLS || gy >= ROWS ? '#' : w.grid[gy][gx]; };
 /** Blocks shells: tin blocks and crates. */
@@ -165,13 +168,14 @@ function explode(w: World, x: number, y: number) {
   w.booms.push({ x, y, t: 0, big: true });
   w.scorch.push({ x, y, r: BLAST * 0.7 });
   w.events.push('boom');
+  w.shake = Math.max(w.shake, 0.35);
   for (const t of w.tanks) if (t.alive && (t.x - x) ** 2 + (t.y - y) ** 2 < (BLAST + TANK_R * 0.4) ** 2) kill(w, t);
   w.shells = w.shells.filter((s) => (s.x - x) ** 2 + (s.y - y) ** 2 > BLAST * BLAST);
   // cardboard crates inside the blast are gone
   for (let gy = 0; gy < ROWS; gy++) for (let gx = 0; gx < COLS; gx++) {
     if (w.grid[gy][gx] !== 'c') continue;
     const cx = Math.max(gx * T, Math.min(x, gx * T + T)), cy = Math.max(gy * T, Math.min(y, gy * T + T));
-    if ((cx - x) ** 2 + (cy - y) ** 2 < BLAST * BLAST * 0.8) { w.grid[gy][gx] = '.'; w.dirty = true; w.booms.push({ x: gx * T + T / 2, y: gy * T + T / 2, t: 0.1, big: false }); }
+    if ((cx - x) ** 2 + (cy - y) ** 2 < BLAST * BLAST * 0.8) { w.grid[gy][gx] = '.'; w.dirty = true; w.booms.push({ x: gx * T + T / 2, y: gy * T + T / 2, t: 0.1, big: false }); scraps(w, gx * T + T / 2, gy * T + T / 2, 'crate', 9, 22); }
   }
   // other mines nearby go off too
   const chain = w.mines.filter((m) => (m.x - x) ** 2 + (m.y - y) ** 2 < BLAST * BLAST);
@@ -182,8 +186,15 @@ function kill(w: World, t: Tank) {
   if (!t.alive) return;
   t.alive = false;
   w.booms.push({ x: t.x, y: t.y, t: 0, big: true });
-  w.scorch.push({ x: t.x, y: t.y, r: 26 });
+  w.scorch.push({ x: t.x, y: t.y, r: 30 });
+  scraps(w, t.x, t.y, t.kind === 'player' && t.spawn === -2 ? 'player2' : t.kind, 12, 30);
+  w.shake = Math.max(w.shake, t.team === 'p' ? 0.7 : 0.4);
   w.events.push(t.team === 'p' ? 'lost' : 'kill');
+}
+/** Leaves n scraps of kind k scattered within r around (x, y). */
+function scraps(w: World, x: number, y: number, k: string, n: number, r: number) {
+  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, d = Math.random() * r; w.debris.push({ x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, a: Math.random() * 6.3, s: 3 + Math.random() * 6, k }); }
+  if (w.debris.length > 500) w.debris.splice(0, w.debris.length - 500);
 }
 
 // ---------- enemy brains ----------
@@ -278,6 +289,7 @@ function brain(w: World, t: Tank, dt: number, rnd: () => number) {
 /** Advances the world by dt seconds. inputs: per player id. */
 export function step(w: World, dt: number, inputs: Record<string, Input>, rnd = Math.random) {
   w.t += dt;
+  w.shake = Math.max(0, w.shake - dt);
   for (const t of w.tanks) {
     if (!t.alive) continue;
     t.cool -= dt;
@@ -292,7 +304,7 @@ export function step(w: World, dt: number, inputs: Record<string, Input>, rnd = 
         if (i.mine) layMine(w, t);
       } else t.vx = t.vy = 0;
     } else brain(w, t, dt, rnd);
-    // drive: the body turns towards where it goes, the key on the back turns while it moves
+    // drive: the body turns towards where it goes, the tread links roll along (key)
     if (t.vx || t.vy) {
       const a = Math.atan2(t.vy, t.vx);
       const d = ang(a - t.body);
@@ -361,3 +373,27 @@ export const cleared = (w: World) => !w.tanks.some((t) => t.alive && t.team === 
 export const wiped = (w: World) => !w.tanks.some((t) => t.alive && t.team === 'p');
 /** Enemy slots destroyed so far (they stay destroyed when the mission is tried again). */
 export const goneSlots = (w: World, before: number[]) => [...before, ...w.tanks.filter((t) => t.team === 'e' && !t.alive).map((t) => t.spawn)];
+
+// ---------- the training: five short lessons ----------
+export type Lesson = { map: string[]; goal: 'reach' | 'kill' | 'crates'; flag?: [number, number]; de: [string, string]; en: [string, string] };
+const open = (rows: Record<number, string>) => Array.from({ length: ROWS }, (_, y) => rows[y] ?? '....................');
+export const LESSONS: Lesson[] = [
+  { map: open({ 6: '..P.................' }), goal: 'reach', flag: [16, 6], de: ['Fahren', 'Fahr mit WASD oder den Pfeiltasten zur Fahne. Am Handy mit dem Stick unten links.'], en: ['Driving', 'Drive to the flag with WASD or the arrow keys. On a phone use the stick bottom left.'] },
+  { map: open({ 6: '..P...........d.....' }), goal: 'kill', de: ['Schiessen', 'Der Turm folgt der Maus. Ziel auf die Zielscheibe und klick (am Handy: tippen).'], en: ['Shooting', 'The turret follows the mouse. Aim at the target and click (on a phone: tap).'] },
+  { map: open({ 2: '........#...........', 3: '........#...........', 4: '........#...........', 5: '........#...........', 6: '..P.....#.....d.....', 7: '........#...........', 8: '........#...........', 9: '........#...........', 10: '........#...........', 11: '........#...........' }), goal: 'kill', de: ['Abpraller', 'Die Wand ist im Weg. Schiess schräg an den oberen oder unteren Rand: Geschosse prallen einmal ab.'], en: ['Bank shots', 'The wall is in the way. Fire at an angle off the top or bottom edge: shells bounce once.'] },
+  { map: open({ 4: '..........cc........', 5: '..........cc........', 6: '..P.......cc........', 7: '..........cc........', 8: '..........cc........' }), goal: 'crates', de: ['Minen', 'Fahr an die Kisten, leg mit Leertaste (oder Rechtsklick, 💣) eine Mine und fahr schnell weg. Sprenge alle Kisten.'], en: ['Mines', 'Drive up to the crates, lay a mine with Space (or right click, 💣) and get away fast. Blow up all crates.'] },
+  { map: open({ 3: '......#.....#.......', 6: '..P...........b.....', 9: '......#.....#.......' }), goal: 'kill', de: ['Ernstfall', 'Diese Rostlaube schiesst zurück. Schiess ihre Geschosse ab oder weich aus, dann erwisch sie.'], en: ['For real', 'This one shoots back. Shoot its shells down or dodge them, then get it.'] },
+];
+export function lessonWorld(i: number, player: string): World {
+  const l = LESSONS[i];
+  const w = newWorld(0, [player], [], Math.random, l.map);
+  if (l.flag) w.flag = { x: l.flag[0] * T + T / 2, y: l.flag[1] * T + T / 2 };
+  for (const t of w.tanks) if (t.kind === 'rust') t.cool = 3;
+  return w;
+}
+export function lessonDone(i: number, w: World) {
+  const l = LESSONS[i], me = w.tanks.find((t) => t.team === 'p');
+  if (l.goal === 'reach') return !!me && !!w.flag && Math.hypot(me.x - w.flag.x, me.y - w.flag.y) < 26;
+  if (l.goal === 'crates') return !w.grid.some((r) => r.includes('c'));
+  return cleared(w);
+}

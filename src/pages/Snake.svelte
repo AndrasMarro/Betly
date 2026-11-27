@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FullscreenButton, { fs } from '../components/FullscreenButton.svelte';
   import { drawApple } from '../games/snakeDraw';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { fly } from 'svelte/transition';
@@ -111,10 +112,11 @@
   let canvas: HTMLCanvasElement;
   let wrap: HTMLDivElement;
   let size = $state(480);
+  let stageEl = $state<HTMLElement>();
   let raf = 0, last = performance.now(), acc = 0, clock = 0;
   let bg: HTMLCanvasElement | null = null, bgKey = '';
   onMount(() => {
-    const ro = new ResizeObserver(() => { if (wrap) size = Math.floor(Math.min(wrap.clientWidth, 680)); });
+    const ro = new ResizeObserver(() => { if (wrap) size = Math.floor(Math.min(wrap.clientWidth, fs.on ? 1600 : 680)); });
     ro.observe(wrap);
     raf = requestAnimationFrame(loop);
     return () => ro.disconnect();
@@ -335,7 +337,8 @@
     </div>
   {/snippet}
 
-  <div class="stage">
+  <div class="stage" class:full={fs.on} bind:this={stageEl}>
+    <span class="fsb"><FullscreenButton target={stageEl} /></span>
     <div class="hud">
       <span><span class="eyebrow">{t('sn.points')}</span><strong class="mono">{points}</strong></span>
       <span><span class="eyebrow">×</span><strong class="mono" class:up={mult >= 1}>{mult.toFixed(2)}</strong></span>
@@ -403,6 +406,10 @@
   .hud .eyebrow { color: rgba(244,242,238,.5); }
   .hud strong { font-size: 1.25rem; }
   .hud .up { color: #8ff0bf; }
+  .stage { position: relative; }
+  .fsb { position: absolute; top: 10px; right: 10px; z-index: 5; }
+  .stage.full { display: grid; align-content: center; border-radius: 0; padding: 16px; }
+  .stage.full .boardwrap { max-width: min(100vw - 40px, 100vh - 120px); }
   .boardwrap { width: 100%; max-width: min(680px, calc(100dvh - var(--nav-h) - 230px)); min-width: 260px; margin: 0 auto; display: grid; justify-items: center; }
   .board { position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 3px #2c5a3d, 0 20px 40px rgba(0,0,0,.5); touch-action: none; }
   canvas { display: block; }

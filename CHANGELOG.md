@@ -9,7 +9,8 @@ Betly folgt [Semantic Versioning](https://semver.org/lang/de/): `MAJOR.MINOR.PAT
 
 Jede Version gehört zu einem Commit (Kurz-Hash in der Liste); `bash scripts/tag-versions.sh` setzt dafür die Git-Tags `vX.Y.Z` und pusht sie. Die Version steht auch in `package.json` und klein im Footer der Seite. Die drei Commits mit dem vorläufigen Präfix `v2.1.10a` sind nachträglich als 2.20.0, 2.20.1 und 2.21.0 eingeordnet.
 
-- **2.25.0** (2026-11-27) Neues Arcade-Spiel Blechbüchsen: aufziehbare Blechpanzer, 20 Missionen und Zufallskarten, neun Gegnertypen, Minen, Abpraller, Einsatz mit Auszahlen, Online-Koop
+- **2.26.0** (2026-11-28) Panzerspiel wird Pappkameraden: Pappkarton-Look, Vollbild, Countdown, Training, Video-Anleitung; Vollbild für Crossy Run, Snake, Tetris und Stadt Land Fluss; dunkler Bogen für Stadt Land Fluss
+- **2.25.0** `d7c4602` (2026-11-27) Neues Arcade-Spiel Blechbüchsen: aufziehbare Blechpanzer, 20 Missionen und Zufallskarten, neun Gegnertypen, Minen, Abpraller, Einsatz mit Auszahlen, Online-Koop
 - **2.24.0** `aab6996` (2026-11-27) Neues Party-Spiel Kritzelpost: Stille Post mit Bildern, Modi Normal, Gedächtnis und Monster, Herzen und Topf
 - **2.23.0** `847ca5b` (2026-11-27) Stadt Land Fluss: grösser auf grossen Bildschirmen, neun neue Standardkategorien und viel mehr Bot-Wörter, DE/EN-Knopf repariert
 - **2.22.2** `d782a86` (2026-11-26) Schiffe-Vorschaubild: der Zerstörer fährt ohne Spiegelung in dieselbe Richtung wie das Schlachtschiff

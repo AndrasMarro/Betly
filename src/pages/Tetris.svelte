@@ -1,4 +1,16 @@
 <script lang="ts">
+  import FullscreenButton, { fs } from '../components/FullscreenButton.svelte';
+  let arenaEl = $state<HTMLElement>();
+  // full screen: grow the play area until it fills the screen
+  let zoom = $state(1);
+  $effect(() => {
+    if (!fs.on || !arenaEl) { zoom = 1; return; }
+    requestAnimationFrame(() => {
+      const kids = [...arenaEl!.children].filter((c) => !c.classList.contains('fsb')) as HTMLElement[];
+      const w = kids.reduce((a, c) => a + c.offsetWidth, 0) + 40, h = Math.max(...kids.map((c) => c.offsetHeight)) + 30;
+      zoom = Math.max(1, Math.min((innerWidth - 24) / w, (innerHeight - 24) / h));
+    });
+  });
   // Falling blocks. Klassisch: alone, faster with every 10 lines, coins for every cleared line.
   // Versus: side by side against bots or friends in a room; cleared lines rise as garbage under the others,
   // the last one standing wins a bonus. Everybody plays their own well; the host relays boards and attacks.
@@ -362,7 +374,8 @@
     <div class="right">{#if mode === 'versus'}<RoomBar {room} />{/if}</div>
   </header>
 
-  <div class="arena" class:vs={mode === 'versus'}>
+  <div class="arena" class:vs={mode === 'versus'} class:full={fs.on} bind:this={arenaEl} style={fs.on ? `--z:${zoom}` : ''}>
+    <span class="fsb"><FullscreenButton target={arenaEl} /></span>
     <aside class="side l">
       <div class="box"><small>Hold <kbd>C</kbd></small><canvas bind:this={holdCv} width="110" height="70"></canvas></div>
       <div class="stats">
@@ -441,6 +454,10 @@
 </section>
 
 <style>
+  .arena { position: relative; }
+  .fsb { position: absolute; top: 0; right: 0; z-index: 5; }
+
+  .arena.full > :global(*:not(.fsb)) { zoom: var(--z, 1); }
   .tt { width: min(100%, 1280px); margin-inline: auto; padding: 0 20px 40px; display: grid; gap: 14px; }
   .head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px 16px; padding: 12px 4px 0; min-height: 64px; }
   .right { display: flex; justify-content: flex-end; min-width: 0; }
@@ -460,6 +477,10 @@
     background: radial-gradient(ellipse at 50% 0%, #1f2a55, #0b1022 75%); box-shadow: inset 0 0 0 1px rgba(232,196,120,.25), 0 30px 60px -30px rgba(0,0,0,.7);
   }
   .arena.vs { grid-template-columns: 150px auto 150px minmax(0, 1fr); }
+  /* full screen: same columns, each part scaled up, the whole thing centred */
+  .arena.full { grid-template-columns: repeat(3, auto); place-content: center; border-radius: 0; box-shadow: none; }
+  .arena.full.vs { grid-template-columns: repeat(4, auto); }
+  .arena.full > .side { width: 150px; }
   .side { display: grid; gap: 12px; align-content: start; }
   .box { display: grid; gap: 4px; padding: 10px; border-radius: 16px; background: rgba(0,0,0,.28); box-shadow: inset 0 0 0 1px rgba(232,196,120,.25); }
   .box small, .stats small { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(242,236,220,.55); }

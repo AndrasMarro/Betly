@@ -46,7 +46,7 @@ export const GAMES: Game[] = [
   { id: 'ships', live: true, name: ['Schiffe versenken', 'Battleships'], cat: 'arcade', party: true, tags: 'schiffe battleship seeschlacht flotte fleet 2v2 team' },
   { id: 'slf', live: true, name: ['Stadt Land Fluss', 'Categories'], cat: 'arcade', party: true, tags: 'stadt land fluss kategorien categories buchstabe letter wörter words' },
   { id: 'doodle', live: true, name: ['Kritzelpost', 'Doodle Post'], cat: 'arcade', party: true, tags: 'zeichnen draw malen paint stille post telephone raten guess kritzeln doodle monster gedächtnis memory' },
-  { id: 'tanks', live: true, name: ['Blechbüchsen', 'Tin Tanks'], cat: 'arcade', party: true, tags: 'panzer tanks blech tin schiessen shoot minen mines koop coop missionen missions action' },
+  { id: 'tanks', live: true, name: ['Pappkameraden', 'Cardboard Tanks'], cat: 'arcade', party: true, tags: 'panzer tanks pappe karton cardboard blech tin schiessen shoot minen mines koop coop missionen missions action' },
   { id: 'tetris', live: true, name: 'Tetris', cat: 'arcade', party: true, tags: 'blöcke blocks steine puzzle versus' },
 ];
 

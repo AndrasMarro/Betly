@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FullscreenButton, { fs } from '../components/FullscreenButton.svelte';
   import { onDestroy, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
   import { newWorld, ensure, update, hit, logAt, blocked, warning, multAt, coinShare, COLS, MIN_STAKE, MAX_STAKE, BONUS_EVERY, BONUS, HOP_UP, BREAK, SINK, type World, type Lane, type Item } from '../games/crossy';
@@ -123,12 +124,16 @@
 
   // ---------- loop ----------
   let canvas: HTMLCanvasElement;
-  let wrap: HTMLDivElement;
+  let wrap = $state<HTMLDivElement>()!;
   let W = $state(640), H = $state(720);
+  let fit = () => {};
+  $effect(() => { void fs.on; requestAnimationFrame(() => fit()); });
   let raf = 0, last = performance.now(), clock = 0, warnTick = 0;
   onMount(() => {
     coarse = matchMedia('(pointer: coarse)').matches;
-    const fit = () => {
+    fit = () => {
+      // full screen: as big as the screen allows, keeping the shape
+      if (fs.on) { const h = innerHeight - 24; W = Math.round(Math.min(wrap.clientWidth - 24, h / 1.15)); H = Math.round(Math.min(W * 1.15, h)); return; }
       W = Math.min(wrap.clientWidth, 760);
       const top = wrap.getBoundingClientRect().top + scrollY;
       H = Math.round(Math.max(340, Math.min(W * 1.15, innerHeight - top - (coarse ? 150 : 20))));
@@ -343,7 +348,8 @@
     {/if}
   </div>
 
-  <div class="stage" bind:this={wrap}>
+  <div class="stage" class:full={fs.on} bind:this={wrap}>
+    <span class="fsb"><FullscreenButton target={wrap} /></span>
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="screen" style="width:{W}px; height:{H}px" onpointerdown={pdown} onpointerup={pup}>
       <canvas bind:this={canvas} style="width:{W}px; height:{H}px"></canvas>
@@ -382,7 +388,10 @@
   .tools { display: flex; align-items: center; gap: 14px; }
   .score { display: grid; gap: 2px; justify-items: end; }
   .score strong { font-size: 1.4rem; }
-  .stage { display: grid; justify-items: center; gap: 12px; }
+  .stage { position: relative; display: grid; justify-items: center; gap: 12px; }
+  .stage.full { place-content: center; background: radial-gradient(ellipse at 50% 30%, #1d3a2a, #07120c 80%); }
+  .fsb { position: absolute; top: 10px; right: 10px; z-index: 5; }
+  .stage:not(.full) .fsb { right: max(10px, calc(50% - 380px + 10px)); }
   .screen { position: relative; border-radius: 24px; overflow: hidden; box-shadow: 0 0 0 1px var(--line-2), 0 40px 80px -30px rgba(0,0,0,.7); touch-action: none; user-select: none; }
   canvas { display: block; }
   .overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; color: #fff; background: rgba(12, 10, 24, 0.55); backdrop-filter: blur(3px); padding: 20px; }

@@ -390,3 +390,30 @@ export function sampler(url: string, vol = 1) {
     },
   };
 }
+
+/** Cardboard tanks rolling: a soft, low rustle that only rises while something moves (0..1). Kept quiet on purpose. */
+export function treads() {
+  if (!settings.sound) return { set(_: number) {}, stop() {} };
+  try {
+    const c = ac();
+    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+    s.buffer = noise(c); s.loop = true;
+    f.type = 'lowpass'; f.frequency.value = 260; f.Q.value = 0.7;
+    g.gain.value = 0.0001;
+    // a slow flutter like tread links on cardboard
+    lfo.frequency.value = 9; lg.gain.value = 0;
+    lfo.connect(lg).connect(g.gain);
+    s.connect(f).connect(g).connect(outs(c).fx);
+    s.start(); lfo.start();
+    return {
+      set(v: number) {
+        const k = Math.max(0, Math.min(1, v)), t = c.currentTime;
+        g.gain.setTargetAtTime(0.0001 + k * 0.045, t, 0.12);
+        lg.gain.setTargetAtTime(k * 0.012, t, 0.12);
+        f.frequency.setTargetAtTime(220 + k * 180, t, 0.12);
+        lfo.frequency.setTargetAtTime(7 + k * 6, t, 0.12);
+      },
+      stop() { const t = c.currentTime; g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0.0001, t, 0.08); s.stop(t + 0.5); lfo.stop(t + 0.5); },
+    };
+  } catch { return { set(_: number) {}, stop() {} }; }
+}
